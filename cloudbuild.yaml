@@ -3,7 +3,11 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/primary-ai-saas/primaryai-web:$COMMIT_SHA', '.']
 
-  # Step 2: Deploy to Cloud Run
+  # Step 2: Push the image to Artifact Registry (THIS WAS MISSING)
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/primary-ai-saas/primaryai-web:$COMMIT_SHA']
+
+  # Step 3: Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
@@ -15,7 +19,7 @@ steps:
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--project=primary-ai-saas'
-      - '--quiet'  # This prevents the build from hanging on y/N prompts
+      - '--quiet'
 
 images:
   - 'gcr.io/primary-ai-saas/primaryai-web:$COMMIT_SHA'
