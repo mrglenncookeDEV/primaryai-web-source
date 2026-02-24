@@ -1,9 +1,23 @@
 {
   "scripts": {
-    "dev": "node scripts/dev-server.js",
-    "build": "node scripts/build.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "setup:env": "bash scripts/setup-env.sh",
+    "setup:migrate": "bash scripts/apply-migrations.sh",
+    "setup:migrate:supabase": "bash scripts/apply-migrations-supabase.sh",
+    "setup:webhook": "bash scripts/register-stripe-webhook.sh",
+    "config:check": "node scripts/check-config.mjs",
+    "static:dev": "node scripts/dev-server.js",
+    "static:build": "node scripts/build.js"
   },
   "dependencies": {
-    "jsoon": "^0.1.0"
+    "@supabase/supabase-js": "^2.49.1",
+    "jsoon": "^0.1.0",
+    "next": "^15.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "stripe": "^18.2.0"
   }
 }
