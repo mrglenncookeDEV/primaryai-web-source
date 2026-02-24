@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "build": "node scripts/build.js"
+  },
+  "dependencies": {
+    "jsoon": "^0.1.0"
+  }
+}
