@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Auto-load .env.local if present and vars not already set.
+if [ -f "$(dirname "$0")/../.env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$(dirname "$0")/../.env.local"
+  set +a
+fi
+
 if [ -z "${SUPABASE_DB_URL:-}" ]; then
   echo "SUPABASE_DB_URL is required."
   echo "Set it to your Postgres connection string, then rerun:"

@@ -6,7 +6,7 @@ export default function BillingPage() {
       <div className="card">
         <div className="stack">
           <form action="/api/checkout" method="post">
-            <input type="hidden" name="plan" value="pro" />
+            <input type="hidden" name="plan" value="starter" />
             <button className="button" type="submit">
               Start / Upgrade Subscription
             </button>

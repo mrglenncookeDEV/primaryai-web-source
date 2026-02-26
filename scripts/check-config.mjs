@@ -22,7 +22,6 @@ const required = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "STRIPE_PRICE_STARTER",
-  "STRIPE_PRICE_PRO",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -37,11 +36,6 @@ if (missing.length > 0) {
 
 if (!map.STRIPE_PRICE_STARTER.startsWith("price_")) {
   console.error("STRIPE_PRICE_STARTER must start with 'price_'");
-  process.exit(1);
-}
-
-if (!map.STRIPE_PRICE_PRO.startsWith("price_")) {
-  console.error("STRIPE_PRICE_PRO must start with 'price_'");
   process.exit(1);
 }
 
