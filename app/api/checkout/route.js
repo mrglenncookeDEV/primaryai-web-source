@@ -16,5 +16,5 @@ export async function POST(request) {
 
   const session = await getAuthSession();
   const checkoutUrl = await createCheckoutSession({ plan, session });
-  return NextResponse.redirect(checkoutUrl);
+  return NextResponse.redirect(checkoutUrl, { status: 303 });
 }
