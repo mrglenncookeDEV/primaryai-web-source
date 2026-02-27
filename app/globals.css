@@ -131,6 +131,51 @@ a {
   border-radius: 10px;
   padding: 0.65rem 0.8rem;
   cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.button-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: #fff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  font-family: "Google Sans", "Roboto", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.button-google:hover {
+  background: #f8f9fa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  color: #3c4043;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0.25rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #2a3a5e;
 }
 
 .landing-hero {
