@@ -1,0 +1,97 @@
+import { NextResponse } from "next/server";
+import { getSupabaseAnonClient } from "@/lib/supabase";
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+
+function setSessionCookie(response, user) {
+  response.cookies.set(
+    "pa_session",
+    JSON.stringify({
+      userId: user.id,
+      email: user.email || "",
+      role: user.role || "authenticated",
+    }),
+    {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: true,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    },
+  );
+}
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get("code");
+  const state = searchParams.get("state");
+  const errorParam = searchParams.get("error");
+
+  const base = APP_URL || new URL(request.url).origin;
+
+  if (errorParam) {
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent("Google sign-in was cancelled")}`, base),
+    );
+  }
+
+  const cookieState = request.cookies.get("oauth_state")?.value;
+  if (!state || !cookieState || state !== cookieState) {
+    return NextResponse.redirect(new URL("/login?error=Invalid+OAuth+state", base));
+  }
+
+  if (!code) {
+    return NextResponse.redirect(new URL("/login?error=Missing+auth+code", base));
+  }
+
+  const redirectUri = `${base}/api/auth/google/callback`;
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    }),
+  });
+
+  const tokenData = await tokenRes.json();
+
+  if (!tokenRes.ok || !tokenData.id_token) {
+    return NextResponse.redirect(
+      new URL(
+        `/login?error=${encodeURIComponent(tokenData.error_description || "Failed to exchange Google auth code")}`,
+        base,
+      ),
+    );
+  }
+
+  const supabase = getSupabaseAnonClient();
+  if (!supabase) {
+    return NextResponse.redirect(new URL("/login?error=Auth+not+configured", base));
+  }
+
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: "google",
+    token: tokenData.id_token,
+  });
+
+  if (error || !data?.user) {
+    return NextResponse.redirect(
+      new URL(
+        `/login?error=${encodeURIComponent(error?.message || "Google sign-in failed")}`,
+        base,
+      ),
+    );
+  }
+
+  const response = NextResponse.redirect(new URL("/dashboard", base));
+  setSessionCookie(response, data.user);
+  response.cookies.delete("oauth_state");
+  return response;
+}
