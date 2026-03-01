@@ -39,11 +39,15 @@ export async function GET(request) {
 
   const cookieState = request.cookies.get("oauth_state")?.value;
   if (!state || !cookieState || state !== cookieState) {
-    return NextResponse.redirect(new URL("/login?error=Invalid+OAuth+state", base));
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent("Your sign-in session expired — please try again")}`, base),
+    );
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=Missing+auth+code", base));
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent("Google sign-in failed — no authorisation code received")}`, base),
+    );
   }
 
   const redirectUri = `${base}/api/auth/google/callback`;

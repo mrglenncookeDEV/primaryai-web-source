@@ -1,41 +1,35 @@
 import Link from "next/link";
 import { getAuthSession } from "@/lib/auth";
-
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/features", label: "Features" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/legal/privacy", label: "Privacy" },
-  { href: "/legal/terms", label: "Terms" },
-  { href: "/dashboard", label: "Dashboard" },
-];
+import NavLinks from "./NavLinks";
 
 export default async function Nav() {
   const session = await getAuthSession();
+
   return (
     <nav className="top-nav" aria-label="Site navigation">
-      {links.map((link) => (
-        <Link key={link.href} href={link.href} className="chip">
-          {link.label}
-        </Link>
-      ))}
-      {!session ? (
-        <>
-          <Link href="/login" className="chip">
-            Login
-          </Link>
-          <Link href="/signup" className="chip">
-            Sign Up
-          </Link>
-        </>
-      ) : (
-        <form action="/api/auth/logout" method="post">
-          <button type="submit" className="chip">
-            Logout
-          </button>
-        </form>
-      )}
+      <Link href="/" className="nav-logo-link">
+        <svg
+          className="nav-logo-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeMiterlimit="10"
+          shapeRendering="geometricPrecision"
+          aria-hidden="true"
+        >
+          <path d="M2.5,7.5 L11.5,3.1 c0.3,-0.15, 0.7,-0.15, 1,0 L21.5,7.5" stroke="var(--orange)" strokeWidth="1.7" />
+          <path d="M19.5,12 v6.5 c0,1.1, -0.9,2, -2,2 h-11 c-1.1,0, -2,-0.9, -2,-2 V12" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M19.5,12 C17.5,10.2, 14.5,10.2, 12,12" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M12,12.2 v8.1" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M12,12 C9.5,10.2, 6.5,10.2, 4.5,12" stroke="currentColor" strokeWidth="1.7" />
+        </svg>
+        <span className="nav-logo-text">
+          Pr<span className="nav-logo-orange">i</span>m<span className="nav-logo-orange">a</span>ry<span className="nav-logo-orange">A</span><span className="nav-logo-orange">I</span>
+        </span>
+      </Link>
+      <NavLinks session={session} />
     </nav>
   );
 }
