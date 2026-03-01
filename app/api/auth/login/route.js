@@ -15,7 +15,7 @@ export async function POST(request) {
   const password = String(form.get("password") || "");
   const next = String(form.get("next") || "/dashboard");
 
-  const redirectBase = new URL(request.url).origin;
+  const redirectBase = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
   const redirectUrl = new URL(next.startsWith("/") ? next : "/dashboard", redirectBase);
 
   const supabase = getSupabaseAnonClient();

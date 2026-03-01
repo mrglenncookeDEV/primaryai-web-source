@@ -5,7 +5,7 @@ export async function POST(request) {
   const form = await request.formData();
   const email = String(form.get("email") || "").trim();
   const password = String(form.get("password") || "");
-  const redirectBase = new URL(request.url).origin;
+  const redirectBase = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
 
   const supabase = getSupabaseAnonClient();
   if (!supabase) {

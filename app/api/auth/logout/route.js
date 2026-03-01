@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnonClient } from "@/lib/supabase";
 
 export async function POST(request) {
-  const redirectBase = new URL(request.url).origin;
+  const redirectBase = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
   const response = NextResponse.redirect(new URL("/", redirectBase));
   response.cookies.set("pa_session", "", {
     httpOnly: true,

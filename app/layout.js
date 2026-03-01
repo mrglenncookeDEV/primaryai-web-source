@@ -2,7 +2,11 @@ import "./globals.css";
 
 export const metadata = {
   title: "Primary AI",
-  description: "Subscription-first AI SaaS",
+  description: "AI-powered lesson planning and teaching tools built for primary school educators.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }) {
