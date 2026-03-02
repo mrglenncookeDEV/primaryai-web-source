@@ -3,9 +3,8 @@ import { getSupabaseAnonClient } from "@/lib/supabase";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
-function setSessionCookie(response, user) {
+function setSessionCookie(response, user, isHttps) {
   response.cookies.set(
     "pa_session",
     JSON.stringify({
@@ -16,7 +15,7 @@ function setSessionCookie(response, user) {
     {
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: isHttps,
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     },
@@ -28,8 +27,9 @@ export async function GET(request) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const errorParam = searchParams.get("error");
-
-  const base = APP_URL || new URL(request.url).origin;
+  const requestUrl = new URL(request.url);
+  const base = requestUrl.origin;
+  const isHttps = requestUrl.protocol === "https:";
 
   if (errorParam) {
     return NextResponse.redirect(
@@ -39,9 +39,11 @@ export async function GET(request) {
 
   const cookieState = request.cookies.get("oauth_state")?.value;
   if (!state || !cookieState || state !== cookieState) {
-    return NextResponse.redirect(
+    const response = NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent("Your sign-in session expired — please try again")}`, base),
     );
+    response.cookies.delete("oauth_state");
+    return response;
   }
 
   if (!code) {
@@ -95,7 +97,8 @@ export async function GET(request) {
   }
 
   const response = NextResponse.redirect(new URL("/dashboard", base));
-  setSessionCookie(response, data.user);
+  setSessionCookie(response, data.user, isHttps);
   response.cookies.delete("oauth_state");
+  response.headers.set("Cache-Control", "no-store");
   return response;
 }

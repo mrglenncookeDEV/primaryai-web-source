@@ -6,10 +6,11 @@ import crypto from "node:crypto";
 export const dynamic = "force-dynamic";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
-export async function GET() {
-  const base = APP_URL || "https://primaryai.org.uk";
+export async function GET(request) {
+  const requestUrl = new URL(request.url);
+  const base = requestUrl.origin;
+  const isHttps = requestUrl.protocol === "https:";
 
   if (!GOOGLE_CLIENT_ID) {
     return NextResponse.redirect(new URL("/login?error=Google+not+configured", base));
@@ -32,12 +33,11 @@ export async function GET() {
     `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
   );
 
-  // SameSite=none ensures the cookie is sent when Google redirects back
-  // (a cross-site top-level navigation) across all browsers.
+  // SameSite=lax is sufficient for OAuth return on top-level navigation.
   response.cookies.set("oauth_state", state, {
     httpOnly: true,
-    sameSite: "none",
-    secure: true,
+    sameSite: "lax",
+    secure: isHttps,
     path: "/",
     maxAge: 60 * 10,
   });
