@@ -46,8 +46,271 @@ html[data-theme="light"] {
   --loader-track: #e2e8f0;
 }
 
+/* ── Colour palettes ──────────────────────────────────────────────────────────
+   Full token override per palette — bg, surface, borders, nav + accent family.
+   duck-egg is the default (already in :root / html[data-theme="light"]).
+   Smooth transitions on key structural elements when palette switches.
+────────────────────────────────────────────────────────────────────────────── */
+
+body,
+.top-nav,
+.auth-panel,
+.auth-brand,
+.auth-form-wrap {
+  transition: background 380ms ease, background-color 380ms ease,
+              border-color 280ms ease, color 200ms ease;
+}
+
+/* Sage green */
+html[data-palette="sage"] {
+  --bg: #0c1a0f; --surface: #122017;
+  --border: #1e3d26; --border-card: #193320;
+  --nav-bg: rgba(10, 22, 13, 0.85);
+  --field-bg: #091410; --btn-bg: #1e3d26;
+  --bg-gradient-start: #102a18;
+  --accent: #b8dcb8; --accent-rgb: 184 220 184;
+  --accent-hover: #cceacc; --accent-text: #0d2e0d;
+}
+html[data-palette="sage"][data-theme="light"] {
+  --bg: #f2faf4; --surface: #ffffff;
+  --border: #c5e0cb; --border-card: #b5d5bb;
+  --nav-bg: rgba(242, 250, 244, 0.92);
+  --bg-gradient-start: #e4f5e8;
+  --accent: #4a7c59; --accent-rgb: 74 124 89;
+  --accent-hover: #3a6248; --accent-text: #ffffff;
+}
+
+/* Lavender */
+html[data-palette="lavender"] {
+  --bg: #110d20; --surface: #1a142e;
+  --border: #2d2050; --border-card: #251840;
+  --nav-bg: rgba(17, 13, 32, 0.85);
+  --field-bg: #0d0a18; --btn-bg: #2d2050;
+  --bg-gradient-start: #1c1438;
+  --accent: #cfbff0; --accent-rgb: 207 191 240;
+  --accent-hover: #e0d4fa; --accent-text: #1a0d42;
+}
+html[data-palette="lavender"][data-theme="light"] {
+  --bg: #f5f2ff; --surface: #ffffff;
+  --border: #d8d0f0; --border-card: #cac0ea;
+  --nav-bg: rgba(245, 242, 255, 0.92);
+  --bg-gradient-start: #ece8fb;
+  --accent: #6b5acd; --accent-rgb: 107 90 205;
+  --accent-hover: #5a4ab8; --accent-text: #ffffff;
+}
+
+/* Dusty rose */
+html[data-palette="rose"] {
+  --bg: #190d11; --surface: #241218;
+  --border: #461c2a; --border-card: #3a1822;
+  --nav-bg: rgba(25, 13, 17, 0.85);
+  --field-bg: #130a0d; --btn-bg: #461c2a;
+  --bg-gradient-start: #2c101e;
+  --accent: #f0bfcc; --accent-rgb: 240 191 204;
+  --accent-hover: #fad2de; --accent-text: #3d0d1a;
+}
+html[data-palette="rose"][data-theme="light"] {
+  --bg: #fff4f7; --surface: #ffffff;
+  --border: #f2c5d0; --border-card: #eab5c3;
+  --nav-bg: rgba(255, 244, 247, 0.92);
+  --bg-gradient-start: #fde8ef;
+  --accent: #a0536b; --accent-rgb: 160 83 107;
+  --accent-hover: #8a3f58; --accent-text: #ffffff;
+}
+
+/* Slate blue */
+html[data-palette="slate"] {
+  --bg: #07101c; --surface: #0d1a2e;
+  --border: #1a3050; --border-card: #152842;
+  --nav-bg: rgba(7, 16, 28, 0.85);
+  --field-bg: #050e18; --btn-bg: #1a3050;
+  --bg-gradient-start: #0c1e38;
+  --accent: #b5c8e8; --accent-rgb: 181 200 232;
+  --accent-hover: #c8d8f5; --accent-text: #071428;
+}
+html[data-palette="slate"][data-theme="light"] {
+  --bg: #f0f4fa; --surface: #ffffff;
+  --border: #c5d5ea; --border-card: #b0c5e0;
+  --nav-bg: rgba(240, 244, 250, 0.92);
+  --bg-gradient-start: #e0eaf8;
+  --accent: #3a5f8a; --accent-rgb: 58 95 138;
+  --accent-hover: #2d4f78; --accent-text: #ffffff;
+}
+
+/* Warm sand */
+html[data-palette="sand"] {
+  --bg: #17110a; --surface: #211810;
+  --border: #3c2c1a; --border-card: #302314;
+  --nav-bg: rgba(23, 17, 10, 0.85);
+  --field-bg: #110e08; --btn-bg: #3c2c1a;
+  --bg-gradient-start: #271a0c;
+  --accent: #eed5a8; --accent-rgb: 238 213 168;
+  --accent-hover: #ffe5bb; --accent-text: #2d1800;
+}
+html[data-palette="sand"][data-theme="light"] {
+  --bg: #fdf8f0; --surface: #ffffff;
+  --border: #e8d5b5; --border-card: #dfc8a0;
+  --nav-bg: rgba(253, 248, 240, 0.92);
+  --bg-gradient-start: #faf0e0;
+  --accent: #9a6b28; --accent-rgb: 154 107 40;
+  --accent-hover: #7e5518; --accent-text: #ffffff;
+}
+
+/* ── Palette picker — glass dropdown ──────────────────────────── */
+
+.theme-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 0.75rem;
+}
+
+.palette-picker {
+  position: relative;
+}
+
+.palette-trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.palette-trigger:hover,
+.palette-trigger.is-open {
+  background: rgb(var(--accent-rgb) / 0.08);
+  border-color: rgb(var(--accent-rgb) / 0.35);
+  color: var(--text);
+}
+
+.palette-trigger-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.palette-chevron {
+  transition: transform 200ms ease;
+}
+
+.palette-trigger.is-open .palette-chevron {
+  transform: rotate(180deg);
+}
+
+@keyframes paletteDropIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.palette-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 168px;
+  padding: 5px;
+  border-radius: 14px;
+  background: rgba(13, 20, 38, 0.72);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  z-index: 200;
+  animation: paletteDropIn 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html[data-theme="light"] .palette-panel {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.palette-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  font-weight: 400;
+  text-align: left;
+  transition: background 120ms ease;
+}
+
+html[data-theme="light"] .palette-option { color: #0f172a; }
+
+.palette-option:hover {
+  background: rgb(var(--accent-rgb) / 0.12);
+}
+
+.palette-option.is-active {
+  background: rgb(var(--accent-rgb) / 0.16);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+html[data-theme="light"] .palette-option.is-active {
+  color: var(--accent);
+}
+
+.palette-option-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+}
+
+.palette-option-label {
+  flex: 1;
+}
+
+.theme-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
 * {
   box-sizing: border-box;
+}
+
+/* Global input reset — ensures all inputs inherit theme tokens
+   regardless of whether they sit inside a .field wrapper */
+input,
+textarea,
+select {
+  color: var(--text);
+  background-color: var(--field-bg);
+  border: 1px solid var(--border);
+  font-family: inherit;
+  transition: background-color 380ms ease, border-color 280ms ease, color 200ms ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 html,
@@ -189,6 +452,47 @@ a {
   flex-shrink: 0;
   padding-left: 1.5rem;
   border-left: 1px solid rgb(var(--accent-rgb) / 0.09);
+}
+
+/* ── Nav status indicator ─────────────────────────────────────── */
+
+@keyframes ledPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  60%       { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+}
+
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-right: 0.6rem;
+  border-right: 1px solid rgb(var(--accent-rgb) / 0.12);
+}
+
+.nav-status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nav-status-led.is-online {
+  background: #22c55e;
+  animation: ledPulse 2.4s ease-in-out infinite;
+}
+
+.nav-status-led.is-offline {
+  background: #ef4444;
+}
+
+.nav-status-email {
+  font-size: 0.775rem;
+  color: var(--muted);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .nav-btn-ghost {
@@ -1260,4 +1564,90 @@ html[data-theme="light"] .auth-input::placeholder {
   .nav-hamburger {
     display: flex;
   }
+}
+
+/* ── Background scene ─────────────────────────────────────────── */
+
+@keyframes bgFloat1 {
+  0%, 100% { transform: translate(0, 0)         rotate(-18deg) scale(1);    }
+  30%       { transform: translate(-24px, 32px)  rotate(-23deg) scale(1.04); }
+  65%       { transform: translate(18px, -18px)  rotate(-12deg) scale(0.97); }
+}
+
+@keyframes bgFloat2 {
+  0%, 100% { transform: translate(0, 0)          rotate(14deg)  scale(1);    }
+  38%       { transform: translate(28px, -22px)   rotate(19deg)  scale(1.03); }
+  72%       { transform: translate(-12px, 28px)   rotate(9deg)   scale(0.96); }
+}
+
+@keyframes bgFloat3 {
+  0%, 100% { transform: translate(0, 0)          rotate(6deg)   scale(1);    }
+  50%       { transform: translate(-18px, 22px)   rotate(10deg)  scale(1.07); }
+}
+
+.bg-scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-shape {
+  position: absolute;
+  will-change: transform;
+}
+
+.bg-shape svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Shape 1 — top-right, accent/teal */
+.bg-shape--1 {
+  top: -8%;
+  right: -6%;
+  width: 520px;
+  height: 520px;
+  color: var(--accent);
+  filter: blur(72px);
+  opacity: 0.13;
+  animation: bgFloat1 26s ease-in-out infinite;
+}
+
+/* Shape 2 — bottom-left, orange */
+.bg-shape--2 {
+  bottom: -10%;
+  left: -8%;
+  width: 430px;
+  height: 430px;
+  color: var(--orange);
+  filter: blur(88px);
+  opacity: 0.10;
+  animation: bgFloat2 34s ease-in-out infinite;
+  animation-delay: -13s;
+}
+
+/* Shape 3 — mid, faint accent */
+.bg-shape--3 {
+  top: 28%;
+  left: 52%;
+  width: 290px;
+  height: 290px;
+  color: var(--accent);
+  filter: blur(110px);
+  opacity: 0.07;
+  animation: bgFloat3 21s ease-in-out infinite;
+  animation-delay: -6s;
+}
+
+/* Light mode — pull back opacity */
+html[data-theme="light"] .bg-shape--1 { opacity: 0.09; }
+html[data-theme="light"] .bg-shape--2 { opacity: 0.08; }
+html[data-theme="light"] .bg-shape--3 { opacity: 0.05; }
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .bg-shape { animation: none; }
 }

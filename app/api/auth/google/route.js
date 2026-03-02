@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 
+// Force dynamic so Next.js never caches this route — every request must
+// generate a fresh state token and issue a fresh Set-Cookie header.
+export const dynamic = "force-dynamic";
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
@@ -28,13 +32,18 @@ export async function GET() {
     `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
   );
 
+  // SameSite=none ensures the cookie is sent when Google redirects back
+  // (a cross-site top-level navigation) across all browsers.
   response.cookies.set("oauth_state", state, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "none",
     secure: true,
     path: "/",
     maxAge: 60 * 10,
   });
+
+  // Prevent any CDN / proxy from caching this redirect.
+  response.headers.set("Cache-Control", "no-store");
 
   return response;
 }

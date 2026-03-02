@@ -46,6 +46,15 @@ export default function NavLinks({ session }) {
 
       {/* Desktop: auth cluster */}
       <div className="nav-auth">
+        <div className="nav-status">
+          <span className={`nav-status-led ${session ? "is-online" : "is-offline"}`} />
+          {session && (
+            <span className="nav-status-email" title={session.email}>
+              {session.email}
+            </span>
+          )}
+        </div>
+
         {!session ? (
           <>
             <Link href="/login" className="nav-btn-ghost">
@@ -65,7 +74,7 @@ export default function NavLinks({ session }) {
       </div>
 
       {/* Theme toggle — always visible */}
-      <ThemeToggle />
+      <ThemeToggle userId={session?.userId ?? null} />
 
       {/* Mobile: hamburger */}
       <button

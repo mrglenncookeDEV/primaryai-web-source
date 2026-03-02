@@ -76,7 +76,7 @@ export default function LoginPage({ searchParams }) {
             {[
               "Save hours on lesson planning",
               "AI tailored to your curriculum",
-              "Trusted by thousands of teachers",
+              "Trusted by teachers",
             ].map((f) => (
               <li key={f} className="auth-brand-feature">
                 <span className="auth-brand-feature-dot">

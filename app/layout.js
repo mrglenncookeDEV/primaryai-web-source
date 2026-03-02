@@ -1,4 +1,5 @@
 import "./globals.css";
+import BackgroundScene from "@/components/BackgroundScene";
 
 export const metadata = {
   title: "Primary AI",
@@ -16,11 +17,14 @@ export default function RootLayout({ children }) {
         {/* Set theme before first paint to prevent flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme')||'dark';document.documentElement.dataset.theme=t;}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('theme')||'dark';var p=localStorage.getItem('palette')||'duck-egg';document.documentElement.dataset.theme=t;document.documentElement.dataset.palette=p;}catch(e){}})()`,
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <BackgroundScene />
+        {children}
+      </body>
     </html>
   );
 }
