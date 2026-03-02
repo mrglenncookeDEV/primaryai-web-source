@@ -3,6 +3,7 @@ import { getSupabaseAnonClient } from "@/lib/supabase";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 function setSessionCookie(response, user, isHttps) {
   response.cookies.set(
@@ -28,8 +29,8 @@ export async function GET(request) {
   const state = searchParams.get("state");
   const errorParam = searchParams.get("error");
   const requestUrl = new URL(request.url);
-  const base = requestUrl.origin;
-  const isHttps = requestUrl.protocol === "https:";
+  const base = APP_URL ? new URL(APP_URL).origin : requestUrl.origin;
+  const isHttps = new URL(base).protocol === "https:";
 
   if (errorParam) {
     return NextResponse.redirect(

@@ -6,11 +6,19 @@ import crypto from "node:crypto";
 export const dynamic = "force-dynamic";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 export async function GET(request) {
   const requestUrl = new URL(request.url);
-  const base = requestUrl.origin;
-  const isHttps = requestUrl.protocol === "https:";
+  const configuredBase = APP_URL ? new URL(APP_URL).origin : null;
+  const base = configuredBase || requestUrl.origin;
+  const isHttps = new URL(base).protocol === "https:";
+
+  // Force OAuth initiation on one canonical host so redirect_uri always matches
+  // what is configured in Google Cloud Console.
+  if (configuredBase && requestUrl.origin !== configuredBase) {
+    return NextResponse.redirect(new URL("/api/auth/google", configuredBase));
+  }
 
   if (!GOOGLE_CLIENT_ID) {
     return NextResponse.redirect(new URL("/login?error=Google+not+configured", base));

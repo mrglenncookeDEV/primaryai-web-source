@@ -3,11 +3,19 @@
 import { FormEvent, useState } from "react";
 
 type LessonPackResponse = Record<string, unknown> | { error: string };
+type ProviderStatus = { id: string; available: boolean };
 
 export default function LessonPackPage() {
   const [form, setForm] = useState({ year_group: "", subject: "", topic: "" });
   const [result, setResult] = useState<LessonPackResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [providers, setProviders] = useState<ProviderStatus[]>([]);
+
+  async function refreshProviders() {
+    const res = await fetch("/api/lesson-pack/providers");
+    const data = await res.json();
+    setProviders(Array.isArray(data?.providers) ? data.providers : []);
+  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,6 +39,14 @@ export default function LessonPackPage() {
   return (
     <main style={{ padding: "2rem", maxWidth: 840, margin: "0 auto" }}>
       <h1>Lesson Pack Generator</h1>
+      <div style={{ marginBottom: "0.75rem" }}>
+        <button type="button" onClick={refreshProviders}>
+          Check Provider Availability
+        </button>
+        {providers.length > 0 && (
+          <pre style={{ marginTop: "0.75rem" }}>{JSON.stringify(providers, null, 2)}</pre>
+        )}
+      </div>
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: "0.75rem" }}>
         <input
           placeholder="Year Group"

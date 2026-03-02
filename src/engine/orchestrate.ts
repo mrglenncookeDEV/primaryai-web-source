@@ -1,5 +1,5 @@
 import { LessonPackSchema, type LessonPack } from "./schema";
-import { selectProviders } from "./router";
+import { getProviderStatus, selectProviders } from "./router";
 import { retrieveObjectives } from "./retrieve";
 import { cache } from "./cache";
 import { record } from "./telemetry";
@@ -7,34 +7,154 @@ import { lessonPackToSlides } from "./exporters";
 import { getTeacherProfile } from "./profiles";
 import type { LessonPackRequest, LessonPackReview } from "./types";
 
+type ProviderAttempt = {
+  providerId: string;
+  ok: boolean;
+  raw?: string;
+  error?: string;
+};
+
 function parseJsonObject(raw: string): unknown {
   try {
     return JSON.parse(raw);
   } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Could not find JSON object in provider output");
-    return JSON.parse(match[0]);
+    const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced?.[1]) {
+      return JSON.parse(fenced[1]);
+    }
+
+    const objectMatch = raw.match(/\{[\s\S]*\}/);
+    if (!objectMatch) throw new Error("Could not find JSON object in provider output");
+    return JSON.parse(objectMatch[0]);
   }
 }
 
-async function generateJsonWithProviders(prompt: string) {
-  for (const provider of selectProviders()) {
-    try {
-      const raw = await provider.generate(prompt);
-      if (typeof raw !== "string") {
-        throw new Error("Provider returned non-string output");
-      }
+function normalizeProviderOutput(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (raw == null) throw new Error("Provider returned empty output");
+  if (typeof raw === "object") return JSON.stringify(raw);
+  return String(raw);
+}
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  return Promise.race<T>([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(`Timed out after ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]);
+}
+
+async function runProviderAttempt(provider: { id: string; generate: (prompt: string) => Promise<unknown> }, prompt: string) {
+  const timeoutMs = Number(process.env.ENGINE_PROVIDER_TIMEOUT_MS ?? 25000);
+  const maxAttempts = Number(process.env.ENGINE_PROVIDER_MAX_ATTEMPTS ?? 2);
+
+  let lastError = "Unknown provider failure";
+
+  for (let i = 0; i < maxAttempts; i += 1) {
+    try {
+      const output = await withTimeout(provider.generate(prompt), timeoutMs);
       return {
         providerId: provider.id,
-        json: parseJsonObject(raw),
-      };
+        ok: true,
+        raw: normalizeProviderOutput(output),
+      } as ProviderAttempt;
     } catch (err) {
-      console.warn(`Provider ${provider.id} failed`, err);
+      lastError = err instanceof Error ? err.message : String(err);
     }
   }
 
-  throw new Error("No provider succeeded");
+  return {
+    providerId: provider.id,
+    ok: false,
+    error: lastError,
+  } as ProviderAttempt;
+}
+
+async function runProviders(prompt: string): Promise<ProviderAttempt[]> {
+  const providers = selectProviders();
+  if (providers.length === 0) {
+    const statuses = getProviderStatus();
+    throw new Error(
+      `No providers are configured. Provider status: ${JSON.stringify(statuses)}. Set one of: CF_API_TOKEN+CF_ACCOUNT_ID, GROQ_API_KEY, GEMINI_API_KEY, HUGGINGFACE_API_KEY+HUGGINGFACE_MODEL.`
+    );
+  }
+
+  return Promise.all(providers.map((provider) => runProviderAttempt(provider, prompt)));
+}
+
+function scoreLessonPack(pack: LessonPack, objectives: string[]) {
+  const corpus = [
+    pack.teacher_explanation,
+    pack.pupil_explanation,
+    pack.worked_example,
+    pack.activities.support,
+    pack.activities.expected,
+    pack.activities.greater_depth,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  let objectiveCoverage = 0;
+  for (const objective of objectives) {
+    const objectiveTokens = objective
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((token) => token.length > 4);
+
+    if (objectiveTokens.some((token) => corpus.includes(token))) {
+      objectiveCoverage += 1;
+    }
+  }
+
+  const differentiationDepth =
+    Number(pack.activities.support.length > 20) +
+    Number(pack.activities.expected.length > 20) +
+    Number(pack.activities.greater_depth.length > 20);
+
+  const misconceptionsDepth = Math.min(pack.common_misconceptions.length, 3);
+  const assessmentDepth =
+    Math.min(pack.mini_assessment.questions.length, 4) + Math.min(pack.mini_assessment.answers.length, 4);
+
+  return objectiveCoverage * 5 + differentiationDepth * 3 + misconceptionsDepth * 2 + assessmentDepth;
+}
+
+async function generateBestLessonPack(prompt: string, objectives: string[]) {
+  const attempts = await runProviders(prompt);
+
+  const validCandidates: Array<{ providerId: string; pack: LessonPack; score: number }> = [];
+  const errors: string[] = [];
+
+  for (const attempt of attempts) {
+    if (!attempt.ok || !attempt.raw) {
+      errors.push(`${attempt.providerId}: ${attempt.error ?? "unknown error"}`);
+      continue;
+    }
+
+    try {
+      const parsed = parseJsonObject(attempt.raw);
+      const validated = LessonPackSchema.parse(parsed);
+      validCandidates.push({
+        providerId: attempt.providerId,
+        pack: validated,
+        score: scoreLessonPack(validated, objectives),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${attempt.providerId}: ${message}`);
+    }
+  }
+
+  if (validCandidates.length === 0) {
+    throw new Error(`No provider succeeded. Attempt details: ${errors.join(" | ")}`);
+  }
+
+  validCandidates.sort((a, b) => b.score - a.score);
+  return {
+    providerId: validCandidates[0].providerId,
+    lessonPack: validCandidates[0].pack,
+    attempts,
+  };
 }
 
 function selectSectionsToRegenerate(improvements: string[]) {
@@ -100,19 +220,30 @@ Lesson Pack:
 ${JSON.stringify(draft, null, 2)}
   `;
 
-  const reviewRaw = await generateJsonWithProviders(reviewPrompt);
-  const review = reviewRaw.json as LessonPackReview;
+  try {
+    const reviewAttempts = await runProviders(reviewPrompt);
+    let review: LessonPackReview | null = null;
 
-  if (review?.approved) {
-    return draft;
-  }
+    for (const attempt of reviewAttempts) {
+      if (!attempt.ok || !attempt.raw) continue;
+      try {
+        review = parseJsonObject(attempt.raw) as LessonPackReview;
+        break;
+      } catch {
+        // Try next successful provider output.
+      }
+    }
 
-  const sections = selectSectionsToRegenerate(review?.improvements ?? []);
-  const regeneratePrompt = `
+    if (!review || review.approved) {
+      return draft;
+    }
+
+    const sections = selectSectionsToRegenerate(review.improvements ?? []);
+    const regeneratePrompt = `
 Regenerate only the flagged sections of this lesson pack.
 
 Flagged sections: ${sections.join(", ")}
-Improvements needed: ${JSON.stringify(review?.improvements ?? [], null, 2)}
+Improvements needed: ${JSON.stringify(review.improvements ?? [], null, 2)}
 
 Return ONLY a JSON object with those section keys and corrected values.
 Do not include any other keys.
@@ -121,9 +252,21 @@ Lesson Pack:
 ${JSON.stringify(draft, null, 2)}
   `;
 
-  const regenerated = await generateJsonWithProviders(regeneratePrompt);
-  const patch = regenerated.json as Record<string, unknown>;
-  return mergeRegeneratedSections(draft, patch);
+    const regenAttempts = await runProviders(regeneratePrompt);
+    for (const attempt of regenAttempts) {
+      if (!attempt.ok || !attempt.raw) continue;
+      try {
+        const patch = parseJsonObject(attempt.raw) as Record<string, unknown>;
+        return mergeRegeneratedSections(draft, patch);
+      } catch {
+        // Try next successful provider output.
+      }
+    }
+  } catch {
+    // Review pass should never block delivery of a valid first draft.
+  }
+
+  return draft;
 }
 
 function attachProgrammaticSlides(pack: LessonPack): LessonPack {
@@ -155,9 +298,8 @@ Generate structured lesson pack with:
 ${JSON.stringify(LessonPackSchema.shape, null, 2)}
   `;
 
-  const generated = await generateJsonWithProviders(prompt);
-  const initialValidated = LessonPackSchema.parse(generated.json);
-  const reviewed = await runQualityPass(initialValidated, req, objectives);
+  const generated = await generateBestLessonPack(prompt, objectives);
+  const reviewed = await runQualityPass(generated.lessonPack, req, objectives);
   const finalized = attachProgrammaticSlides(reviewed);
 
   cache.set(cacheKey, finalized);

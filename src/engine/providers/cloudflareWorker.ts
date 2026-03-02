@@ -8,15 +8,20 @@ export class CloudflareWorkerProvider implements EngineProvider {
   }
 
   async generate(prompt: string) {
+    const model = process.env.CF_MODEL ?? "@cf/meta/llama-3.1-8b-instruct";
     const res = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/generate`,
+      `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${process.env.CF_API_TOKEN}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 2500,
+          temperature: 0.2,
+        }),
       }
     );
 
@@ -25,6 +30,6 @@ export class CloudflareWorkerProvider implements EngineProvider {
     }
 
     const data = await res.json();
-    return data?.output_text ?? data?.result?.response;
+    return data?.result?.response ?? data?.response ?? data?.output_text;
   }
 }
