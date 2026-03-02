@@ -14,6 +14,67 @@ type ProviderAttempt = {
   error?: string;
 };
 
+function valueToString(value: unknown) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map((item) => valueToString(item)).join(" ");
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of ["text", "content", "value", "description", "explanation", "answer"]) {
+      if (typeof obj[key] === "string") return obj[key] as string;
+    }
+    return Object.values(obj)
+      .map((item) => valueToString(item))
+      .filter(Boolean)
+      .join(" ");
+  }
+  return "";
+}
+
+function valueToStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => valueToString(item)).filter((item) => item.length > 0);
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>)
+      .map((item) => valueToString(item))
+      .filter((item) => item.length > 0);
+  }
+
+  const scalar = valueToString(value);
+  return scalar ? [scalar] : [];
+}
+
+function coerceLessonPackCandidate(candidate: unknown) {
+  if (!candidate || typeof candidate !== "object") return candidate;
+  const obj = candidate as Record<string, unknown>;
+  const activities = (obj.activities as Record<string, unknown> | undefined) ?? {};
+  const miniAssessment = (obj.mini_assessment as Record<string, unknown> | undefined) ?? {};
+
+  return {
+    year_group: valueToString(obj.year_group),
+    subject: valueToString(obj.subject),
+    topic: valueToString(obj.topic),
+    learning_objectives: valueToStringArray(obj.learning_objectives),
+    teacher_explanation: valueToString(obj.teacher_explanation),
+    pupil_explanation: valueToString(obj.pupil_explanation),
+    worked_example: valueToString(obj.worked_example),
+    common_misconceptions: valueToStringArray(obj.common_misconceptions),
+    activities: {
+      support: valueToString(activities.support),
+      expected: valueToString(activities.expected),
+      greater_depth: valueToString(activities.greater_depth),
+    },
+    send_adaptations: valueToStringArray(obj.send_adaptations),
+    plenary: valueToString(obj.plenary),
+    mini_assessment: {
+      questions: valueToStringArray(miniAssessment.questions),
+      answers: valueToStringArray(miniAssessment.answers),
+    },
+    slides: [],
+  };
+}
+
 function parseJsonObject(raw: string): unknown {
   try {
     return JSON.parse(raw);
@@ -133,7 +194,8 @@ async function generateBestLessonPack(prompt: string, objectives: string[]) {
 
     try {
       const parsed = parseJsonObject(attempt.raw);
-      const validated = LessonPackSchema.parse(parsed);
+      const coerced = coerceLessonPackCandidate(parsed);
+      const validated = LessonPackSchema.parse(coerced);
       validCandidates.push({
         providerId: attempt.providerId,
         pack: validated,
@@ -287,6 +349,8 @@ export async function generateLessonPack(req: LessonPackRequest): Promise<Lesson
   const prompt = `
 You are PrimaryAI Engine. Return ONLY valid JSON matching this schema.
 Do not generate slide content; set slides to [] and it will be generated programmatically.
+Use ONLY primitive strings/arrays/objects exactly matching keys below.
+Do not return nested rich objects for text fields.
 
 Year Group: ${req.year_group}
 Subject: ${req.subject}
