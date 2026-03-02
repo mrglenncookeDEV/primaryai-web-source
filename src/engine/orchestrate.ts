@@ -14,6 +14,29 @@ type ProviderAttempt = {
   error?: string;
 };
 
+const LESSON_PACK_OUTPUT_TEMPLATE = {
+  year_group: "string",
+  subject: "string",
+  topic: "string",
+  learning_objectives: ["string", "string", "string"],
+  teacher_explanation: "string",
+  pupil_explanation: "string",
+  worked_example: "string",
+  common_misconceptions: ["string", "string", "string"],
+  activities: {
+    support: "string",
+    expected: "string",
+    greater_depth: "string",
+  },
+  send_adaptations: ["string", "string", "string"],
+  plenary: "string",
+  mini_assessment: {
+    questions: ["string", "string", "string"],
+    answers: ["string", "string", "string"],
+  },
+  slides: [],
+};
+
 function valueToString(value: unknown) {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -180,6 +203,92 @@ function scoreLessonPack(pack: LessonPack, objectives: string[]) {
   return objectiveCoverage * 5 + differentiationDepth * 3 + misconceptionsDepth * 2 + assessmentDepth;
 }
 
+function objectiveCoverageCount(pack: LessonPack, objectives: string[]) {
+  if (objectives.length === 0) return 0;
+
+  const corpus = [
+    ...pack.learning_objectives,
+    pack.teacher_explanation,
+    pack.pupil_explanation,
+    pack.worked_example,
+    pack.activities.support,
+    pack.activities.expected,
+    pack.activities.greater_depth,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  let matched = 0;
+  for (const objective of objectives) {
+    const objectiveTokens = objective
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((token) => token.length > 4);
+
+    if (objectiveTokens.some((token) => corpus.includes(token))) {
+      matched += 1;
+    }
+  }
+
+  return matched;
+}
+
+function objectiveAlignmentRatio(pack: LessonPack, objectives: string[]) {
+  if (objectives.length === 0) return 0;
+  return objectiveCoverageCount(pack, objectives) / objectives.length;
+}
+
+function ensureUsefulContent(pack: LessonPack, req: LessonPackRequest, objectives: string[]) {
+  const defaultObjectives =
+    objectives.length > 0
+      ? objectives.slice(0, 3)
+      : [
+          `Understand key ideas in ${req.topic}`,
+          `Use subject vocabulary linked to ${req.topic}`,
+          `Apply learning about ${req.topic} in context`,
+        ];
+
+  return LessonPackSchema.parse({
+    ...pack,
+    learning_objectives:
+      pack.learning_objectives.filter((item) => item.trim().length > 0).length > 0
+        ? pack.learning_objectives
+        : defaultObjectives,
+    activities: {
+      support:
+        pack.activities.support.trim().length > 0
+          ? pack.activities.support
+          : `Guided task with sentence starters about ${req.topic}.`,
+      expected:
+        pack.activities.expected.trim().length > 0
+          ? pack.activities.expected
+          : `Core class task applying the main concept in ${req.topic}.`,
+      greater_depth:
+        pack.activities.greater_depth.trim().length > 0
+          ? pack.activities.greater_depth
+          : `Challenge task comparing multiple examples related to ${req.topic}.`,
+    },
+    mini_assessment: {
+      questions:
+        pack.mini_assessment.questions.filter((item) => item.trim().length > 0).length > 0
+          ? pack.mini_assessment.questions
+          : [
+              `What is one key fact about ${req.topic}?`,
+              `How would you explain ${req.topic} to a partner?`,
+              `Give one example linked to ${req.topic}.`,
+            ],
+      answers:
+        pack.mini_assessment.answers.filter((item) => item.trim().length > 0).length > 0
+          ? pack.mini_assessment.answers
+          : [
+              `A correct fact about ${req.topic}.`,
+              `A clear explanation using subject vocabulary.`,
+              `A relevant and accurate example.`,
+            ],
+    },
+  });
+}
+
 async function generateBestLessonPack(prompt: string, objectives: string[]) {
   const attempts = await runProviders(prompt);
 
@@ -196,6 +305,12 @@ async function generateBestLessonPack(prompt: string, objectives: string[]) {
       const parsed = parseJsonObject(attempt.raw);
       const coerced = coerceLessonPackCandidate(parsed);
       const validated = LessonPackSchema.parse(coerced);
+      const coverage = objectiveCoverageCount(validated, objectives);
+      if (objectives.length > 0 && coverage === 0) {
+        errors.push(`${attempt.providerId}: no curriculum objective overlap detected`);
+        continue;
+      }
+
       validCandidates.push({
         providerId: attempt.providerId,
         pack: validated,
@@ -331,6 +446,56 @@ ${JSON.stringify(draft, null, 2)}
   return draft;
 }
 
+async function runAlignmentPass(
+  draft: LessonPack,
+  req: LessonPackRequest,
+  objectives: string[]
+): Promise<LessonPack> {
+  if (objectives.length === 0) return draft;
+
+  const minAlignmentRatio = Number(process.env.ENGINE_MIN_ALIGNMENT_RATIO ?? 0.6);
+  if (objectiveAlignmentRatio(draft, objectives) >= minAlignmentRatio) {
+    return draft;
+  }
+
+  const alignmentPrompt = `
+Improve this lesson pack so it explicitly aligns to these UK curriculum objectives.
+Prioritize revising:
+- learning_objectives
+- teacher_explanation
+- pupil_explanation
+- worked_example
+- activities
+- mini_assessment
+
+Return ONLY a JSON object with those keys.
+Do not include any other keys.
+
+Curriculum Objectives:
+${objectives.join("; ")}
+
+Lesson Pack:
+${JSON.stringify(draft, null, 2)}
+  `;
+
+  const attempts = await runProviders(alignmentPrompt);
+  for (const attempt of attempts) {
+    if (!attempt.ok || !attempt.raw) continue;
+
+    try {
+      const patch = parseJsonObject(attempt.raw) as Record<string, unknown>;
+      const merged = mergeRegeneratedSections(draft, patch);
+      if (objectiveAlignmentRatio(merged, objectives) >= objectiveAlignmentRatio(draft, objectives)) {
+        return merged;
+      }
+    } catch {
+      // Try next provider response.
+    }
+  }
+
+  return draft;
+}
+
 function attachProgrammaticSlides(pack: LessonPack): LessonPack {
   return LessonPackSchema.parse({
     ...pack,
@@ -339,11 +504,17 @@ function attachProgrammaticSlides(pack: LessonPack): LessonPack {
 }
 
 export async function generateLessonPack(req: LessonPackRequest): Promise<LessonPack> {
-  const cacheKey = JSON.stringify(req);
+  const cacheKey = `v3:${JSON.stringify(req)}`;
   const cached = cache.get<LessonPack>(cacheKey);
   if (cached) return cached;
 
   const objectives = await retrieveObjectives(req.year_group, req.subject, req.topic);
+  if (objectives.length === 0) {
+    throw new Error(
+      `No UK curriculum objectives found for ${req.year_group} ${req.subject} topic "${req.topic}". Try a more specific curriculum topic.`
+    );
+  }
+
   const teacherProfile = await getTeacherProfile(req.teacher_id);
 
   const prompt = `
@@ -359,12 +530,14 @@ Curriculum Objectives: ${objectives.join("; ")}
 Teacher Profile Context: ${JSON.stringify(teacherProfile ?? {}, null, 2)}
 
 Generate structured lesson pack with:
-${JSON.stringify(LessonPackSchema.shape, null, 2)}
+${JSON.stringify(LESSON_PACK_OUTPUT_TEMPLATE, null, 2)}
   `;
 
   const generated = await generateBestLessonPack(prompt, objectives);
   const reviewed = await runQualityPass(generated.lessonPack, req, objectives);
-  const finalized = attachProgrammaticSlides(reviewed);
+  const aligned = await runAlignmentPass(reviewed, req, objectives);
+  const useful = ensureUsefulContent(aligned, req, objectives);
+  const finalized = attachProgrammaticSlides(useful);
 
   cache.set(cacheKey, finalized);
   record(generated.providerId, req);

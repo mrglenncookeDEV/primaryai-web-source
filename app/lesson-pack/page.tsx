@@ -49,12 +49,12 @@ export default function LessonPackPage() {
       </div>
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: "0.75rem" }}>
         <input
-          placeholder="Year Group"
+          placeholder="Year Group (Reception or Year 1-6)"
           value={form.year_group}
           onChange={(e) => setForm({ ...form, year_group: e.target.value })}
         />
         <input
-          placeholder="Subject"
+          placeholder="Subject (e.g. Maths, English, Science, Geography)"
           value={form.subject}
           onChange={(e) => setForm({ ...form, subject: e.target.value })}
         />

@@ -1,8 +1,224 @@
 [
   {
+    "yearGroup": "Year 1",
+    "subject": "Maths",
+    "keywords": ["place value", "number", "counting"],
+    "text": "Count to and across 100, forwards and backwards, beginning with 0 or 1, or from any given number."
+  },
+  {
+    "yearGroup": "Year 1",
+    "subject": "Maths",
+    "keywords": ["addition", "subtraction", "number bonds"],
+    "text": "Represent and use number bonds and related subtraction facts within 20."
+  },
+  {
+    "yearGroup": "Year 1",
+    "subject": "English",
+    "keywords": ["phonics", "graphemes", "sounds"],
+    "text": "Apply phonic knowledge and skills as the route to decode words."
+  },
+  {
+    "yearGroup": "Year 1",
+    "subject": "English",
+    "keywords": ["sentence", "capital letters", "punctuation"],
+    "text": "Sequence sentences to form short narratives and use capital letters and full stops correctly."
+  },
+  {
+    "yearGroup": "Year 1",
+    "subject": "Science",
+    "keywords": ["plants", "trees", "flowers"],
+    "text": "Identify and name a variety of common wild and garden plants, including deciduous and evergreen trees."
+  },
+  {
+    "yearGroup": "Year 1",
+    "subject": "Geography",
+    "keywords": ["weather", "seasons", "uk"],
+    "text": "Observe and describe seasonal and daily weather patterns in the United Kingdom."
+  },
+  {
+    "yearGroup": "Year 2",
+    "subject": "Maths",
+    "keywords": ["place value", "hundreds", "partition"],
+    "text": "Recognise the place value of each digit in a two-digit number and compare and order numbers to at least 100."
+  },
+  {
+    "yearGroup": "Year 2",
+    "subject": "Maths",
+    "keywords": ["multiplication", "division", "arrays"],
+    "text": "Recall and use multiplication and division facts for the 2, 5 and 10 multiplication tables."
+  },
+  {
+    "yearGroup": "Year 2",
+    "subject": "English",
+    "keywords": ["expanded noun phrase", "grammar", "writing"],
+    "text": "Develop positive attitudes towards writing by writing for different purposes with expanded noun phrases."
+  },
+  {
+    "yearGroup": "Year 2",
+    "subject": "Science",
+    "keywords": ["materials", "properties", "uses"],
+    "text": "Identify and compare the suitability of everyday materials for particular uses."
+  },
+  {
+    "yearGroup": "Year 2",
+    "subject": "Geography",
+    "keywords": ["continents", "oceans", "world map"],
+    "text": "Name and locate the world’s seven continents and five oceans."
+  },
+  {
+    "yearGroup": "Year 2",
+    "subject": "History",
+    "keywords": ["events beyond living memory", "timeline", "great fire of london"],
+    "text": "Develop awareness of the past through events beyond living memory and place them on a simple timeline."
+  },
+  {
+    "yearGroup": "Year 3",
+    "subject": "Maths",
+    "keywords": ["multiplication", "division", "times tables"],
+    "text": "Recall and use multiplication and division facts for the 3, 4 and 8 multiplication tables."
+  },
+  {
+    "yearGroup": "Year 3",
+    "subject": "Maths",
+    "keywords": ["fractions", "unit fractions", "non-unit fractions"],
+    "text": "Recognise, find and write fractions of a discrete set of objects and compare simple fractions."
+  },
+  {
+    "yearGroup": "Year 3",
+    "subject": "English",
+    "keywords": ["paragraphs", "headings", "organisation"],
+    "text": "Organise writing into paragraphs around a theme and use headings and sub-headings."
+  },
+  {
+    "yearGroup": "Year 3",
+    "subject": "Science",
+    "keywords": ["forces", "magnets", "attract"],
+    "text": "Compare how things move on different surfaces and notice that some forces need contact between objects."
+  },
+  {
+    "yearGroup": "Year 3",
+    "subject": "Geography",
+    "keywords": ["settlements", "land use", "human geography"],
+    "text": "Describe and understand key aspects of human geography, including types of settlement and land use."
+  },
+  {
+    "yearGroup": "Year 3",
+    "subject": "History",
+    "keywords": ["stone age", "bronze age", "iron age"],
+    "text": "Construct informed responses about changes in Britain from the Stone Age to the Iron Age."
+  },
+  {
     "yearGroup": "Year 4",
     "subject": "Maths",
-    "keywords": ["fractions", "addition"],
-    "text": "Add fractions with different denominators"
+    "keywords": ["fractions", "equivalent fractions", "denominator"],
+    "text": "Recognise and show, using diagrams, families of common equivalent fractions."
+  },
+  {
+    "yearGroup": "Year 4",
+    "subject": "Maths",
+    "keywords": ["decimal", "tenths", "hundredths"],
+    "text": "Recognise and write decimal equivalents of any number of tenths or hundredths."
+  },
+  {
+    "yearGroup": "Year 4",
+    "subject": "English",
+    "keywords": ["fronted adverbials", "expanded noun phrases", "punctuation"],
+    "text": "Use fronted adverbials and commas after fronted adverbials in writing."
+  },
+  {
+    "yearGroup": "Year 4",
+    "subject": "Science",
+    "keywords": ["electricity", "circuits", "switch"],
+    "text": "Construct a simple series electrical circuit and identify whether a lamp will light."
+  },
+  {
+    "yearGroup": "Year 4",
+    "subject": "Geography",
+    "keywords": ["asia", "continent", "countries", "physical geography"],
+    "text": "Locate Asia’s countries using maps and identify key physical features such as major mountain ranges and rivers."
+  },
+  {
+    "yearGroup": "Year 4",
+    "subject": "Geography",
+    "keywords": ["asia", "human geography", "population", "cities"],
+    "text": "Describe key aspects of human geography in Asia, including population distribution and major cities."
+  },
+  {
+    "yearGroup": "Year 4",
+    "subject": "History",
+    "keywords": ["roman", "britain", "legacy"],
+    "text": "Understand the impact of Roman settlement and legacy in Britain."
+  },
+  {
+    "yearGroup": "Year 5",
+    "subject": "Maths",
+    "keywords": ["fractions", "improper fractions", "mixed numbers"],
+    "text": "Convert between mixed numbers and improper fractions and compare fractions with different denominators."
+  },
+  {
+    "yearGroup": "Year 5",
+    "subject": "Maths",
+    "keywords": ["percentages", "decimals", "fraction equivalence"],
+    "text": "Recognise and use percent symbol and understand percentages as fractions with denominator 100."
+  },
+  {
+    "yearGroup": "Year 5",
+    "subject": "English",
+    "keywords": ["relative clauses", "modal verbs", "writing"],
+    "text": "Use relative clauses beginning with who, which, where, when, whose, that and omitted relative pronouns."
+  },
+  {
+    "yearGroup": "Year 5",
+    "subject": "Science",
+    "keywords": ["earth", "space", "orbit", "solar system"],
+    "text": "Describe the movement of Earth and other planets relative to the Sun in the solar system."
+  },
+  {
+    "yearGroup": "Year 5",
+    "subject": "Geography",
+    "keywords": ["biomes", "vegetation belts", "climate zones"],
+    "text": "Understand geographical similarities and differences through the study of biomes and climate zones."
+  },
+  {
+    "yearGroup": "Year 5",
+    "subject": "History",
+    "keywords": ["anglo-saxons", "vikings", "struggle for kingdom"],
+    "text": "Study Britain’s settlement by Anglo-Saxons and Vikings and the struggle for the Kingdom of England."
+  },
+  {
+    "yearGroup": "Year 6",
+    "subject": "Maths",
+    "keywords": ["ratio", "proportion", "scaling"],
+    "text": "Solve problems involving the relative sizes of two quantities where missing values can be found by using ratio."
+  },
+  {
+    "yearGroup": "Year 6",
+    "subject": "Maths",
+    "keywords": ["algebra", "formula", "unknown"],
+    "text": "Use simple formulae and express missing number problems algebraically."
+  },
+  {
+    "yearGroup": "Year 6",
+    "subject": "English",
+    "keywords": ["formal writing", "cohesion", "passive"],
+    "text": "Use a range of devices to build cohesion within and across paragraphs in formal and informal writing."
+  },
+  {
+    "yearGroup": "Year 6",
+    "subject": "Science",
+    "keywords": ["evolution", "inheritance", "adaptation"],
+    "text": "Recognise that living things have changed over time and that fossils provide information about living things in the past."
+  },
+  {
+    "yearGroup": "Year 6",
+    "subject": "Geography",
+    "keywords": ["trade", "economic activity", "distribution of resources"],
+    "text": "Understand key aspects of human geography, including economic activity and distribution of natural resources."
+  },
+  {
+    "yearGroup": "Year 6",
+    "subject": "History",
+    "keywords": ["civil rights", "impact", "twentieth century"],
+    "text": "Study a significant turning point in British and world history and evaluate its long-term impact."
   }
 ]

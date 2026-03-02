@@ -1,6 +1,7 @@
 import { embedText } from "./embeddings";
 import { d1Query, isD1Available } from "./d1";
 import curriculum from "../../db/uk_curriculum.json";
+import { canonicalizeSubject, canonicalizeYearGroup, tokenizeTopic } from "./curriculum";
 
 type VectorRow = {
   id: string;
@@ -62,15 +63,36 @@ export function cosineSimilarity(a: number[], b: number[]) {
 }
 
 function fallbackRetrieveObjectives(year_group: string, subject: string, topic: string) {
+  const canonicalYearGroup = canonicalizeYearGroup(year_group);
+  const canonicalSubject = canonicalizeSubject(subject);
+  if (!canonicalYearGroup || !canonicalSubject) {
+    return [];
+  }
+
   const normalizedTopic = topic.toLowerCase();
+  const topicTokens = new Set(tokenizeTopic(topic));
 
   return (curriculum as CurriculumItem[])
     .filter((c) => {
-      const keywordMatch = c.keywords.some((keyword) =>
-        normalizedTopic.includes(keyword.toLowerCase())
-      );
+      if (c.yearGroup !== canonicalYearGroup || c.subject !== canonicalSubject) {
+        return false;
+      }
 
-      return c.yearGroup === year_group && c.subject === subject && keywordMatch;
+      const keywordScore = c.keywords.reduce((score, keyword) => {
+        const normalizedKeyword = keyword.toLowerCase();
+        if (normalizedTopic.includes(normalizedKeyword)) {
+          return score + 2;
+        }
+
+        const keywordTokens = normalizedKeyword.split(/\W+/).filter((token) => token.length > 2);
+        if (keywordTokens.some((token) => topicTokens.has(token))) {
+          return score + 1;
+        }
+
+        return score;
+      }, 0);
+
+      return keywordScore > 0;
     })
     .map((c) => c.text);
 }
@@ -81,11 +103,17 @@ export async function searchObjectives(
   topic: string,
   limit = 5
 ): Promise<string[]> {
-  if (!isD1Available()) {
-    return fallbackRetrieveObjectives(year_group, subject, topic).slice(0, limit);
+  const canonicalYearGroup = canonicalizeYearGroup(year_group);
+  const canonicalSubject = canonicalizeSubject(subject);
+  if (!canonicalYearGroup || !canonicalSubject) {
+    return [];
   }
 
-  const queryEmbedding = await embedText(`${year_group} ${subject} ${topic}`);
+  if (!isD1Available()) {
+    return fallbackRetrieveObjectives(canonicalYearGroup, canonicalSubject, topic).slice(0, limit);
+  }
+
+  const queryEmbedding = await embedText(`${canonicalYearGroup} ${canonicalSubject} ${topic}`);
 
   const rows = await d1Query<VectorRow>(
     `
@@ -93,7 +121,7 @@ export async function searchObjectives(
       from curriculum_vectors
       where year_group = ? and subject = ?
     `,
-    [year_group, subject]
+    [canonicalYearGroup, canonicalSubject]
   );
 
   const scored = rows
@@ -107,5 +135,5 @@ export async function searchObjectives(
     .map((item) => item.content);
 
   if (scored.length > 0) return scored;
-  return fallbackRetrieveObjectives(year_group, subject, topic).slice(0, limit);
+  return fallbackRetrieveObjectives(canonicalYearGroup, canonicalSubject, topic).slice(0, limit);
 }
