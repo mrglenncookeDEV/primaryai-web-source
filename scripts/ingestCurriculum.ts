@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { embedText } from "../src/engine/embeddings.ts";
-import { d1Exec, isD1Available } from "../src/engine/d1.ts";
+import { embedText } from "../src/engine/embeddings";
+import { d1Exec, isD1Available } from "../src/engine/d1";
 
 type CurriculumItem = {
   yearGroup: string;
