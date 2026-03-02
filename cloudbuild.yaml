@@ -25,6 +25,7 @@ steps:
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--set-env-vars=NEXT_PUBLIC_APP_URL=https://primaryai.org.uk'
+      - '--set-secrets=GROQ_API_KEY=GROQ_API_KEY:latest'
       - '--project=primary-ai-saas'
       - '--quiet'
 
