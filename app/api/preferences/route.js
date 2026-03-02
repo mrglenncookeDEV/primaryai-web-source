@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   const db = getSupabaseAdminClient();
-  if (!db) return NextResponse.json({ theme: "dark", palette: "duck-egg" });
+  if (!db) return NextResponse.json(null);
 
   const { data } = await db
     .from("user_preferences")
@@ -20,10 +20,11 @@ export async function GET() {
     .eq("user_id", session.userId)
     .maybeSingle();
 
-  return NextResponse.json({
-    theme:   data?.theme   ?? "dark",
-    palette: data?.palette ?? "duck-egg",
-  });
+  // Return null when no row exists — client keeps its localStorage values
+  // rather than overwriting them with server-side defaults.
+  if (!data) return NextResponse.json(null);
+
+  return NextResponse.json({ theme: data.theme, palette: data.palette });
 }
 
 export async function POST(request) {

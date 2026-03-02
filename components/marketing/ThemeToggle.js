@@ -37,27 +37,27 @@ export default function ThemeToggle({ userId }) {
   const wrapperRef = useRef(null);
 
   useEffect(() => {
-    if (userId) {
-      // Logged in: fetch from DB, fall back to localStorage while loading
-      const localTheme   = localStorage.getItem("theme")   || "dark";
-      const localPalette = localStorage.getItem("palette") || "duck-egg";
-      setTheme(localTheme);
-      setPalette(localPalette);
+    // Always re-apply from localStorage on every mount so navigating between
+    // pages never flashes defaults or resets the theme/palette.
+    const savedTheme   = localStorage.getItem("theme")   || "dark";
+    const savedPalette = localStorage.getItem("palette") || "duck-egg";
+    applyPrefs(savedTheme, savedPalette);
+    setTheme(savedTheme);
+    setPalette(savedPalette);
 
-      fetch("/api/preferences")
-        .then((r) => r.ok ? r.json() : null)
-        .then((prefs) => {
-          if (!prefs) return;
-          setTheme(prefs.theme);
-          setPalette(prefs.palette);
-          applyPrefs(prefs.theme, prefs.palette);
-        })
-        .catch(() => {});
-    } else {
-      // Logged out: localStorage only
-      setTheme(localStorage.getItem("theme")   || "dark");
-      setPalette(localStorage.getItem("palette") || "duck-egg");
-    }
+    if (!userId) return;
+
+    // Logged in: sync from DB only if a saved row actually exists (null = no
+    // row yet, keep localStorage values rather than overwriting with defaults).
+    fetch("/api/preferences")
+      .then((r) => r.ok ? r.json() : null)
+      .then((prefs) => {
+        if (!prefs) return;
+        setTheme(prefs.theme);
+        setPalette(prefs.palette);
+        applyPrefs(prefs.theme, prefs.palette);
+      })
+      .catch(() => {});
   }, [userId]);
 
   useEffect(() => {
