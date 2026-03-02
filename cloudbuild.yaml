@@ -24,6 +24,7 @@ steps:
       - '--region=europe-west1'
       - '--platform=managed'
       - '--allow-unauthenticated'
+      - '--set-env-vars=NEXT_PUBLIC_APP_URL=https://primaryai.org.uk'
       - '--project=primary-ai-saas'
       - '--quiet'
 
