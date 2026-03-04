@@ -97,9 +97,10 @@ function fallbackRetrieveObjectives(year_group: string, subject: string, topic: 
     return { text: c.text, score: keywordScore };
   });
 
-  // Return topic-matched objectives first; fall back to all year+subject objectives so we never return empty
+  // Return topic-matched objectives only; if nothing matches, return empty so the AI generates
+  // appropriate objectives from year group + subject context without being biased by unrelated topics.
   const matched = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
-  return (matched.length > 0 ? matched : scored).map((s) => s.text);
+  return matched.map((s) => s.text);
 }
 
 export async function searchObjectives(
@@ -134,7 +135,7 @@ export async function searchObjectives(
       content: row.content,
       score: cosineSimilarity(queryEmbedding, parseEmbedding(row.embedding)),
     }))
-    .filter((item) => Number.isFinite(item.score) && item.score > 0)
+    .filter((item) => Number.isFinite(item.score) && item.score > 0.3)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map((item) => item.content);
