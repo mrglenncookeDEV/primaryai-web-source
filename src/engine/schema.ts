@@ -37,6 +37,7 @@ export const LessonPackRequestSchema = z
     topic: z.string().min(1),
     teacher_id: z.string().optional(),
     feedback: z.string().optional(),
+    context_notes: z.string().max(12000).optional(),
     profile: z
       .object({
         defaultYearGroup: z.string().optional().nullable(),
@@ -47,6 +48,12 @@ export const LessonPackRequestSchema = z
         classNotes: z.string().optional().nullable(),
         teachingApproach: z.string().optional().nullable(),
         abilityMix: z.string().optional().nullable(),
+        ealPercent: z.number().int().min(0).max(100).optional().nullable(),
+        pupilPremiumPercent: z.number().int().min(0).max(100).optional().nullable(),
+        aboveStandardPercent: z.number().int().min(0).max(100).optional().nullable(),
+        belowStandardPercent: z.number().int().min(0).max(100).optional().nullable(),
+        hugelyAboveStandardPercent: z.number().int().min(0).max(100).optional().nullable(),
+        hugelyBelowStandardPercent: z.number().int().min(0).max(100).optional().nullable(),
       })
       .optional(),
   })

@@ -9,9 +9,6 @@ const DEFAULT_PROFILE = {
   sendFocus: false,
   autoSave: false,
   formatPrefs: JSON.stringify({ slidesStyle: "standard", worksheetStyle: "standard" }),
-  classNotes: null as string | null,
-  teachingApproach: "cpa" as string | null,
-  abilityMix: "mixed" as string | null,
 };
 
 export async function getOrCreateTeacherProfile(userId: string) {
@@ -47,9 +44,6 @@ export async function updateTeacherProfile(userId: string, patch: Partial<Teache
         sendFocus: typeof patch.sendFocus === "boolean" ? patch.sendFocus : undefined,
         autoSave: typeof patch.autoSave === "boolean" ? patch.autoSave : undefined,
         formatPrefs: patch.formatPrefs ?? undefined,
-        classNotes: patch.classNotes !== undefined ? patch.classNotes : undefined,
-        teachingApproach: patch.teachingApproach !== undefined ? patch.teachingApproach : undefined,
-        abilityMix: patch.abilityMix !== undefined ? patch.abilityMix : undefined,
       },
       create: {
         userId,
@@ -60,9 +54,6 @@ export async function updateTeacherProfile(userId: string, patch: Partial<Teache
         sendFocus: typeof patch.sendFocus === "boolean" ? patch.sendFocus : DEFAULT_PROFILE.sendFocus,
         autoSave: typeof patch.autoSave === "boolean" ? patch.autoSave : DEFAULT_PROFILE.autoSave,
         formatPrefs: patch.formatPrefs ?? DEFAULT_PROFILE.formatPrefs,
-        classNotes: patch.classNotes ?? DEFAULT_PROFILE.classNotes,
-        teachingApproach: patch.teachingApproach ?? DEFAULT_PROFILE.teachingApproach,
-        abilityMix: patch.abilityMix ?? DEFAULT_PROFILE.abilityMix,
       },
     });
   } catch {
@@ -76,6 +67,9 @@ export async function updateTeacherProfile(userId: string, patch: Partial<Teache
       sendFocus: typeof patch.sendFocus === "boolean" ? patch.sendFocus : DEFAULT_PROFILE.sendFocus,
       autoSave: typeof patch.autoSave === "boolean" ? patch.autoSave : DEFAULT_PROFILE.autoSave,
       formatPrefs: patch.formatPrefs ?? DEFAULT_PROFILE.formatPrefs,
+      classNotes: patch.classNotes ?? null,
+      teachingApproach: patch.teachingApproach ?? null,
+      abilityMix: patch.abilityMix ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -89,8 +83,8 @@ export function toEngineProfile(profile: Awaited<ReturnType<typeof getOrCreateTe
     tone: profile.tone,
     schoolType: profile.schoolType,
     sendFocus: profile.sendFocus,
-    classNotes: profile.classNotes,
-    teachingApproach: profile.teachingApproach,
-    abilityMix: profile.abilityMix,
+    classNotes: null,
+    teachingApproach: null,
+    abilityMix: null,
   };
 }

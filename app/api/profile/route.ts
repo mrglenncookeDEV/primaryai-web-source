@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserSession } from "@/lib/user-session";
-import { getOrCreateTeacherProfile, updateTeacherProfile } from "@/lib/memory";
+import { getOrCreateUserProfile, updateUserProfile } from "@/lib/user-profile";
+
+function toNullablePercent(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  const rounded = Math.round(parsed);
+  if (rounded < 0 || rounded > 100) return undefined;
+  return rounded;
+}
 
 export async function GET() {
   const session = await getCurrentUserSession();
@@ -9,7 +19,7 @@ export async function GET() {
   }
 
   try {
-    const profile = await getOrCreateTeacherProfile(session.userId);
+    const profile = await getOrCreateUserProfile(session.userId);
     return NextResponse.json({ ok: true, profile });
   } catch {
     return NextResponse.json({ error: "Profile store unavailable" }, { status: 503 });
@@ -25,7 +35,7 @@ export async function POST(req: Request) {
   const body = await req.json();
 
   try {
-    const profile = await updateTeacherProfile(session.userId, {
+    const profile = await updateUserProfile(session.userId, {
       defaultYearGroup: typeof body?.defaultYearGroup === "string" ? body.defaultYearGroup : undefined,
       defaultSubject: typeof body?.defaultSubject === "string" ? body.defaultSubject : undefined,
       tone: typeof body?.tone === "string" ? body.tone : undefined,
@@ -36,6 +46,12 @@ export async function POST(req: Request) {
       classNotes: typeof body?.classNotes === "string" ? body.classNotes : (body?.classNotes === null ? null : undefined),
       teachingApproach: typeof body?.teachingApproach === "string" ? body.teachingApproach : undefined,
       abilityMix: typeof body?.abilityMix === "string" ? body.abilityMix : undefined,
+      ealPercent: toNullablePercent(body?.ealPercent),
+      pupilPremiumPercent: toNullablePercent(body?.pupilPremiumPercent),
+      aboveStandardPercent: toNullablePercent(body?.aboveStandardPercent),
+      belowStandardPercent: toNullablePercent(body?.belowStandardPercent),
+      hugelyAboveStandardPercent: toNullablePercent(body?.hugelyAboveStandardPercent),
+      hugelyBelowStandardPercent: toNullablePercent(body?.hugelyBelowStandardPercent),
     });
 
     return NextResponse.json({ ok: true, profile });

@@ -8,11 +8,13 @@ export type ModalPayload = {
   date: string;      // YYYY-MM-DD
   startTime: string; // HH:MM
   endTime: string;   // HH:MM
+  notes?: string;
 };
 
 type Props = {
   payload: ModalPayload;
   saving: boolean;
+  mode?: "create" | "edit";
   onConfirm: (data: { startTime: string; endTime: string; notes: string }) => void;
   onCancel: () => void;
 };
@@ -26,10 +28,10 @@ function formatDate(iso: string) {
   });
 }
 
-export default function ScheduleModal({ payload, saving, onConfirm, onCancel }: Props) {
+export default function ScheduleModal({ payload, saving, onConfirm, onCancel, mode = "create" }: Props) {
   const [startTime, setStartTime] = useState(payload.startTime);
   const [endTime, setEndTime] = useState(payload.endTime);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(payload.notes || "");
   const [error, setError] = useState("");
 
   const color = subjectColor(payload.pack.subject);
@@ -99,7 +101,7 @@ export default function ScheduleModal({ payload, saving, onConfirm, onCancel }: 
             Cancel
           </button>
           <button className="scheduler-modal-confirm" onClick={handleConfirm} disabled={saving}>
-            {saving ? "Saving…" : "Add to schedule"}
+            {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Add to schedule"}
           </button>
         </div>
       </div>

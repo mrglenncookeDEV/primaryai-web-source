@@ -1,8 +1,11 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
+import { fileToOptimisedDataUrl } from "@/lib/client/avatar-upload";
 
 type Profile = {
+  displayName: string;
+  avatarUrl: string;
   defaultYearGroup: string;
   defaultSubject: string;
   tone: string;
@@ -12,9 +15,17 @@ type Profile = {
   classNotes: string;
   teachingApproach: string;
   abilityMix: string;
+  ealPercent: number | "";
+  pupilPremiumPercent: number | "";
+  aboveStandardPercent: number | "";
+  belowStandardPercent: number | "";
+  hugelyAboveStandardPercent: number | "";
+  hugelyBelowStandardPercent: number | "";
 };
 
 const INITIAL_PROFILE: Profile = {
+  displayName: "",
+  avatarUrl: "",
   defaultYearGroup: "Year 4",
   defaultSubject: "Maths",
   tone: "professional_uk",
@@ -24,6 +35,12 @@ const INITIAL_PROFILE: Profile = {
   classNotes: "",
   teachingApproach: "cpa",
   abilityMix: "mixed",
+  ealPercent: "",
+  pupilPremiumPercent: "",
+  aboveStandardPercent: "",
+  belowStandardPercent: "",
+  hugelyAboveStandardPercent: "",
+  hugelyBelowStandardPercent: "",
 };
 
 const YEAR_GROUPS = ["Reception", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
@@ -61,6 +78,15 @@ const ABILITY_MIX_OPTIONS = [
   { value: "predominantly_lower", label: "Predominantly lower ability", desc: "More scaffolding, smaller steps, accessible language throughout" },
   { value: "predominantly_higher", label: "Predominantly higher ability", desc: "Raised baseline; greater depth task pushes the most able significantly" },
 ];
+const MIN_CLASS_NOTES_CHARS = 200;
+
+function toInputPercent(value: unknown): number | "" {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : "";
+}
+
+function toPayloadPercent(value: number | ""): number | null {
+  return value === "" ? null : value;
+}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -139,12 +165,29 @@ const SELECT_STYLE: React.CSSProperties = {
   transition: "border-color 180ms ease",
 };
 
+const FIELD_LABEL_STYLE: React.CSSProperties = {
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  color: "var(--muted)",
+  marginBottom: "0.4rem",
+  lineHeight: 1.35,
+  minHeight: "1.35em",
+  display: "block",
+};
+
+const FIELD_LABEL_STYLE_TALL: React.CSSProperties = {
+  ...FIELD_LABEL_STYLE,
+  minHeight: "2.4em",
+};
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile>(INITIAL_PROFILE);
+  const [avatarFileName, setAvatarFileName] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const uploadInputId = useId();
 
   useEffect(() => {
     void (async () => {
@@ -152,6 +195,8 @@ export default function SettingsPage() {
       const data = await res.json();
       if (res.ok && data?.profile) {
         setProfile({
+          displayName: "",
+          avatarUrl: "",
           defaultYearGroup: data.profile.defaultYearGroup ?? INITIAL_PROFILE.defaultYearGroup,
           defaultSubject: data.profile.defaultSubject ?? INITIAL_PROFILE.defaultSubject,
           tone: data.profile.tone ?? INITIAL_PROFILE.tone,
@@ -161,33 +206,98 @@ export default function SettingsPage() {
           classNotes: data.profile.classNotes ?? INITIAL_PROFILE.classNotes,
           teachingApproach: data.profile.teachingApproach ?? INITIAL_PROFILE.teachingApproach,
           abilityMix: data.profile.abilityMix ?? INITIAL_PROFILE.abilityMix,
+          ealPercent: toInputPercent(data.profile.ealPercent),
+          pupilPremiumPercent: toInputPercent(data.profile.pupilPremiumPercent),
+          aboveStandardPercent: toInputPercent(data.profile.aboveStandardPercent),
+          belowStandardPercent: toInputPercent(data.profile.belowStandardPercent),
+          hugelyAboveStandardPercent: toInputPercent(data.profile.hugelyAboveStandardPercent),
+          hugelyBelowStandardPercent: toInputPercent(data.profile.hugelyBelowStandardPercent),
         });
+      }
+
+      const setupRes = await fetch("/api/profile/setup");
+      const setupData = await setupRes.json().catch(() => ({}));
+      if (setupRes.ok && setupData?.profileSetup) {
+        setProfile((prev) => ({
+          ...prev,
+          displayName: setupData.profileSetup.displayName ?? "",
+          avatarUrl: setupData.profileSetup.avatarUrl ?? "",
+        }));
       }
     })();
   }, []);
+
+  async function onAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAvatarFileName(file.name);
+    try {
+      const value = await fileToOptimisedDataUrl(file, 320, 0.82);
+      setProfile((prev) => ({ ...prev, avatarUrl: value }));
+    } catch {
+      setErrorMsg("Could not process that image. Please try a different file.");
+      setStatus("error");
+    }
+  }
+
+  function updatePercentField<K extends keyof Pick<Profile,
+    "ealPercent" | "pupilPremiumPercent" | "aboveStandardPercent" | "belowStandardPercent" | "hugelyAboveStandardPercent" | "hugelyBelowStandardPercent"
+  >>(key: K, value: string) {
+    if (value.trim() === "") {
+      setProfile((prev) => ({ ...prev, [key]: "" }));
+      return;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    const clamped = Math.max(0, Math.min(100, Math.round(parsed)));
+    setProfile((prev) => ({ ...prev, [key]: clamped }));
+  }
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
     setStatus("saving");
     setErrorMsg("");
 
+    const payload = {
+      ...profile,
+      ealPercent: toPayloadPercent(profile.ealPercent),
+      pupilPremiumPercent: toPayloadPercent(profile.pupilPremiumPercent),
+      aboveStandardPercent: toPayloadPercent(profile.aboveStandardPercent),
+      belowStandardPercent: toPayloadPercent(profile.belowStandardPercent),
+      hugelyAboveStandardPercent: toPayloadPercent(profile.hugelyAboveStandardPercent),
+      hugelyBelowStandardPercent: toPayloadPercent(profile.hugelyBelowStandardPercent),
+    };
+
     const res = await fetch("/api/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profile),
+      body: JSON.stringify(payload),
     });
 
-    if (res.ok) {
+    const setupRes = await fetch("/api/profile/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: profile.displayName, avatarUrl: profile.avatarUrl }),
+    });
+
+    if (res.ok && setupRes.ok) {
       setStatus("saved");
       setTimeout(() => setStatus("idle"), 3000);
     } else {
-      const data = await res.json();
+      const data = await (res.ok ? setupRes : res).json().catch(() => ({}));
       setStatus("error");
       setErrorMsg(data?.error ?? "Save failed. Please try again.");
     }
   }
 
   const isSaving = status === "saving";
+  const classNotesLength = profile.classNotes.trim().length;
+  const classNotesRemaining = Math.max(0, MIN_CLASS_NOTES_CHARS - classNotesLength);
+  const attainmentTotal =
+    (profile.aboveStandardPercent || 0) +
+    (profile.belowStandardPercent || 0) +
+    (profile.hugelyAboveStandardPercent || 0) +
+    (profile.hugelyBelowStandardPercent || 0);
 
   return (
     <main className="page-wrap">
@@ -208,6 +318,62 @@ export default function SettingsPage() {
 
       <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
 
+        {/* ── Profile ── */}
+        <div className="card">
+          <SectionLabel>Profile</SectionLabel>
+          <p style={{ margin: "0 0 1rem", fontSize: "0.82rem", color: "var(--muted)" }}>
+            Set your display name and profile photo.
+          </p>
+          <div style={{ display: "grid", gap: "0.9rem" }}>
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE}>
+                Display Name
+              </label>
+              <input
+                value={profile.displayName}
+                onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
+                placeholder="e.g. John Doe"
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE}>
+                Photo URL
+              </label>
+              <input
+                value={profile.avatarUrl}
+                onChange={(e) => setProfile({ ...profile, avatarUrl: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="field">
+              <input
+                id={uploadInputId}
+                className="file-upload-input"
+                type="file"
+                accept="image/*"
+                onChange={onAvatarUpload}
+              />
+              <label htmlFor={uploadInputId} className="landing-thoughts-btn file-upload-cta">
+                Upload Photo
+              </label>
+              <span className="muted" style={{ fontSize: "0.78rem", marginTop: "0.45rem", display: "block" }}>
+                {avatarFileName || "No file selected"}
+              </span>
+            </div>
+
+            {profile.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt="Profile preview"
+                style={{ width: 62, height: 62, borderRadius: "50%", objectFit: "cover", border: "1px solid var(--border)" }}
+              />
+            ) : null}
+          </div>
+        </div>
+
         {/* ── Defaults ── */}
         <div className="card">
           <SectionLabel>Defaults</SectionLabel>
@@ -216,7 +382,7 @@ export default function SettingsPage() {
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.9rem" }}>
             <div className="field">
-              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--muted)", marginBottom: "0.4rem", display: "block" }}>
+              <label style={FIELD_LABEL_STYLE}>
                 Year Group
               </label>
               <select
@@ -231,7 +397,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="field">
-              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--muted)", marginBottom: "0.4rem", display: "block" }}>
+              <label style={FIELD_LABEL_STYLE}>
                 Subject
               </label>
               <select
@@ -434,9 +600,47 @@ export default function SettingsPage() {
 
         {/* ── About My Class ── */}
         <div className="card">
+          <SectionLabel>Class Profile Percentages</SectionLabel>
+          <p style={{ margin: "0 0 0.9rem", fontSize: "0.82rem", color: "var(--muted)" }}>
+            These are required before lesson pack generation. Enter whole-number percentages from 0 to 100.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem" }}>
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE_TALL}>% class EAL (English as second language)</label>
+              <input type="number" min={0} max={100} step={1} value={profile.ealPercent} onChange={(e) => updatePercentField("ealPercent", e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE_TALL}>% class on pupil premium (vocabulary prompts)</label>
+              <input type="number" min={0} max={100} step={1} value={profile.pupilPremiumPercent} onChange={(e) => updatePercentField("pupilPremiumPercent", e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE_TALL}>% class generally above standard</label>
+              <input type="number" min={0} max={100} step={1} value={profile.aboveStandardPercent} onChange={(e) => updatePercentField("aboveStandardPercent", e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE_TALL}>% class generally below standard</label>
+              <input type="number" min={0} max={100} step={1} value={profile.belowStandardPercent} onChange={(e) => updatePercentField("belowStandardPercent", e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE_TALL}>% class hugely above standard</label>
+              <input type="number" min={0} max={100} step={1} value={profile.hugelyAboveStandardPercent} onChange={(e) => updatePercentField("hugelyAboveStandardPercent", e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div className="field">
+              <label style={FIELD_LABEL_STYLE_TALL}>% class hugely below standard</label>
+              <input type="number" min={0} max={100} step={1} value={profile.hugelyBelowStandardPercent} onChange={(e) => updatePercentField("hugelyBelowStandardPercent", e.target.value)} style={{ width: "100%" }} />
+            </div>
+          </div>
+          <p style={{ margin: "0.6rem 0 0", fontSize: "0.78rem", color: attainmentTotal > 100 ? "#fc8181" : "var(--muted)" }}>
+            Combined attainment bands (above/below/hugely above/hugely below): {attainmentTotal}% {attainmentTotal > 100 ? "— must be 100% or less" : ""}
+          </p>
+        </div>
+
+        {/* ── About My Class ── */}
+        <div className="card">
           <SectionLabel>About My Class</SectionLabel>
           <p style={{ margin: "0 0 0.9rem", fontSize: "0.82rem", color: "var(--muted)" }}>
             Tell the AI anything specific about your class — scheme of work, EAL learners, TA support, grouping, or anything else that should shape the content.
+            This must be at least 200 characters before lesson packs can be generated.
           </p>
           <textarea
             value={profile.classNotes}
@@ -458,6 +662,16 @@ export default function SettingsPage() {
               outline: "none",
             }}
           />
+          <p style={{
+            margin: "0.55rem 0 0",
+            fontSize: "0.78rem",
+            color: classNotesRemaining === 0 ? "#4ade80" : "var(--muted)",
+          }}>
+            Minimum {MIN_CLASS_NOTES_CHARS} characters required.
+            {" "}
+            {classNotesLength} entered
+            {classNotesRemaining > 0 ? ` (${classNotesRemaining} more needed)` : " (requirement met)"}
+          </p>
         </div>
 
         {/* ── Preferences ── */}

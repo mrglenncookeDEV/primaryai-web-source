@@ -20,9 +20,10 @@ const CheckIcon = () => (
   </svg>
 );
 
-export default function SignupPage({ searchParams }) {
-  const message = getMessage(searchParams || {});
-  const next = searchParams?.next ? String(searchParams.next) : "/dashboard";
+export default async function SignupPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const message = getMessage(resolvedSearchParams || {});
+  const next = resolvedSearchParams?.next ? String(resolvedSearchParams.next) : "/dashboard";
   const googleAuthHref = `/api/auth/google?next=${encodeURIComponent(next)}`;
 
   return (
@@ -136,6 +137,7 @@ export default function SignupPage({ searchParams }) {
           <div className="auth-or">or</div>
 
           <form action="/api/auth/signup" method="post">
+            <input type="hidden" name="next" value={next} />
             <div className="auth-field">
               <label className="auth-label" htmlFor="email">Email</label>
               <input

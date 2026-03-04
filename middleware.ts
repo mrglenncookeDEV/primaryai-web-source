@@ -40,6 +40,7 @@ export const config = {
     "/billing/:path*",
     "/settings/:path*",
     "/library/:path*",
+    "/profile-setup/:path*",
     "/survey-responses/:path*",
   ],
 };

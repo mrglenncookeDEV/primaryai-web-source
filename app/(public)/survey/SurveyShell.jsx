@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import RoleSelector from "./RoleSelector";
 import PartA from "./PartA";
 import PartB from "./PartB";
 import PartC from "./PartC";
@@ -45,8 +44,8 @@ function getFirstIncompleteStep(role, answers, completed) {
 
 export default function SurveyShell() {
   const [surveyId, setSurveyId] = useState(null);
-  const [step, setStep] = useState("role");
-  const [role, setRole] = useState(null);
+  const [step, setStep] = useState("partA");
+  const [role, setRole] = useState("impartial");
   const [answers, setAnswers] = useState(INITIAL_ANSWERS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -91,7 +90,9 @@ export default function SurveyShell() {
       setSurveyId(row.id);
       setRole(restoredRole);
       setAnswers(restoredAnswers);
-      setStep(restoredRole ? getFirstIncompleteStep(restoredRole, restoredAnswers, row.completed) : "role");
+      const effectiveRole = restoredRole || "impartial";
+      if (!restoredRole) setRole("impartial");
+      setStep(getFirstIncompleteStep(effectiveRole, restoredAnswers, row.completed));
       setHydrated(true);
     }
 
@@ -124,17 +125,12 @@ export default function SurveyShell() {
   }
 
   function goBack() {
-    if (!role || step === "role") return;
     const index = partsForRole.findIndex((item) => item === step);
-    if (index <= 0) {
-      setStep("role");
-      return;
-    }
+    if (index <= 0) return;
     setStep(partsForRole[index - 1]);
   }
 
   async function saveAndNext(partKey) {
-    if (!role) return;
 
     const index = partsForRole.indexOf(partKey);
     const isFinalPart = index === partsForRole.length - 1;
@@ -187,12 +183,6 @@ export default function SurveyShell() {
     }
   }
 
-  function handleRoleContinue() {
-    if (!role) return;
-    setStep("partA");
-    setError(null);
-  }
-
   if (!hydrated) {
     return (
       <section className="surveyx-card card">
@@ -205,7 +195,7 @@ export default function SurveyShell() {
     return <ThankYou surveyId={surveyId} />;
   }
 
-  const showProgress = step !== "role" && currentPartIndex >= 0;
+  const showProgress = currentPartIndex >= 0;
   const progressPct = showProgress ? ((currentPartIndex + 1) / partsForRole.length) * 100 : 0;
 
   return (
@@ -226,10 +216,6 @@ export default function SurveyShell() {
         <div className="surveyx-toast" role="status" aria-live="assertive">
           {toast.message}
         </div>
-      ) : null}
-
-      {step === "role" ? (
-        <RoleSelector role={role} onSelect={setRole} onContinue={handleRoleContinue} />
       ) : null}
 
       {step === "partA" ? (

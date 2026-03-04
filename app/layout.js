@@ -1,5 +1,7 @@
 import "./globals.css";
+import { Suspense } from "react";
 import BackgroundScene from "@/components/BackgroundScene";
+import PageLoader from "@/components/PageLoader";
 
 export const metadata = {
   title: "Primary AI",
@@ -23,6 +25,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <BackgroundScene />
+        <Suspense>
+          <PageLoader />
+        </Suspense>
         {children}
       </body>
     </html>

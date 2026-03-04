@@ -21,6 +21,8 @@
     "jsoon": "^0.1.0",
     "next": "^15.2.0",
     "next-auth": "^5.0.0-beta.25",
+    "pdf-lib": "^1.17.1",
+    "pptxgenjs": "^4.0.1",
     "prisma": "^6.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

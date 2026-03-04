@@ -75,15 +75,7 @@ export default function LandingHero() {
       </div>
 
       <p className="landing-subtitle">
-        Our intelligent SaaS platform is currently under construction. We&apos;re busy fine-tuning
-        the models and polishing the interface.
-      </p>
-
-      <p className="landing-footer-note">
-        Launching Spring 2026 | Design & Build by{" "}
-        <a className="landing-onepoint-link" href="https://www.onepointconsult.com">
-          onepointconsult.com
-        </a>
+        Our intelligent SaaS platform is currently under construction.
       </p>
 
       <div className="landing-cta-row">
@@ -91,6 +83,13 @@ export default function LandingHero() {
           Your Thoughts
         </Link>
       </div>
+
+      <p className="landing-footer-note">
+        Launching Spring 2026 | Design & Build by{" "}
+        <a className="landing-onepoint-link" href="https://www.onepointconsult.com">
+          onepointconsult.com
+        </a>
+      </p>
     </section>
   );
 }

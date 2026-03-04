@@ -2,16 +2,72 @@ import { NextResponse } from "next/server";
 import { generateLessonPackWithMeta } from "@/src/engine/orchestrate";
 import { LessonPackRequestSchema, LessonPackSchema } from "@/src/engine/schema";
 import { getCurrentUserSession } from "@/lib/user-session";
-import { getOrCreateTeacherProfile, toEngineProfile } from "@/lib/memory";
+import { getOrCreateUserProfile, toEngineProfile } from "@/lib/user-profile";
 import { prisma } from "@/src/db/prisma";
+
+const MIN_CLASS_NOTES_CHARS = 200;
+
+function validPercent(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100;
+}
 
 export async function POST(req: Request) {
   const start = Date.now();
   const body = await req.json();
+  const forceSave = body?.forceSave === true;
 
   const session = await getCurrentUserSession();
   const userId = session?.userId ?? null;
-  const profile = userId ? await getOrCreateTeacherProfile(userId) : null;
+  if (!userId) {
+    return NextResponse.json(
+      { error: "Sign in is required to generate lesson packs." },
+      { status: 401 },
+    );
+  }
+
+  const profile = await getOrCreateUserProfile(userId);
+  const classNotesLength = profile.classNotes?.trim().length ?? 0;
+  if (classNotesLength < MIN_CLASS_NOTES_CHARS) {
+    return NextResponse.json(
+      {
+        error: `Complete "About My Class" in Settings with at least ${MIN_CLASS_NOTES_CHARS} characters before generating lesson packs.`,
+      },
+      { status: 400 },
+    );
+  }
+  const requiredPercentFields = {
+    ealPercent: profile.ealPercent,
+    pupilPremiumPercent: profile.pupilPremiumPercent,
+    aboveStandardPercent: profile.aboveStandardPercent,
+    belowStandardPercent: profile.belowStandardPercent,
+    hugelyAboveStandardPercent: profile.hugelyAboveStandardPercent,
+    hugelyBelowStandardPercent: profile.hugelyBelowStandardPercent,
+  };
+  const missingPercentFields = Object.entries(requiredPercentFields)
+    .filter(([, value]) => !validPercent(value))
+    .map(([key]) => key);
+  if (missingPercentFields.length > 0) {
+    return NextResponse.json(
+      {
+        error: "Complete all required class profile percentages in Settings before generating lesson packs.",
+        fields: missingPercentFields,
+      },
+      { status: 400 },
+    );
+  }
+  const attainmentBandTotal =
+    (profile.aboveStandardPercent ?? 0) +
+    (profile.belowStandardPercent ?? 0) +
+    (profile.hugelyAboveStandardPercent ?? 0) +
+    (profile.hugelyBelowStandardPercent ?? 0);
+  if (attainmentBandTotal > 100) {
+    return NextResponse.json(
+      {
+        error: "Your attainment percentages cannot exceed 100% in total. Update Settings and try again.",
+      },
+      { status: 400 },
+    );
+  }
 
   const mergedBody = {
     ...body,
@@ -52,7 +108,8 @@ export async function POST(req: Request) {
       // Logging should not block generation.
     }
 
-    if (userId && profile?.autoSave) {
+    const shouldAutoSave = Boolean(userId && (profile?.autoSave || forceSave));
+    if (shouldAutoSave) {
       try {
         await prisma.lessonPack.create({
           data: {
@@ -69,7 +126,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ...pack, _meta: { autoSaved: Boolean(userId && profile?.autoSave) } });
+    return NextResponse.json({ ...pack, _meta: { autoSaved: shouldAutoSave } });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
 

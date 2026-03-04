@@ -10,6 +10,7 @@ export interface LessonPackRequest {
   topic: string;
   teacher_id?: string;
   feedback?: string;
+  context_notes?: string;
   profile?: {
     defaultYearGroup?: string | null;
     defaultSubject?: string | null;
@@ -19,6 +20,12 @@ export interface LessonPackRequest {
     classNotes?: string | null;
     teachingApproach?: string | null;
     abilityMix?: string | null;
+    ealPercent?: number | null;
+    pupilPremiumPercent?: number | null;
+    aboveStandardPercent?: number | null;
+    belowStandardPercent?: number | null;
+    hugelyAboveStandardPercent?: number | null;
+    hugelyBelowStandardPercent?: number | null;
   };
 }
 
@@ -40,4 +47,10 @@ export type TeacherProfile = {
   classNotes?: string | null;
   teachingApproach?: string | null;
   abilityMix?: string | null;
+  ealPercent?: number | null;
+  pupilPremiumPercent?: number | null;
+  aboveStandardPercent?: number | null;
+  belowStandardPercent?: number | null;
+  hugelyAboveStandardPercent?: number | null;
+  hugelyBelowStandardPercent?: number | null;
 };

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAnonClient } from "@/lib/supabase";
+import { getProfileSetup } from "@/lib/profile-setup";
 
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ||
@@ -110,8 +111,27 @@ export async function GET(request) {
     );
   }
 
-  const response = NextResponse.redirect(new URL(postLoginPath, base));
+  let profileCompleted = false;
+  try {
+    const profileSetup = await getProfileSetup(data.user.id);
+    profileCompleted = Boolean(profileSetup?.profileCompleted);
+  } catch {
+    profileCompleted = false;
+  }
+
+  const finalPath = profileCompleted
+    ? postLoginPath
+    : `/profile-setup?next=${encodeURIComponent(postLoginPath)}`;
+
+  const response = NextResponse.redirect(new URL(finalPath, base));
   setSessionCookie(response, data.user, isHttps);
+  response.cookies.set("pa_profile_complete", profileCompleted ? "1" : "0", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isHttps,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
   response.cookies.delete("oauth_state");
   response.cookies.delete("oauth_next");
   response.headers.set("Cache-Control", "no-store");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAnonClient } from "@/lib/supabase";
+import { getProfileSetup } from "@/lib/profile-setup";
 
 function setSessionCookie(response, user) {
   response.cookies.set(
@@ -51,7 +52,23 @@ export async function GET(request) {
     );
   }
 
-  const response = NextResponse.redirect(new URL("/dashboard", base));
+  let profileCompleted = false;
+  try {
+    const profileSetup = await getProfileSetup(user.id);
+    profileCompleted = Boolean(profileSetup?.profileCompleted);
+  } catch {
+    profileCompleted = false;
+  }
+
+  const finalPath = profileCompleted ? "/dashboard" : "/profile-setup?next=%2Fdashboard";
+  const response = NextResponse.redirect(new URL(finalPath, base));
   setSessionCookie(response, user);
+  response.cookies.set("pa_profile_complete", profileCompleted ? "1" : "0", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
   return response;
 }

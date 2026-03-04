@@ -609,7 +609,18 @@ Teacher Tone Preference: ${teacherProfile?.tone ?? "professional_uk"}
 SEND Focus: ${teacherProfile?.sendFocus ?? false}
 Teaching Approach: ${(teacherProfile?.teachingApproach ?? "cpa") === "cpa" ? "Concrete-Pictorial-Abstract (CPA) — use physical/visual representations before abstract notation, reference manipulatives and diagrams in activities and worked examples" : (teacherProfile?.teachingApproach ?? "cpa") === "direct_instruction" ? "Direct Instruction — teacher-led explanation followed by guided and independent practice; steps are clearly modelled before pupils attempt independently" : (teacherProfile?.teachingApproach ?? "cpa") === "problem_solving" ? "Problem-Solving Led — begin with a rich problem or challenge that motivates the concept; pupils discover or construct understanding through reasoning" : "Inquiry-Based — pupils investigate, question and explore; activities should be open-ended with pupils generating their own examples and generalisations"}
 Ability Mix: ${(teacherProfile?.abilityMix ?? "mixed") === "mixed" ? "Mixed ability — differentiated activities must span a wide range; support, expected and greater depth tasks should be clearly distinct" : (teacherProfile?.abilityMix ?? "mixed") === "predominantly_lower" ? "Predominantly lower ability — pitch baseline expectations lower, include more scaffolding and smaller steps; greater depth task is still required but may be more guided" : "Predominantly higher ability — raise the baseline; expected task should be challenging for most pupils, greater depth should stretch the most able significantly"}${teacherProfile?.classNotes ? `
-About this class: ${teacherProfile.classNotes}` : ""}${req.feedback ? `
+About this class: ${teacherProfile.classNotes}` : ""}${req.context_notes ? `
+
+━━━ UPLOADED CLASS CONTEXT ━━━
+Use this uploaded context carefully (targets, SEN notes, attainment data, pupil needs, etc.) when tailoring the lesson:
+${req.context_notes}` : ""}
+EAL in class: ${teacherProfile?.ealPercent ?? 0}%
+Pupil Premium in class: ${teacherProfile?.pupilPremiumPercent ?? 0}%
+Generally above expected standard: ${teacherProfile?.aboveStandardPercent ?? 0}%
+Generally below expected standard: ${teacherProfile?.belowStandardPercent ?? 0}%
+Hugely above expected standard: ${teacherProfile?.hugelyAboveStandardPercent ?? 0}%
+Hugely below expected standard: ${teacherProfile?.hugelyBelowStandardPercent ?? 0}%
+Planning rule: Calibrate task difficulty, scaffolding, and vocabulary support using these percentages while remaining fully aligned to DfE National Curriculum expectations for ${req.year_group}.${req.feedback ? `
 
 ━━━ TEACHER FEEDBACK ━━━
 The teacher has reviewed a previous version of this lesson pack and requested these specific changes:

@@ -13,7 +13,9 @@ export type PackItem = {
 
 type Props = {
   packs: PackItem[];
+  scheduledPackIds?: string[];
   loading: boolean;
+  onUnscheduleDrop: (eventId: string) => void;
   onDragStart: (pack: PackItem) => void;
   onDragEnd: () => void;
 };
@@ -29,11 +31,12 @@ const GripIcon = () => (
   </svg>
 );
 
-export default function PackList({ packs, loading, onDragStart, onDragEnd }: Props) {
+export default function PackList({ packs, scheduledPackIds = [], loading, onUnscheduleDrop, onDragStart, onDragEnd }: Props) {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [unscheduleDragOver, setUnscheduleDragOver] = useState(false);
 
   const subjects = useMemo(() => {
     const s = new Set(packs.map((p) => p.subject));
@@ -55,6 +58,43 @@ export default function PackList({ packs, loading, onDragStart, onDragEnd }: Pro
       return true;
     });
   }, [packs, search, subjectFilter, yearFilter]);
+  const scheduledSet = useMemo(() => new Set(scheduledPackIds), [scheduledPackIds]);
+  const unscheduled = useMemo(() => filtered.filter((pack) => !scheduledSet.has(pack.id)), [filtered, scheduledSet]);
+  const scheduled = useMemo(() => filtered.filter((pack) => scheduledSet.has(pack.id)), [filtered, scheduledSet]);
+
+  function renderPackCard(pack: PackItem, isScheduled: boolean) {
+    const color = subjectColor(pack.subject);
+    return (
+      <div
+        key={pack.id}
+        className={`scheduler-pack-card${draggingId === pack.id ? " dragging" : ""}${isScheduled ? " is-disabled" : ""}`}
+        draggable={!isScheduled}
+        onDragStart={(e) => {
+          if (isScheduled) {
+            e.preventDefault();
+            return;
+          }
+          e.dataTransfer.effectAllowed = "copy";
+          setDraggingId(pack.id);
+          onDragStart(pack);
+        }}
+        onDragEnd={() => {
+          setDraggingId(null);
+          onDragEnd();
+        }}
+        style={{ borderLeft: `3px solid ${color}` }}
+      >
+        <GripIcon />
+        <div className="scheduler-pack-info">
+          <div className="scheduler-pack-name">{pack.title}</div>
+          <div className="scheduler-pack-meta">
+            {pack.yearGroup} · {pack.subject}
+            {isScheduled ? " · Scheduled" : ""}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="scheduler-pack-panel">
@@ -76,6 +116,27 @@ export default function PackList({ packs, loading, onDragStart, onDragEnd }: Pro
         </select>
       </div>
 
+      <div
+        className={`scheduler-pack-unschedule-zone${unscheduleDragOver ? " drag-over" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setUnscheduleDragOver(true);
+          e.dataTransfer.dropEffect = "move";
+        }}
+        onDragLeave={() => setUnscheduleDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setUnscheduleDragOver(false);
+          const eventId =
+            e.dataTransfer.getData("text/scheduler-event-id") ||
+            e.dataTransfer.getData("text/plain").replace(/^scheduler-event:/, "");
+          if (!eventId) return;
+          onUnscheduleDrop(eventId);
+        }}
+      >
+        Drag a scheduled event here to unschedule it
+      </div>
+
       <div className="scheduler-pack-scroll">
         {loading && (
           <p className="scheduler-pack-empty">Loading packs…</p>
@@ -85,32 +146,29 @@ export default function PackList({ packs, loading, onDragStart, onDragEnd }: Pro
             {packs.length === 0 ? "No saved packs yet. Generate and save a lesson pack to schedule it." : "No packs match your filters."}
           </p>
         )}
-        {!loading && filtered.map((pack) => {
-          const color = subjectColor(pack.subject);
-          return (
-            <div
-              key={pack.id}
-              className={`scheduler-pack-card${draggingId === pack.id ? " dragging" : ""}`}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "copy";
-                setDraggingId(pack.id);
-                onDragStart(pack);
-              }}
-              onDragEnd={() => {
-                setDraggingId(null);
-                onDragEnd();
-              }}
-              style={{ borderLeft: `3px solid ${color}` }}
-            >
-              <GripIcon />
-              <div className="scheduler-pack-info">
-                <div className="scheduler-pack-name">{pack.title}</div>
-                <div className="scheduler-pack-meta">{pack.yearGroup} · {pack.subject}</div>
-              </div>
+        {!loading && unscheduled.length > 0 && (
+          <>
+            <div className="scheduler-pack-divider">
+              <span>Unscheduled</span>
             </div>
-          );
-        })}
+            {unscheduled.map((pack) => renderPackCard(pack, false))}
+          </>
+        )}
+        {!loading && unscheduled.length > 0 && scheduled.length > 0 && (
+          <div className="scheduler-pack-divider">
+            <span>Already Scheduled</span>
+          </div>
+        )}
+        {!loading && scheduled.length > 0 && (
+          <>
+            {unscheduled.length === 0 && (
+              <div className="scheduler-pack-divider">
+                <span>Already Scheduled</span>
+              </div>
+            )}
+            {scheduled.map((pack) => renderPackCard(pack, true))}
+          </>
+        )}
       </div>
     </div>
   );

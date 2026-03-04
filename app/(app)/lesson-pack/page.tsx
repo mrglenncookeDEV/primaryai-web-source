@@ -1,6 +1,8 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type LessonPack = {
   year_group: string;
@@ -23,6 +25,9 @@ type LessonPackResponse = LessonPack | { error: string };
 type ExportResponse = { ok: boolean; format: string; data: unknown } | { error: string };
 
 const YEAR_GROUPS = ["Reception", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
+const MIN_CLASS_NOTES_CHARS = 200;
+const MAX_CONTEXT_CHARS = 8000;
+const CONTEXT_FILE_ACCEPT = ".txt,.md,.csv,.json,.tsv,.log,.rtf";
 
 const SUBJECT_GROUPS = [
   { label: "Core Subjects", subjects: ["Maths", "English", "Science"] },
@@ -186,6 +191,8 @@ function SlideCard({ slide, index }: { slide: { title: string; bullets: string[]
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function LessonPackPage() {
+  const searchParams = useSearchParams();
+  const forceSaveFromScheduler = searchParams.get("from") === "scheduler";
   const [form, setForm] = useState({ year_group: "", subject: "", topic: "" });
   const [result, setResult] = useState<LessonPackResponse | null>(null);
   const [exportResult, setExportResult] = useState<ExportResponse | null>(null);
@@ -194,24 +201,154 @@ export default function LessonPackPage() {
   const [saveMsg, setSaveMsg] = useState("");
   const [feedback, setFeedback] = useState("");
   const [regenLoading, setRegenLoading] = useState(false);
+  const [classNotesLength, setClassNotesLength] = useState(0);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [contextFileName, setContextFileName] = useState("");
+  const [contextNotes, setContextNotes] = useState("");
+  const [contextError, setContextError] = useState("");
+  const [settingsChecklist, setSettingsChecklist] = useState({
+    ealPercent: false,
+    pupilPremiumPercent: false,
+    aboveStandardPercent: false,
+    belowStandardPercent: false,
+    hugelyAboveStandardPercent: false,
+    hugelyBelowStandardPercent: false,
+    attainmentBandsValid: false,
+  });
+
+  function showClassNotesToast() {
+    const remaining = Math.max(0, MIN_CLASS_NOTES_CHARS - classNotesLength);
+    const missing = [];
+    if (!settingsChecklist.ealPercent) missing.push("EAL %");
+    if (!settingsChecklist.pupilPremiumPercent) missing.push("Pupil Premium %");
+    if (!settingsChecklist.aboveStandardPercent) missing.push("Above standard %");
+    if (!settingsChecklist.belowStandardPercent) missing.push("Below standard %");
+    if (!settingsChecklist.hugelyAboveStandardPercent) missing.push("Hugely above %");
+    if (!settingsChecklist.hugelyBelowStandardPercent) missing.push("Hugely below %");
+    if (!settingsChecklist.attainmentBandsValid) missing.push("attainment totals");
+    if (remaining > 0) {
+      setToast(`Complete About My Class first (${remaining} characters remaining).`);
+      return;
+    }
+    if (missing.length > 0) {
+      setToast(`Complete teacher settings first: ${missing.slice(0, 3).join(", ")}${missing.length > 3 ? "..." : ""}.`);
+      return;
+    }
+    setToast("Complete teacher settings in Settings before generating lesson packs.");
+  }
 
   useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
+  // Load profile defaults
+  useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/profile");
-      if (!res.ok) return;
-      const data = await res.json();
-      const profile = data?.profile;
-      if (!profile) return;
-      setForm((prev) => ({
-        year_group: prev.year_group || profile.defaultYearGroup || "",
-        subject: prev.subject || profile.defaultSubject || "",
-        topic: prev.topic,
-      }));
+      try {
+        const res = await fetch("/api/profile");
+        if (!res.ok) return;
+        const data = await res.json();
+        const profile = data?.profile;
+        if (!profile) return;
+        const toInt = (value: unknown) => (typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : null);
+        const ealPercent = toInt(profile.ealPercent);
+        const pupilPremiumPercent = toInt(profile.pupilPremiumPercent);
+        const aboveStandardPercent = toInt(profile.aboveStandardPercent);
+        const belowStandardPercent = toInt(profile.belowStandardPercent);
+        const hugelyAboveStandardPercent = toInt(profile.hugelyAboveStandardPercent);
+        const hugelyBelowStandardPercent = toInt(profile.hugelyBelowStandardPercent);
+        const attainmentTotal =
+          (aboveStandardPercent ?? 0) +
+          (belowStandardPercent ?? 0) +
+          (hugelyAboveStandardPercent ?? 0) +
+          (hugelyBelowStandardPercent ?? 0);
+        setForm((prev) => ({
+          year_group: prev.year_group || profile.defaultYearGroup || "",
+          subject: prev.subject || profile.defaultSubject || "",
+          topic: prev.topic,
+        }));
+        setClassNotesLength((profile.classNotes ?? "").trim().length);
+        setSettingsChecklist({
+          ealPercent: ealPercent !== null,
+          pupilPremiumPercent: pupilPremiumPercent !== null,
+          aboveStandardPercent: aboveStandardPercent !== null,
+          belowStandardPercent: belowStandardPercent !== null,
+          hugelyAboveStandardPercent: hugelyAboveStandardPercent !== null,
+          hugelyBelowStandardPercent: hugelyBelowStandardPercent !== null,
+          attainmentBandsValid: attainmentTotal <= 100,
+        });
+      } finally {
+        setProfileLoaded(true);
+      }
     })();
   }, []);
 
+  // Load saved pack from library if ?id= is present
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (!id) return;
+    void (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/library/${encodeURIComponent(id)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const item = data?.item;
+        if (!item) return;
+        const pack = JSON.parse(item.json);
+        setResult(pack);
+        setForm({ year_group: item.year_group ?? pack.year_group ?? "", subject: item.subject ?? pack.subject ?? "", topic: item.topic ?? pack.topic ?? "" });
+        setSaveState("saved");
+        setSaveMsg("Loaded from library");
+      } catch {
+        // silently ignore — user can generate normally
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [searchParams]);
+
+  async function handleContextFileUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    setContextError("");
+    if (!file) {
+      setContextFileName("");
+      setContextNotes("");
+      return;
+    }
+
+    try {
+      const raw = await file.text();
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        setContextFileName(file.name);
+        setContextNotes("");
+        setContextError("That file appears to be empty.");
+        return;
+      }
+
+      const clipped = trimmed.slice(0, MAX_CONTEXT_CHARS);
+      setContextFileName(file.name);
+      setContextNotes(clipped);
+      if (trimmed.length > MAX_CONTEXT_CHARS) {
+        setContextError(`Only the first ${MAX_CONTEXT_CHARS} characters were used.`);
+      }
+    } catch {
+      setContextFileName(file.name);
+      setContextNotes("");
+      setContextError("Could not read that file. Use a text-based file such as TXT, CSV, JSON or Markdown.");
+    }
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!canGenerate) {
+      showClassNotesToast();
+      return;
+    }
     setLoading(true);
     setResult(null);
     setExportResult(null);
@@ -221,7 +358,11 @@ export default function LessonPackPage() {
       const res = await fetch("/api/lesson-pack", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          context_notes: contextNotes || undefined,
+          forceSave: forceSaveFromScheduler,
+        }),
       });
       setResult(await res.json());
     } finally {
@@ -229,14 +370,30 @@ export default function LessonPackPage() {
     }
   }
 
-  async function handleExport(format: "slides-json" | "worksheet-json" | "printable-html") {
+  async function handleExport(format: "lesson-pdf" | "slides-pptx" | "worksheet-doc") {
     if (!result || !isPack(result)) return;
     const res = await fetch("/api/lesson-pack/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format, pack: result }),
     });
-    setExportResult(await res.json());
+    if (!res.ok) return;
+
+    const blob = await res.blob();
+    const header = res.headers.get("content-disposition") || "";
+    const filenameMatch = /filename=\"?([^\";]+)\"?/i.exec(header);
+    const fallback = `${result.subject}-${result.topic}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const fallbackExt = format === "lesson-pdf" ? ".pdf" : format === "slides-pptx" ? ".pptx" : ".doc";
+    const filename = filenameMatch?.[1] || `${fallback}${fallbackExt}`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   async function handleManualSave() {
@@ -259,6 +416,10 @@ export default function LessonPackPage() {
 
   async function handleRegenerate() {
     if (!feedback.trim() || regenLoading) return;
+    if (!canGenerate) {
+      showClassNotesToast();
+      return;
+    }
     setRegenLoading(true);
     setExportResult(null);
     setSaveState("idle");
@@ -267,7 +428,12 @@ export default function LessonPackPage() {
       const res = await fetch("/api/lesson-pack", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, feedback: feedback.trim() }),
+        body: JSON.stringify({
+          ...form,
+          feedback: feedback.trim(),
+          context_notes: contextNotes || undefined,
+          forceSave: forceSaveFromScheduler,
+        }),
       });
       setResult(await res.json());
       setFeedback("");
@@ -278,11 +444,27 @@ export default function LessonPackPage() {
 
   const pack = result && isPack(result) ? result : null;
   const errorMsg = result && !isPack(result) ? (result as { error: string }).error : null;
+  const classNotesRemaining = Math.max(0, MIN_CLASS_NOTES_CHARS - classNotesLength);
+  const classNotesReady = classNotesLength >= MIN_CLASS_NOTES_CHARS;
+  const teacherSettingsReady =
+    settingsChecklist.ealPercent &&
+    settingsChecklist.pupilPremiumPercent &&
+    settingsChecklist.aboveStandardPercent &&
+    settingsChecklist.belowStandardPercent &&
+    settingsChecklist.hugelyAboveStandardPercent &&
+    settingsChecklist.hugelyBelowStandardPercent &&
+    settingsChecklist.attainmentBandsValid;
+  const canGenerate = profileLoaded && classNotesReady && teacherSettingsReady;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <main className="page-wrap">
+      {toast ? (
+        <div className="surveyx-toast" role="status" aria-live="assertive">
+          {toast}
+        </div>
+      ) : null}
 
       {/* Page header */}
       <div style={{ marginBottom: "1.75rem" }}>
@@ -379,6 +561,30 @@ export default function LessonPackPage() {
               />
             </div>
 
+            <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", marginBottom: "0.45rem" }}>Upload Context File (optional)</label>
+              <input
+                type="file"
+                accept={CONTEXT_FILE_ACCEPT}
+                className="file-upload-input"
+                id="lesson-pack-context-upload"
+                onChange={handleContextFileUpload}
+              />
+              <label htmlFor="lesson-pack-context-upload" className="landing-thoughts-btn file-upload-cta">
+                Choose Context File
+              </label>
+              <p style={{ margin: "0.5rem 0 0", fontSize: "0.78rem", color: "var(--muted)" }}>
+                Supported: TXT, MD, CSV, JSON, TSV, LOG, RTF. Useful for targets, SEN notes, and attainment context.
+              </p>
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "var(--muted)" }}>
+                {contextFileName ? `${contextFileName} loaded` : "No context file selected"}
+                {contextNotes ? ` • ${contextNotes.length} characters ready` : ""}
+              </p>
+              {contextError ? (
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#fc8181" }}>{contextError}</p>
+              ) : null}
+            </div>
+
           </div>
 
           <button
@@ -409,8 +615,27 @@ export default function LessonPackPage() {
                 }} />
                 Generating your lesson pack…
               </>
-            ) : "Generate Lesson Pack"}
+            ) : !profileLoaded ? "Loading your profile…" : "Generate Lesson Pack"}
           </button>
+          {profileLoaded && !canGenerate && (
+            <div
+              className="auth-message is-error"
+              style={{ marginTop: "0.85rem" }}
+            >
+              <span className="auth-message-text">
+                {classNotesRemaining > 0
+                  ? `Add at least 200 characters in About My Class before generating lesson packs (${classNotesRemaining} to go). `
+                  : "Complete all required teacher settings percentages before generating lesson packs. "}
+                {!settingsChecklist.attainmentBandsValid
+                  ? "Your attainment percentages must total 100% or less. "
+                  : ""}
+                {" "}
+                <Link href="/settings" style={{ color: "inherit", textDecoration: "underline" }}>
+                  Open Settings
+                </Link>
+              </span>
+            </div>
+          )}
         </form>
       </div>
 
@@ -500,14 +725,14 @@ export default function LessonPackPage() {
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
               {!pack._meta?.autoSaved && saveState !== "saved" && (
                 <button
                   type="button"
                   onClick={handleManualSave}
                   disabled={saveState === "saving"}
                   className="nav-btn-ghost"
-                  style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem", opacity: saveState === "saving" ? 0.65 : 1, display: "flex", alignItems: "center", gap: "0.4rem" }}
+                  style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", opacity: saveState === "saving" ? 0.65 : 1, display: "flex", alignItems: "center", gap: "0.4rem", minHeight: "36px" }}
                 >
                   {saveState === "saving" ? (
                     <>
@@ -518,31 +743,31 @@ export default function LessonPackPage() {
                 </button>
               )}
               {(pack._meta?.autoSaved || saveState === "saved") && (
-                <span style={{ fontSize: "0.8rem", color: "#4ade80", padding: "0.45rem 0", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <span style={{ fontSize: "0.85rem", color: "#4ade80", padding: "0.55rem 0", display: "flex", alignItems: "center", gap: "0.35rem" }}>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z" /></svg>
                   Saved to library
                 </span>
               )}
               {saveState === "error" && saveMsg && (
-                <span style={{ fontSize: "0.78rem", color: "#fc8181", padding: "0.45rem 0" }}>{saveMsg}</span>
+                <span style={{ fontSize: "0.82rem", color: "#fc8181", padding: "0.55rem 0" }}>{saveMsg}</span>
               )}
               <button
                 type="button"
-                onClick={() => handleExport("printable-html")}
+                onClick={() => handleExport("lesson-pdf")}
                 className="nav-btn-ghost"
-                style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
-              >Export Printable</button>
+                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px" }}
+              >Export PDF</button>
               <button
                 type="button"
-                onClick={() => handleExport("slides-json")}
+                onClick={() => handleExport("slides-pptx")}
                 className="nav-btn-ghost"
-                style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
-              >Export Slides</button>
+                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px" }}
+              >Export PPTX</button>
               <button
                 type="button"
-                onClick={() => handleExport("worksheet-json")}
+                onClick={() => handleExport("worksheet-doc")}
                 className="nav-btn-ghost"
-                style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
+                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px" }}
               >Export Worksheet</button>
             </div>
           </div>
@@ -658,9 +883,9 @@ export default function LessonPackPage() {
               </div>
             )}
 
-            {/* Plenary */}
+            {/* Review and Reflect */}
             <div className="card">
-              <SectionLabel>Plenary</SectionLabel>
+              <SectionLabel>Review and Reflect</SectionLabel>
               <p style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.7, color: "var(--text)" }}>{pack.plenary}</p>
             </div>
 
@@ -708,8 +933,8 @@ export default function LessonPackPage() {
 
           </div>{/* /sections */}
 
-          {/* Export result */}
-          {exportResult && (
+          {/* Export result — removed: exports now trigger direct downloads */}
+          {exportResult && false && (
             <div className="card" style={{ marginTop: "1.25rem" }}>
               <SectionLabel color="var(--muted)">Export Result</SectionLabel>
               <pre style={{

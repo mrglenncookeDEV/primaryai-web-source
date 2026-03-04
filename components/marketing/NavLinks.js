@@ -6,9 +6,7 @@ import { createPortal } from "react-dom";
 import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
-  { href: "/features", label: "Features" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/faq", label: "FAQ" },
+  // Intentionally empty for now: keep pages available, but hide from main nav.
 ];
 
 export default function NavLinks({ session }) {
@@ -30,8 +28,6 @@ export default function NavLinks({ session }) {
 
   const appLinks = session
     ? [
-        { href: "/lesson-pack", label: "Lesson Pack" },
-        { href: "/library", label: "Library" },
         { href: "/settings", label: "Settings" },
       ]
     : [];

@@ -16,6 +16,9 @@ function getMessage(searchParams) {
     const raw = decodeURIComponent(searchParams.error).replace(/\+/g, " ");
     return { text: normaliseError(raw), isError: true };
   }
+  if (searchParams?.verify) {
+    return { text: "Check your email to verify your account before signing in.", isError: false };
+  }
   if (searchParams?.registered) return { text: "Account created — you can sign in now.", isError: false };
   if (searchParams?.verified) return { text: "Email verified — you can sign in now.", isError: false };
   return null;
@@ -181,6 +184,10 @@ export default async function LoginPage({ searchParams }) {
               />
             </div>
 
+            <p className="auth-secondary-link" style={{ marginTop: "-0.2rem", marginBottom: "0.85rem" }}>
+              <Link href={`/forgot-password?next=${encodeURIComponent(next)}`}>Forgotten password?</Link>
+            </p>
+
             <button className="auth-submit" type="submit">
               Sign in
             </button>
@@ -193,6 +200,10 @@ export default async function LoginPage({ searchParams }) {
           <p className="auth-secondary-link">
             Need to share feedback forms?{" "}
             <Link href="/survey">Open public surveys</Link>
+          </p>
+          <p className="auth-secondary-link">
+            Didn&apos;t get your verification email?{" "}
+            <Link href="/resend-verification">Resend verification email</Link>
           </p>
         </div>
       </section>

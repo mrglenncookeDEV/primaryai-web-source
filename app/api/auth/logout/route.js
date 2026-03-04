@@ -11,6 +11,13 @@ export async function POST(request) {
     path: "/",
     maxAge: 0,
   });
+  response.cookies.set("pa_profile_complete", "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
 
   // Best-effort sign-out for Supabase session state.
   const supabase = getSupabaseAnonClient();

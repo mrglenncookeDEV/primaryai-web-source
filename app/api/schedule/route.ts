@@ -38,7 +38,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Schedule store unavailable" }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true, events: data });
+  return NextResponse.json(
+    { ok: true, events: data },
+    { headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" } },
+  );
 }
 
 export async function POST(req: Request) {
@@ -48,10 +51,30 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { lessonPackId, title, subject, yearGroup, scheduledDate, startTime, endTime, notes } = body ?? {};
+  const {
+    lessonPackId,
+    title,
+    subject,
+    yearGroup,
+    scheduledDate,
+    startTime,
+    endTime,
+    notes,
+    eventType,
+    eventCategory,
+  } = body ?? {};
 
-  if (!lessonPackId || !title || !subject || !yearGroup || !scheduledDate || !startTime || !endTime) {
+  const resolvedEventType = eventType === "custom" ? "custom" : "lesson_pack";
+  const resolvedTitle = String(title || "").trim();
+  const resolvedSubject = String(subject || "").trim() || (resolvedEventType === "custom" ? "General" : "");
+  const resolvedYearGroup = String(yearGroup || "").trim() || (resolvedEventType === "custom" ? "All Years" : "");
+
+  if (!resolvedTitle || !resolvedSubject || !resolvedYearGroup || !scheduledDate || !startTime || !endTime) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  if (resolvedEventType === "lesson_pack" && !lessonPackId) {
+    return NextResponse.json({ error: "lessonPackId is required for lesson pack events" }, { status: 400 });
   }
 
   if (startTime >= endTime) {
@@ -67,14 +90,16 @@ export async function POST(req: Request) {
     .from("lesson_schedule")
     .insert({
       user_id: session.userId,
-      lesson_pack_id: lessonPackId,
-      title,
-      subject,
-      year_group: yearGroup,
+      lesson_pack_id: resolvedEventType === "lesson_pack" ? lessonPackId : null,
+      title: resolvedTitle,
+      subject: resolvedSubject,
+      year_group: resolvedYearGroup,
       scheduled_date: scheduledDate,
       start_time: startTime,
       end_time: endTime,
       notes: notes ?? null,
+      event_type: resolvedEventType,
+      event_category: resolvedEventType === "custom" ? String(eventCategory || "").trim() || null : null,
     })
     .select()
     .single();
