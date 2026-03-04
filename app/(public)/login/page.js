@@ -36,9 +36,10 @@ const CheckIcon = () => (
   </svg>
 );
 
-export default function LoginPage({ searchParams }) {
-  const message = getMessage(searchParams || {});
-  const next = searchParams?.next ? String(searchParams.next) : "/dashboard";
+export default async function LoginPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const message = getMessage(resolvedSearchParams || {});
+  const next = resolvedSearchParams?.next ? String(resolvedSearchParams.next) : "/dashboard";
 
   return (
     <main className="auth-layout">
@@ -187,6 +188,10 @@ export default function LoginPage({ searchParams }) {
           <p className="auth-switch">
             No account yet?{" "}
             <Link href="/signup">Create one</Link>
+          </p>
+          <p className="auth-secondary-link">
+            Need to share feedback forms?{" "}
+            <Link href="/survey">Open public surveys</Link>
           </p>
         </div>
       </section>

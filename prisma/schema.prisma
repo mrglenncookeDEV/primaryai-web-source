@@ -17,8 +17,6 @@ model User {
   sessions      Session[]
 
   teacherProfile TeacherProfile?
-  lessonPacks    LessonPack[]
-  generationLogs GenerationLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -87,8 +85,6 @@ model LessonPack {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId, createdAt])
 }
 
@@ -101,8 +97,6 @@ model GenerationLog {
   success   Boolean   @default(true)
   reason    String?
   createdAt DateTime  @default(now()) @map("created_at")
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
 }

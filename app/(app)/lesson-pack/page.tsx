@@ -23,9 +23,13 @@ type LessonPackResponse = LessonPack | { error: string };
 type ExportResponse = { ok: boolean; format: string; data: unknown } | { error: string };
 
 const YEAR_GROUPS = ["Reception", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
-const SUBJECTS = [
-  "Maths", "English", "Science", "History", "Geography",
-  "Art & Design", "Music", "PE", "PSHE", "Computing", "RE", "French", "Spanish",
+
+const SUBJECT_GROUPS = [
+  { label: "Core Subjects", subjects: ["Maths", "English", "Science"] },
+  { label: "Humanities", subjects: ["History", "Geography"] },
+  { label: "Arts & Technology", subjects: ["Art and Design", "Design and Technology", "Music", "Computing"] },
+  { label: "Physical & Wellbeing", subjects: ["PE", "PSHE", "RE"] },
+  { label: "Modern Foreign Languages", subjects: ["French", "Spanish", "German", "Mandarin", "Modern Foreign Languages"] },
 ];
 
 function isPack(r: LessonPackResponse): r is LessonPack {
@@ -109,7 +113,7 @@ function SlideCard({ slide, index }: { slide: { title: string; bullets: string[]
       minWidth: "256px",
       maxWidth: "272px",
       flexShrink: 0,
-      background: "rgba(14, 24, 46, 0.7)",
+      background: "var(--surface)",
       display: "flex",
       flexDirection: "column",
     }}>
@@ -186,7 +190,8 @@ export default function LessonPackPage() {
   const [result, setResult] = useState<LessonPackResponse | null>(null);
   const [exportResult, setExportResult] = useState<ExportResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<string>("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveMsg, setSaveMsg] = useState("");
 
   useEffect(() => {
     void (async () => {
@@ -208,7 +213,8 @@ export default function LessonPackPage() {
     setLoading(true);
     setResult(null);
     setExportResult(null);
-    setSaveStatus("");
+    setSaveState("idle");
+    setSaveMsg("");
     try {
       const res = await fetch("/api/lesson-pack", {
         method: "POST",
@@ -232,15 +238,21 @@ export default function LessonPackPage() {
   }
 
   async function handleManualSave() {
-    if (!result || !isPack(result)) return;
-    setSaveStatus("Saving…");
+    if (!result || !isPack(result) || saveState === "saving" || saveState === "saved") return;
+    setSaveState("saving");
+    setSaveMsg("");
     const res = await fetch("/api/library", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pack: result }),
     });
     const data = await res.json();
-    setSaveStatus(res.ok ? "Saved to library" : (data?.error ?? "Save failed"));
+    if (res.ok) {
+      setSaveState("saved");
+    } else {
+      setSaveState("error");
+      setSaveMsg(res.status === 401 ? "Sign in to save to your library" : (data?.error ?? "Save failed"));
+    }
   }
 
   const pack = result && isPack(result) ? result : null;
@@ -303,16 +315,37 @@ export default function LessonPackPage() {
 
             <div className="field">
               <label>Subject</label>
-              <input
-                list="subjects-list"
-                placeholder="e.g. Maths, Science…"
+              <select
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
                 required
-              />
-              <datalist id="subjects-list">
-                {SUBJECTS.map((s) => <option key={s} value={s} />)}
-              </datalist>
+                style={{
+                  border: "1px solid var(--border)",
+                  background: "var(--field-bg)",
+                  color: form.subject ? "var(--text)" : "var(--muted)",
+                  borderRadius: "10px",
+                  padding: "0.62rem 0.7rem",
+                  fontSize: "0.9rem",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  cursor: "pointer",
+                  transition: "border-color 180ms ease",
+                  appearance: "none" as const,
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2393a4bf' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 0.75rem center",
+                  paddingRight: "2.2rem",
+                }}
+              >
+                <option value="" disabled>Select subject…</option>
+                {SUBJECT_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.subjects.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
             </div>
 
             <div className="field">
@@ -447,18 +480,30 @@ export default function LessonPackPage() {
 
             {/* Action buttons */}
             <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-              {!pack._meta?.autoSaved && (
+              {!pack._meta?.autoSaved && saveState !== "saved" && (
                 <button
                   type="button"
                   onClick={handleManualSave}
+                  disabled={saveState === "saving"}
                   className="nav-btn-ghost"
-                  style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
+                  style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem", opacity: saveState === "saving" ? 0.65 : 1, display: "flex", alignItems: "center", gap: "0.4rem" }}
                 >
-                  {saveStatus || "Save to Library"}
+                  {saveState === "saving" ? (
+                    <>
+                      <span style={{ width: "10px", height: "10px", border: "1.5px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 0.65s linear infinite" }} />
+                      Saving…
+                    </>
+                  ) : "Save to Library"}
                 </button>
               )}
-              {saveStatus && pack._meta?.autoSaved && (
-                <span style={{ fontSize: "0.8rem", color: "var(--muted)", padding: "0.45rem 0" }}>{saveStatus}</span>
+              {(pack._meta?.autoSaved || saveState === "saved") && (
+                <span style={{ fontSize: "0.8rem", color: "#4ade80", padding: "0.45rem 0", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z" /></svg>
+                  Saved to library
+                </span>
+              )}
+              {saveState === "error" && saveMsg && (
+                <span style={{ fontSize: "0.78rem", color: "#fc8181", padding: "0.45rem 0" }}>{saveMsg}</span>
               )}
               <button
                 type="button"
@@ -510,7 +555,7 @@ export default function LessonPackPage() {
             <div className="card">
               <SectionLabel color="var(--orange)">Worked Example</SectionLabel>
               <div style={{
-                background: "rgba(0, 0, 0, 0.22)",
+                background: "var(--field-bg)",
                 borderRadius: "10px",
                 padding: "1rem 1.1rem",
                 fontSize: "0.87rem",
@@ -518,7 +563,7 @@ export default function LessonPackPage() {
                 color: "var(--text)",
                 whiteSpace: "pre-wrap" as const,
                 fontFamily: "inherit",
-                border: "1px solid rgba(255, 159, 67, 0.1)",
+                border: "1px solid rgba(255, 159, 67, 0.18)",
               }}>{pack.worked_example}</div>
             </div>
 
@@ -651,7 +696,7 @@ export default function LessonPackPage() {
                 fontSize: "0.77rem",
                 color: "var(--muted)",
                 overflowX: "auto",
-                background: "rgba(0,0,0,0.2)",
+                background: "var(--field-bg)",
                 borderRadius: "8px",
                 padding: "0.75rem",
                 lineHeight: 1.55,

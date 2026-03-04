@@ -79,10 +79,6 @@ export default function LandingHero() {
         the models and polishing the interface.
       </p>
 
-      <div className="landing-loader">
-        <div className="landing-progress" />
-      </div>
-
       <p className="landing-footer-note">
         Launching Spring 2026 | Design & Build by{" "}
         <a className="landing-onepoint-link" href="https://www.onepointconsult.com">
@@ -91,11 +87,8 @@ export default function LandingHero() {
       </p>
 
       <div className="landing-cta-row">
-        <Link className="chip" href="/pricing">
-          View Plans
-        </Link>
-        <Link className="chip" href="/dashboard">
-          Open App
+        <Link className="landing-thoughts-btn" href="/survey">
+          Your Thoughts
         </Link>
       </div>
     </section>

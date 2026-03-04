@@ -581,11 +581,7 @@ export async function generateLessonPackWithMeta(req: LessonPackRequest): Promis
   }
 
   const objectives = await retrieveObjectives(req.year_group, req.subject, req.topic);
-  if (objectives.length === 0) {
-    throw new Error(
-      `No UK curriculum objectives found for ${req.year_group} ${req.subject} topic "${req.topic}". Try a more specific curriculum topic.`
-    );
-  }
+  // Non-fatal: if no objectives found, the AI generates appropriate ones from year group + subject context.
 
   const teacherProfile = req.profile ?? null;
 

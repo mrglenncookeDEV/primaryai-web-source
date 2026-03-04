@@ -69,32 +69,37 @@ function fallbackRetrieveObjectives(year_group: string, subject: string, topic: 
     return [];
   }
 
+  // All objectives for this year group + subject
+  const yearSubjectItems = (curriculum as CurriculumItem[]).filter(
+    (c) => c.yearGroup === canonicalYearGroup && c.subject === canonicalSubject,
+  );
+
+  if (yearSubjectItems.length === 0) {
+    // Broaden to any objectives for the year group if subject not found
+    return (curriculum as CurriculumItem[])
+      .filter((c) => c.yearGroup === canonicalYearGroup)
+      .slice(0, 5)
+      .map((c) => c.text);
+  }
+
   const normalizedTopic = topic.toLowerCase();
   const topicTokens = new Set(tokenizeTopic(topic));
 
-  return (curriculum as CurriculumItem[])
-    .filter((c) => {
-      if (c.yearGroup !== canonicalYearGroup || c.subject !== canonicalSubject) {
-        return false;
-      }
+  // Score by keyword relevance
+  const scored = yearSubjectItems.map((c) => {
+    const keywordScore = c.keywords.reduce((score, keyword) => {
+      const normalizedKeyword = keyword.toLowerCase();
+      if (normalizedTopic.includes(normalizedKeyword)) return score + 2;
+      const keywordTokens = normalizedKeyword.split(/\W+/).filter((token) => token.length > 2);
+      if (keywordTokens.some((token) => topicTokens.has(token))) return score + 1;
+      return score;
+    }, 0);
+    return { text: c.text, score: keywordScore };
+  });
 
-      const keywordScore = c.keywords.reduce((score, keyword) => {
-        const normalizedKeyword = keyword.toLowerCase();
-        if (normalizedTopic.includes(normalizedKeyword)) {
-          return score + 2;
-        }
-
-        const keywordTokens = normalizedKeyword.split(/\W+/).filter((token) => token.length > 2);
-        if (keywordTokens.some((token) => topicTokens.has(token))) {
-          return score + 1;
-        }
-
-        return score;
-      }, 0);
-
-      return keywordScore > 0;
-    })
-    .map((c) => c.text);
+  // Return topic-matched objectives first; fall back to all year+subject objectives so we never return empty
+  const matched = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+  return (matched.length > 0 ? matched : scored).map((s) => s.text);
 }
 
 export async function searchObjectives(

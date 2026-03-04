@@ -1,224 +1,199 @@
 [
-  {
-    "yearGroup": "Year 1",
-    "subject": "Maths",
-    "keywords": ["place value", "number", "counting"],
-    "text": "Count to and across 100, forwards and backwards, beginning with 0 or 1, or from any given number."
-  },
-  {
-    "yearGroup": "Year 1",
-    "subject": "Maths",
-    "keywords": ["addition", "subtraction", "number bonds"],
-    "text": "Represent and use number bonds and related subtraction facts within 20."
-  },
-  {
-    "yearGroup": "Year 1",
-    "subject": "English",
-    "keywords": ["phonics", "graphemes", "sounds"],
-    "text": "Apply phonic knowledge and skills as the route to decode words."
-  },
-  {
-    "yearGroup": "Year 1",
-    "subject": "English",
-    "keywords": ["sentence", "capital letters", "punctuation"],
-    "text": "Sequence sentences to form short narratives and use capital letters and full stops correctly."
-  },
-  {
-    "yearGroup": "Year 1",
-    "subject": "Science",
-    "keywords": ["plants", "trees", "flowers"],
-    "text": "Identify and name a variety of common wild and garden plants, including deciduous and evergreen trees."
-  },
-  {
-    "yearGroup": "Year 1",
-    "subject": "Geography",
-    "keywords": ["weather", "seasons", "uk"],
-    "text": "Observe and describe seasonal and daily weather patterns in the United Kingdom."
-  },
-  {
-    "yearGroup": "Year 2",
-    "subject": "Maths",
-    "keywords": ["place value", "hundreds", "partition"],
-    "text": "Recognise the place value of each digit in a two-digit number and compare and order numbers to at least 100."
-  },
-  {
-    "yearGroup": "Year 2",
-    "subject": "Maths",
-    "keywords": ["multiplication", "division", "arrays"],
-    "text": "Recall and use multiplication and division facts for the 2, 5 and 10 multiplication tables."
-  },
-  {
-    "yearGroup": "Year 2",
-    "subject": "English",
-    "keywords": ["expanded noun phrase", "grammar", "writing"],
-    "text": "Develop positive attitudes towards writing by writing for different purposes with expanded noun phrases."
-  },
-  {
-    "yearGroup": "Year 2",
-    "subject": "Science",
-    "keywords": ["materials", "properties", "uses"],
-    "text": "Identify and compare the suitability of everyday materials for particular uses."
-  },
-  {
-    "yearGroup": "Year 2",
-    "subject": "Geography",
-    "keywords": ["continents", "oceans", "world map"],
-    "text": "Name and locate the world’s seven continents and five oceans."
-  },
-  {
-    "yearGroup": "Year 2",
-    "subject": "History",
-    "keywords": ["events beyond living memory", "timeline", "great fire of london"],
-    "text": "Develop awareness of the past through events beyond living memory and place them on a simple timeline."
-  },
-  {
-    "yearGroup": "Year 3",
-    "subject": "Maths",
-    "keywords": ["multiplication", "division", "times tables"],
-    "text": "Recall and use multiplication and division facts for the 3, 4 and 8 multiplication tables."
-  },
-  {
-    "yearGroup": "Year 3",
-    "subject": "Maths",
-    "keywords": ["fractions", "unit fractions", "non-unit fractions"],
-    "text": "Recognise, find and write fractions of a discrete set of objects and compare simple fractions."
-  },
-  {
-    "yearGroup": "Year 3",
-    "subject": "English",
-    "keywords": ["paragraphs", "headings", "organisation"],
-    "text": "Organise writing into paragraphs around a theme and use headings and sub-headings."
-  },
-  {
-    "yearGroup": "Year 3",
-    "subject": "Science",
-    "keywords": ["forces", "magnets", "attract"],
-    "text": "Compare how things move on different surfaces and notice that some forces need contact between objects."
-  },
-  {
-    "yearGroup": "Year 3",
-    "subject": "Geography",
-    "keywords": ["settlements", "land use", "human geography"],
-    "text": "Describe and understand key aspects of human geography, including types of settlement and land use."
-  },
-  {
-    "yearGroup": "Year 3",
-    "subject": "History",
-    "keywords": ["stone age", "bronze age", "iron age"],
-    "text": "Construct informed responses about changes in Britain from the Stone Age to the Iron Age."
-  },
-  {
-    "yearGroup": "Year 4",
-    "subject": "Maths",
-    "keywords": ["fractions", "equivalent fractions", "denominator"],
-    "text": "Recognise and show, using diagrams, families of common equivalent fractions."
-  },
-  {
-    "yearGroup": "Year 4",
-    "subject": "Maths",
-    "keywords": ["decimal", "tenths", "hundredths"],
-    "text": "Recognise and write decimal equivalents of any number of tenths or hundredths."
-  },
-  {
-    "yearGroup": "Year 4",
-    "subject": "English",
-    "keywords": ["fronted adverbials", "expanded noun phrases", "punctuation"],
-    "text": "Use fronted adverbials and commas after fronted adverbials in writing."
-  },
-  {
-    "yearGroup": "Year 4",
-    "subject": "Science",
-    "keywords": ["electricity", "circuits", "switch"],
-    "text": "Construct a simple series electrical circuit and identify whether a lamp will light."
-  },
-  {
-    "yearGroup": "Year 4",
-    "subject": "Geography",
-    "keywords": ["asia", "continent", "countries", "physical geography"],
-    "text": "Locate Asia’s countries using maps and identify key physical features such as major mountain ranges and rivers."
-  },
-  {
-    "yearGroup": "Year 4",
-    "subject": "Geography",
-    "keywords": ["asia", "human geography", "population", "cities"],
-    "text": "Describe key aspects of human geography in Asia, including population distribution and major cities."
-  },
-  {
-    "yearGroup": "Year 4",
-    "subject": "History",
-    "keywords": ["roman", "britain", "legacy"],
-    "text": "Understand the impact of Roman settlement and legacy in Britain."
-  },
-  {
-    "yearGroup": "Year 5",
-    "subject": "Maths",
-    "keywords": ["fractions", "improper fractions", "mixed numbers"],
-    "text": "Convert between mixed numbers and improper fractions and compare fractions with different denominators."
-  },
-  {
-    "yearGroup": "Year 5",
-    "subject": "Maths",
-    "keywords": ["percentages", "decimals", "fraction equivalence"],
-    "text": "Recognise and use percent symbol and understand percentages as fractions with denominator 100."
-  },
-  {
-    "yearGroup": "Year 5",
-    "subject": "English",
-    "keywords": ["relative clauses", "modal verbs", "writing"],
-    "text": "Use relative clauses beginning with who, which, where, when, whose, that and omitted relative pronouns."
-  },
-  {
-    "yearGroup": "Year 5",
-    "subject": "Science",
-    "keywords": ["earth", "space", "orbit", "solar system"],
-    "text": "Describe the movement of Earth and other planets relative to the Sun in the solar system."
-  },
-  {
-    "yearGroup": "Year 5",
-    "subject": "Geography",
-    "keywords": ["biomes", "vegetation belts", "climate zones"],
-    "text": "Understand geographical similarities and differences through the study of biomes and climate zones."
-  },
-  {
-    "yearGroup": "Year 5",
-    "subject": "History",
-    "keywords": ["anglo-saxons", "vikings", "struggle for kingdom"],
-    "text": "Study Britain’s settlement by Anglo-Saxons and Vikings and the struggle for the Kingdom of England."
-  },
-  {
-    "yearGroup": "Year 6",
-    "subject": "Maths",
-    "keywords": ["ratio", "proportion", "scaling"],
-    "text": "Solve problems involving the relative sizes of two quantities where missing values can be found by using ratio."
-  },
-  {
-    "yearGroup": "Year 6",
-    "subject": "Maths",
-    "keywords": ["algebra", "formula", "unknown"],
-    "text": "Use simple formulae and express missing number problems algebraically."
-  },
-  {
-    "yearGroup": "Year 6",
-    "subject": "English",
-    "keywords": ["formal writing", "cohesion", "passive"],
-    "text": "Use a range of devices to build cohesion within and across paragraphs in formal and informal writing."
-  },
-  {
-    "yearGroup": "Year 6",
-    "subject": "Science",
-    "keywords": ["evolution", "inheritance", "adaptation"],
-    "text": "Recognise that living things have changed over time and that fossils provide information about living things in the past."
-  },
-  {
-    "yearGroup": "Year 6",
-    "subject": "Geography",
-    "keywords": ["trade", "economic activity", "distribution of resources"],
-    "text": "Understand key aspects of human geography, including economic activity and distribution of natural resources."
-  },
-  {
-    "yearGroup": "Year 6",
-    "subject": "History",
-    "keywords": ["civil rights", "impact", "twentieth century"],
-    "text": "Study a significant turning point in British and world history and evaluate its long-term impact."
-  }
+  { "yearGroup": "Reception", "subject": "Maths", "keywords": ["counting", "number", "objects", "order"], "text": "Count reliably with numbers from 1 to 20, place them in order and say which number is one more or one less than a given number." },
+  { "yearGroup": "Reception", "subject": "Maths", "keywords": ["shape", "space", "measure", "size", "weight", "capacity"], "text": "Use everyday language to talk about size, weight, capacity, position, distance, time and money to compare quantities and objects." },
+  { "yearGroup": "Reception", "subject": "Maths", "keywords": ["adding", "subtracting", "number bonds", "calculation"], "text": "Using quantities and objects, add and subtract two single-digit numbers and count on or back to find the answer." },
+  { "yearGroup": "Reception", "subject": "English", "keywords": ["phonics", "letters", "sounds", "reading", "decode"], "text": "Link sounds to letters, naming and sounding the letters of the alphabet, and begin to read words and simple sentences." },
+  { "yearGroup": "Reception", "subject": "English", "keywords": ["writing", "name", "mark making", "pencil", "handwriting"], "text": "Use a pencil and hold it effectively to form recognisable letters and begin to write own name and words." },
+  { "yearGroup": "Reception", "subject": "English", "keywords": ["speaking", "listening", "stories", "vocabulary", "language"], "text": "Listen attentively in a range of situations, follow instructions, and develop vocabulary by being exposed to new words in context." },
+  { "yearGroup": "Reception", "subject": "Science", "keywords": ["animals", "living things", "plants", "nature", "pets", "minibeasts"], "text": "Explore and observe the natural world including animals and plants; begin to make sense of the physical world through exploration." },
+  { "yearGroup": "Reception", "subject": "Science", "keywords": ["seasons", "weather", "environment", "change", "autumn", "winter", "spring", "summer"], "text": "Talk about features of their immediate environment and how environments vary across the seasons and in different places." },
+
+  { "yearGroup": "Year 1", "subject": "Maths", "keywords": ["place value", "number", "counting", "tens", "ones", "order"], "text": "Count to and across 100, forwards and backwards; read and write numbers from 1 to 100 in numerals and words; identify one more and one less." },
+  { "yearGroup": "Year 1", "subject": "Maths", "keywords": ["addition", "subtraction", "number bonds", "fact families", "missing number"], "text": "Represent and use number bonds and related subtraction facts within 20; add and subtract one-digit and two-digit numbers to 20." },
+  { "yearGroup": "Year 1", "subject": "Maths", "keywords": ["multiplication", "division", "grouping", "sharing", "arrays", "repeated addition", "times tables"], "text": "Solve one-step problems involving multiplication and division using concrete objects, pictorial representations and arrays." },
+  { "yearGroup": "Year 1", "subject": "Maths", "keywords": ["fractions", "half", "quarter", "equal parts", "whole"], "text": "Recognise, find and name a half as one of two equal parts and a quarter as one of four equal parts of a shape or quantity." },
+  { "yearGroup": "Year 1", "subject": "Maths", "keywords": ["measurement", "length", "height", "weight", "mass", "capacity", "time", "clock", "days", "weeks", "months"], "text": "Compare, describe and solve practical problems for lengths, weights/masses, capacity/volume and time; measure and record." },
+  { "yearGroup": "Year 1", "subject": "Maths", "keywords": ["shape", "2D", "3D", "geometry", "circle", "triangle", "square", "rectangle", "cube", "sphere", "cylinder"], "text": "Recognise and name common 2-D and 3-D shapes including rectangles, squares, circles, triangles, cuboids, pyramids and spheres." },
+  { "yearGroup": "Year 1", "subject": "Maths", "keywords": ["position", "direction", "turns", "left", "right", "movement", "sequence"], "text": "Describe position, direction and movement including whole, half, quarter and three-quarter turns." },
+  { "yearGroup": "Year 1", "subject": "English", "keywords": ["phonics", "graphemes", "sounds", "decoding", "blending"], "text": "Apply phonic knowledge and skills as the primary route to decode words; read aloud phonically decodable books accurately." },
+  { "yearGroup": "Year 1", "subject": "English", "keywords": ["reading", "comprehension", "books", "texts", "stories", "non-fiction", "poems"], "text": "Develop pleasure in reading and vocabulary by listening to and discussing a wide range of poems, stories and non-fiction." },
+  { "yearGroup": "Year 1", "subject": "English", "keywords": ["sentence", "capital letters", "punctuation", "full stops", "question marks", "exclamation marks"], "text": "Sequence sentences to form short narratives; use capital letters, full stops, question marks and exclamation marks correctly." },
+  { "yearGroup": "Year 1", "subject": "English", "keywords": ["handwriting", "writing", "letters", "pencil grip", "joins", "formation"], "text": "Sit correctly at a table and form lower-case letters in the correct direction, starting and finishing in the right place." },
+  { "yearGroup": "Year 1", "subject": "English", "keywords": ["spelling", "phonics", "common words", "word list", "segmenting"], "text": "Spell words containing each of the 40+ phonemes and common exception words for Year 1; name the letters of the alphabet in order." },
+  { "yearGroup": "Year 1", "subject": "Science", "keywords": ["plants", "trees", "flowers", "leaves", "roots", "stem", "seeds", "bulbs", "growing", "wild", "garden"], "text": "Identify and name a variety of common wild and garden plants including deciduous and evergreen trees; describe the basic structure of flowering plants." },
+  { "yearGroup": "Year 1", "subject": "Science", "keywords": ["animals", "fish", "amphibians", "reptiles", "birds", "mammals", "invertebrates", "carnivore", "herbivore", "omnivore"], "text": "Identify and name a variety of common animals; describe and compare the structure of animals including fish, amphibians, reptiles, birds and mammals." },
+  { "yearGroup": "Year 1", "subject": "Science", "keywords": ["senses", "body", "humans", "head", "arms", "legs", "parts of the body", "sight", "hearing", "smell", "taste", "touch"], "text": "Identify, name, draw and label the basic parts of the human body and say which part of the body is associated with each sense." },
+  { "yearGroup": "Year 1", "subject": "Science", "keywords": ["materials", "objects", "wood", "plastic", "glass", "metal", "water", "rock", "properties"], "text": "Distinguish between an object and the material from which it is made; identify and name a variety of everyday materials." },
+  { "yearGroup": "Year 1", "subject": "Science", "keywords": ["seasons", "weather", "daylight", "night", "winter", "summer", "spring", "autumn"], "text": "Observe changes across the four seasons; observe and describe weather associated with the seasons and how day length varies." },
+  { "yearGroup": "Year 1", "subject": "History", "keywords": ["family", "past", "memories", "photograph", "timeline", "living memory", "childhood", "change"], "text": "Develop awareness of the past using common words and phrases relating to time; discuss changes within and beyond living memory." },
+  { "yearGroup": "Year 1", "subject": "History", "keywords": ["significant person", "famous", "queen", "king", "explorer", "inventor", "local history"], "text": "Learn about the lives of significant individuals in the past who have contributed to national and international achievements." },
+  { "yearGroup": "Year 1", "subject": "Geography", "keywords": ["weather", "seasons", "UK", "climate", "hot", "cold", "rain", "snow"], "text": "Observe and describe seasonal and daily weather patterns in the United Kingdom and how they affect daily life." },
+  { "yearGroup": "Year 1", "subject": "Geography", "keywords": ["map", "atlas", "globe", "countries", "continents", "oceans", "compass", "UK", "England", "Scotland", "Wales"], "text": "Name and locate the world's seven continents and five oceans; name and locate the four countries of the UK and their capital cities." },
+  { "yearGroup": "Year 1", "subject": "Geography", "keywords": ["local area", "school", "neighbourhood", "fieldwork", "aerial", "human", "physical"], "text": "Understand geographical similarities and differences through studying the human and physical geography of their local area." },
+  { "yearGroup": "Year 1", "subject": "Computing", "keywords": ["algorithm", "instructions", "steps", "sequence", "programming", "robot", "Beebot"], "text": "Understand what algorithms are and how they are implemented as programs; create and debug simple programs using logical reasoning." },
+  { "yearGroup": "Year 1", "subject": "Art and Design", "keywords": ["painting", "drawing", "colour", "materials", "exploring", "sculpture", "craft"], "text": "Use a range of materials creatively to design and make products; use drawing, painting and sculpture to develop and share ideas." },
+  { "yearGroup": "Year 1", "subject": "Music", "keywords": ["singing", "rhythm", "pulse", "pitch", "listening", "chants", "rhymes", "percussion"], "text": "Use voice expressively by singing songs and speaking chants and rhymes; listen with concentration to music from different traditions." },
+  { "yearGroup": "Year 1", "subject": "PE", "keywords": ["running", "jumping", "throwing", "catching", "fundamental", "movement", "balance", "agility", "coordination"], "text": "Master basic movements including running, jumping, throwing and catching; develop balance, agility and co-ordination." },
+  { "yearGroup": "Year 1", "subject": "RE", "keywords": ["religion", "belief", "Christian", "God", "community", "faith", "church", "stories", "Bible"], "text": "Explore different religious beliefs, stories and practices; begin to understand the importance of religion for believers." },
+  { "yearGroup": "Year 1", "subject": "PSHE", "keywords": ["feelings", "emotions", "friends", "healthy", "relationships", "kind", "safe", "rules", "family"], "text": "Recognise and manage feelings; understand how to keep healthy and safe; develop positive relationships with others." },
+  { "yearGroup": "Year 1", "subject": "Design and Technology", "keywords": ["design", "make", "evaluate", "tools", "materials", "product", "food", "cut", "join", "finish"], "text": "Design purposeful, functional and appealing products; select from and use a range of tools and materials to perform practical tasks." },
+  { "yearGroup": "Year 1", "subject": "French", "keywords": ["greetings", "numbers", "colours", "animals", "family", "listening", "speaking", "vocabulary"], "text": "Listen and respond to simple spoken French; begin to recognise and use basic vocabulary for greetings, numbers and colours." },
+
+  { "yearGroup": "Year 2", "subject": "Maths", "keywords": ["place value", "two-digit", "tens", "ones", "partition", "compare", "order", "hundred"], "text": "Recognise the place value of each digit in a two-digit number; compare and order numbers from 0 up to 100; use <, > and = signs." },
+  { "yearGroup": "Year 2", "subject": "Maths", "keywords": ["addition", "subtraction", "mental methods", "column", "inverse", "two-digit"], "text": "Add and subtract numbers using concrete objects, pictorial representations and mental methods including two-digit numbers." },
+  { "yearGroup": "Year 2", "subject": "Maths", "keywords": ["multiplication", "division", "times tables", "arrays", "repeated addition", "2 5 10", "sharing", "grouping"], "text": "Recall and use multiplication and division facts for the 2, 5 and 10 multiplication tables; write multiplication and division statements." },
+  { "yearGroup": "Year 2", "subject": "Maths", "keywords": ["fractions", "third", "quarter", "half", "equivalent", "equal parts"], "text": "Recognise, find, name and write fractions 1/3, 1/4, 2/4 and 3/4 of a length, shape, set of objects or quantity." },
+  { "yearGroup": "Year 2", "subject": "Maths", "keywords": ["measurement", "length", "mass", "weight", "temperature", "money", "capacity", "time", "clock", "calendar", "minutes", "hours"], "text": "Choose and use appropriate standard units to estimate and measure length/height, mass, temperature and capacity; tell and write the time to five minutes." },
+  { "yearGroup": "Year 2", "subject": "Maths", "keywords": ["shape", "properties", "2D", "3D", "vertices", "edges", "faces", "symmetry", "line of symmetry"], "text": "Identify and describe properties of 2-D and 3-D shapes including the number of sides, vertices, edges and faces; identify lines of symmetry." },
+  { "yearGroup": "Year 2", "subject": "Maths", "keywords": ["statistics", "data", "pictogram", "tally", "block diagram", "interpret", "table"], "text": "Interpret and construct simple pictograms, tally charts, block diagrams and tables; ask and answer simple questions about totalling and comparing." },
+  { "yearGroup": "Year 2", "subject": "English", "keywords": ["expanded noun phrase", "grammar", "writing", "describe", "noun", "adjective"], "text": "Write for different purposes using expanded noun phrases; develop positive attitudes towards writing and stamina for writing at length." },
+  { "yearGroup": "Year 2", "subject": "English", "keywords": ["punctuation", "apostrophe", "comma", "inverted commas", "direct speech", "speech marks"], "text": "Learn how to use punctuation correctly including apostrophes for contraction, commas in lists and inverted commas for direct speech." },
+  { "yearGroup": "Year 2", "subject": "English", "keywords": ["reading", "inference", "decode", "comprehension", "fluency", "predict", "retell"], "text": "Read aloud books; develop understanding by predicting, inferring and asking questions; check that the text makes sense." },
+  { "yearGroup": "Year 2", "subject": "English", "keywords": ["spelling", "suffix", "prefix", "homophones", "word list", "Year 2", "common exception words"], "text": "Segment spoken words into phonemes; add suffixes to spell longer words; learn words from the Year 2 statutory word list." },
+  { "yearGroup": "Year 2", "subject": "Science", "keywords": ["materials", "properties", "uses", "hard", "soft", "waterproof", "transparent", "flexible", "comparing"], "text": "Identify and compare the suitability of everyday materials for particular uses; find out how the shapes of solid objects can be changed." },
+  { "yearGroup": "Year 2", "subject": "Science", "keywords": ["animals", "habitats", "food chains", "microhabitat", "survival", "shelter", "food", "water"], "text": "Explore habitats and the animals that live in them; identify food chains and the conditions that animals need to survive." },
+  { "yearGroup": "Year 2", "subject": "Science", "keywords": ["plants", "seeds", "bulbs", "germination", "growing", "conditions", "light", "water", "soil"], "text": "Observe and describe how seeds and bulbs grow into mature plants; find out what plants need to grow and stay healthy." },
+  { "yearGroup": "Year 2", "subject": "Science", "keywords": ["humans", "body", "health", "exercise", "hygiene", "nutrition", "diet", "food", "offspring", "growth"], "text": "Find out about and describe the basic needs of animals for survival; describe the importance of exercise, eating the right amount of food and hygiene." },
+  { "yearGroup": "Year 2", "subject": "History", "keywords": ["events beyond living memory", "timeline", "great fire of london", "significant", "past", "present", "change"], "text": "Develop awareness of the past through events beyond living memory that are significant nationally and place them on a simple timeline." },
+  { "yearGroup": "Year 2", "subject": "History", "keywords": ["significant person", "Florence Nightingale", "Neil Armstrong", "Rosa Parks", "achievement", "impact"], "text": "Learn about the lives of significant individuals in the past who have contributed to national and international achievements." },
+  { "yearGroup": "Year 2", "subject": "Geography", "keywords": ["continents", "oceans", "world map", "UK", "countries", "capital cities", "compass", "north", "south", "east", "west"], "text": "Name and locate the world's seven continents and five oceans; locate the countries and capital cities of the United Kingdom." },
+  { "yearGroup": "Year 2", "subject": "Geography", "keywords": ["hot", "cold", "polar", "equator", "climate", "seasons", "tropical", "arctic", "weather patterns"], "text": "Identify seasonal and daily weather patterns in the UK and locate hot and cold areas of the world in relation to the Equator and the Poles." },
+  { "yearGroup": "Year 2", "subject": "Computing", "keywords": ["algorithm", "program", "debug", "sequence", "instructions", "coding", "Scratch", "Beebot"], "text": "Design, write and debug programs that accomplish specific goals; use sequence in programs and detect and correct errors." },
+  { "yearGroup": "Year 2", "subject": "Art and Design", "keywords": ["drawing", "painting", "colour mixing", "primary", "secondary", "sculpture", "craft", "artist", "design"], "text": "Use drawing, painting and sculpture to develop and share ideas; learn about the work of a range of artists and designers." },
+  { "yearGroup": "Year 2", "subject": "Music", "keywords": ["singing", "rhythm", "beat", "pulse", "pitch", "instruments", "composition", "untuned", "tuned"], "text": "Play tuned and untuned instruments musically; listen with concentration; begin to experiment with creating short compositions." },
+  { "yearGroup": "Year 2", "subject": "PE", "keywords": ["games", "team", "ball skills", "athletics", "gymnastics", "dance", "coordination", "balance", "flexibility"], "text": "Participate in team games, developing simple tactics; perform dances using simple movement patterns; develop coordination and balance." },
+  { "yearGroup": "Year 2", "subject": "PSHE", "keywords": ["health", "safety", "feelings", "bullying", "help", "community", "money", "relationships", "online", "growth"], "text": "Understand the importance of physical activity; know how to stay safe and when to ask for help; recognise and manage feelings." },
+  { "yearGroup": "Year 2", "subject": "Design and Technology", "keywords": ["mechanisms", "wheels", "axles", "moving", "design", "evaluate", "levers", "sliders", "food"], "text": "Explore and use mechanisms such as levers, sliders, wheels and axles in products; design, make and evaluate functional products." },
+  { "yearGroup": "Year 2", "subject": "RE", "keywords": ["Christianity", "Islam", "festivals", "Diwali", "Easter", "Eid", "Hanukkah", "beliefs", "celebrations", "stories"], "text": "Learn about religious and cultural celebrations; understand how they are observed and make connections between stories and beliefs." },
+  { "yearGroup": "Year 2", "subject": "French", "keywords": ["greetings", "numbers", "colours", "classroom", "vocabulary", "speaking", "listening", "songs"], "text": "Listen attentively and respond to spoken French; use basic vocabulary for greetings, numbers, colours and classroom objects." },
+
+  { "yearGroup": "Year 3", "subject": "Maths", "keywords": ["place value", "hundreds", "thousands", "partition", "round", "count", "multiples", "100 1000"], "text": "Recognise the place value of each digit in a three-digit number; count from 0 in multiples of 4, 8, 50 and 100; round to nearest 10 or 100." },
+  { "yearGroup": "Year 3", "subject": "Maths", "keywords": ["addition", "subtraction", "column method", "mental", "estimation", "three-digit"], "text": "Add and subtract numbers with up to three digits using formal written methods of columnar addition and subtraction; estimate the answer to a calculation." },
+  { "yearGroup": "Year 3", "subject": "Maths", "keywords": ["multiplication", "division", "times tables", "3 4 8", "mental", "written methods", "scaling"], "text": "Recall and use multiplication and division facts for the 3, 4 and 8 multiplication tables; write and calculate mathematical statements for multiplication and division." },
+  { "yearGroup": "Year 3", "subject": "Maths", "keywords": ["fractions", "unit fractions", "non-unit fractions", "equivalent", "compare", "number line", "tenths"], "text": "Count up and down in tenths; recognise and find fractions of objects and quantities; recognise and show equivalent fractions." },
+  { "yearGroup": "Year 3", "subject": "Maths", "keywords": ["measurement", "perimeter", "length", "mass", "capacity", "time", "money", "roman numerals", "measure"], "text": "Measure, compare, add and subtract lengths, mass/weight, volume and capacity; measure the perimeter of simple 2-D shapes; tell and write the time from an analogue clock." },
+  { "yearGroup": "Year 3", "subject": "Maths", "keywords": ["shape", "angles", "right angle", "horizontal", "vertical", "perpendicular", "parallel", "properties"], "text": "Recognise angles as a property of shape; identify right angles, perpendicular and parallel lines; describe properties of 2-D and 3-D shapes." },
+  { "yearGroup": "Year 3", "subject": "Maths", "keywords": ["statistics", "bar chart", "pictogram", "data", "table", "interpret", "compare"], "text": "Interpret and present data using bar charts, pictograms and tables; solve one and two-step questions using information in scaled bar charts." },
+  { "yearGroup": "Year 3", "subject": "English", "keywords": ["paragraphs", "headings", "subheadings", "organisation", "non-fiction", "structure"], "text": "Organise writing into paragraphs around a theme; use headings and sub-headings to aid presentation; write non-fiction texts." },
+  { "yearGroup": "Year 3", "subject": "English", "keywords": ["conjunctions", "adverbs", "prepositions", "grammar", "word classes", "time", "cause", "place"], "text": "Extend sentences using a wider range of conjunctions; use conjunctions, adverbs and prepositions to express time, place and cause." },
+  { "yearGroup": "Year 3", "subject": "English", "keywords": ["reading", "inference", "retrieval", "discuss", "vocabulary", "poetry", "plays", "non-fiction"], "text": "Listen to and discuss a broad range of fiction, poetry, plays and non-fiction; predict and infer meaning from texts." },
+  { "yearGroup": "Year 3", "subject": "English", "keywords": ["spelling", "prefixes", "suffixes", "homophones", "word families", "dictionary", "Year 3 word list"], "text": "Use further prefixes and suffixes to spell longer words; use dictionaries to check spelling; learn Year 3 statutory word list." },
+  { "yearGroup": "Year 3", "subject": "Science", "keywords": ["forces", "magnets", "attract", "repel", "poles", "magnetic", "contact", "non-contact"], "text": "Compare how things move on different surfaces; observe that some forces need contact between two objects; describe how magnets attract and repel." },
+  { "yearGroup": "Year 3", "subject": "Science", "keywords": ["light", "shadows", "reflection", "dark", "sun", "luminous", "transparent", "opaque"], "text": "Recognise that they need light to see things; notice that light is reflected from surfaces; describe how shadows are formed and find patterns in how they change." },
+  { "yearGroup": "Year 3", "subject": "Science", "keywords": ["rocks", "fossils", "soil", "igneous", "sedimentary", "metamorphic", "permeable", "impermeable"], "text": "Compare and group rocks based on appearance and physical properties; describe how fossils are formed; recognise that soils are made from rocks and organic matter." },
+  { "yearGroup": "Year 3", "subject": "Science", "keywords": ["animals", "skeleton", "muscles", "nutrition", "diet", "nutrients", "health", "food groups", "protein", "carbohydrate"], "text": "Identify that animals including humans need the right types and amount of nutrition; identify that humans and some other animals have skeletons and muscles for support, protection and movement." },
+  { "yearGroup": "Year 3", "subject": "Science", "keywords": ["plants", "flowering", "pollination", "seed dispersal", "life cycle", "germination", "functions", "stem", "roots", "leaves", "petals"], "text": "Identify and describe the functions of different parts of flowering plants; explore the requirements of plants for life and growth; investigate seed dispersal." },
+  { "yearGroup": "Year 3", "subject": "History", "keywords": ["stone age", "bronze age", "iron age", "prehistoric", "hunter gatherer", "farming", "Stonehenge", "cave paintings"], "text": "Construct informed responses about changes in Britain from the Stone Age to the Iron Age including hunter-gatherers and early farmers." },
+  { "yearGroup": "Year 3", "subject": "History", "keywords": ["ancient Egypt", "pharaoh", "mummies", "pyramids", "Nile", "hieroglyphs", "gods", "civilisation", "Tutankhamun", "Cleopatra"], "text": "Study Ancient Egypt as a civilisation, exploring beliefs, achievements and social structure including the role of pharaohs and the importance of the River Nile." },
+  { "yearGroup": "Year 3", "subject": "Geography", "keywords": ["settlements", "land use", "human geography", "villages", "towns", "cities", "trade", "economic"], "text": "Describe key aspects of human geography including types of settlement, land use, economic activity and trade links." },
+  { "yearGroup": "Year 3", "subject": "Geography", "keywords": ["mountains", "volcanoes", "earthquakes", "rivers", "physical geography", "landscape", "climate", "tectonic"], "text": "Describe key aspects of physical geography including rivers, mountains, volcanoes and earthquakes; understand their impact on people." },
+  { "yearGroup": "Year 3", "subject": "Geography", "keywords": ["Europe", "countries", "capital cities", "regions", "UK regions", "map", "atlas"], "text": "Locate the countries of Europe using maps; name and locate major cities; understand geographical similarities and differences." },
+  { "yearGroup": "Year 3", "subject": "Computing", "keywords": ["networks", "internet", "website", "communication", "search engine", "online safety", "email"], "text": "Understand computer networks including the internet; appreciate how information is shared across networks; understand online safety." },
+  { "yearGroup": "Year 3", "subject": "Computing", "keywords": ["programming", "Scratch", "loops", "repetition", "sequence", "variables", "debug", "algorithm"], "text": "Design and write programs using sequence and repetition; use variables; use logical reasoning to debug programs." },
+  { "yearGroup": "Year 3", "subject": "Art and Design", "keywords": ["sketchbook", "technique", "texture", "form", "painting", "printmaking", "sculpture", "3D", "artist"], "text": "Improve mastery of art and design techniques including drawing, painting and sculpture; learn about great artists and their work." },
+  { "yearGroup": "Year 3", "subject": "Music", "keywords": ["notation", "composition", "dynamics", "tempo", "pitch", "rhythm", "melody", "structure", "instruments"], "text": "Use musical vocabulary; begin to use staff notation; compose music using structure and a range of musical elements." },
+  { "yearGroup": "Year 3", "subject": "PE", "keywords": ["swimming", "athletics", "gymnastics", "dance", "games", "fitness", "strength", "flexibility", "teamwork"], "text": "Use running, jumping, throwing and catching in isolation and in combination; apply skills in games; develop flexibility and strength." },
+  { "yearGroup": "Year 3", "subject": "PSHE", "keywords": ["relationships", "bullying", "online safety", "drugs", "alcohol", "emotions", "puberty", "body changes", "media"], "text": "Understand how to maintain healthy relationships; recognise bullying and how to respond; learn about online safety." },
+  { "yearGroup": "Year 3", "subject": "Design and Technology", "keywords": ["structures", "stable", "frame", "bridge", "strengthen", "shell", "design", "evaluate", "load", "stiff"], "text": "Understand and use structural components; design, make and evaluate structures that are stable and load-bearing." },
+  { "yearGroup": "Year 3", "subject": "RE", "keywords": ["Judaism", "Christianity", "Islam", "Hinduism", "worship", "prayer", "sacred texts", "pilgrimage", "festivals", "Torah", "Quran", "Bible"], "text": "Learn about the practices and beliefs of different religious traditions; explore sacred texts and places of worship." },
+  { "yearGroup": "Year 3", "subject": "French", "keywords": ["greetings", "numbers", "colours", "classroom", "vocabulary", "speaking", "listening", "reading", "writing", "animals", "food"], "text": "Listen attentively and respond to spoken French; begin to read simple French words and phrases; use numbers, colours and everyday vocabulary." },
+
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["place value", "thousands", "four-digit", "round", "negative numbers", "count", "multiples", "roman numerals"], "text": "Count in multiples of 6, 7, 9, 25 and 1000; recognise the place value of each digit in a four-digit number; round any number to the nearest 10, 100 or 1000." },
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["addition", "subtraction", "column method", "estimation", "mental arithmetic", "four-digit"], "text": "Add and subtract numbers with up to 4 digits using efficient written methods; estimate and use inverse operations to check answers." },
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["multiplication", "division", "times tables", "6 7 9 11 12", "mental", "short division", "correspondence"], "text": "Recall multiplication and division facts for multiplication tables up to 12 × 12; use place value and mental methods to multiply and divide." },
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["fractions", "equivalent fractions", "denominator", "numerator", "add", "subtract", "compare"], "text": "Recognise and show families of common equivalent fractions; add and subtract fractions with the same denominator; count up and down in hundredths." },
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["decimal", "tenths", "hundredths", "money", "measure", "compare", "order", "round"], "text": "Recognise and write decimal equivalents of any number of tenths or hundredths; compare numbers with the same number of decimal places up to two decimal places." },
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["measurement", "area", "perimeter", "convert", "units", "metric", "time", "analogue", "digital", "12-hour", "24-hour"], "text": "Convert between different units of measure; measure and calculate the perimeter of a rectilinear figure; find the area of rectilinear shapes by counting squares." },
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["shape", "angles", "acute", "obtuse", "symmetry", "coordinates", "quadrilateral", "triangle", "classify", "polygon"], "text": "Compare and classify geometric shapes based on their properties; identify acute and obtuse angles; identify lines of symmetry; describe positions on a 2-D grid." },
+  { "yearGroup": "Year 4", "subject": "Maths", "keywords": ["statistics", "line graph", "bar chart", "discrete", "continuous", "interpret", "compare", "sum", "difference"], "text": "Interpret and present discrete and continuous data using appropriate graphical methods; solve comparison, sum and difference problems." },
+  { "yearGroup": "Year 4", "subject": "English", "keywords": ["fronted adverbials", "expanded noun phrases", "comma", "grammar", "direct speech", "inverted commas", "punctuate"], "text": "Use fronted adverbials and commas after fronted adverbials; use and punctuate direct speech; use Standard English and understand informal speech." },
+  { "yearGroup": "Year 4", "subject": "English", "keywords": ["reading", "inference", "themes", "conventions", "text type", "non-fiction", "poetry", "justify"], "text": "Identify and discuss themes and conventions across a wide range of writing; justify inferences with evidence from the text." },
+  { "yearGroup": "Year 4", "subject": "English", "keywords": ["narrative", "descriptive writing", "stories", "creative writing", "character", "plot", "setting", "atmosphere", "draft"], "text": "Plan, draft and write narratives creating settings, characters and plot; evaluate and edit writing by checking for errors in grammar, punctuation and spelling." },
+  { "yearGroup": "Year 4", "subject": "English", "keywords": ["spelling", "word families", "root words", "homophones", "Year 4 word list", "dictionary", "thesaurus"], "text": "Use further prefixes and suffixes; use word families based on common words; spell words from the Year 4 statutory word list." },
+  { "yearGroup": "Year 4", "subject": "Science", "keywords": ["electricity", "circuits", "switch", "conductor", "insulator", "bulb", "battery", "buzzer", "wire", "components"], "text": "Construct a simple series electrical circuit; identify and name the components; predict whether a lamp will light; recognise conductors and insulators." },
+  { "yearGroup": "Year 4", "subject": "Science", "keywords": ["animals", "digestion", "teeth", "food chains", "producers", "consumers", "predators", "prey", "herbivore", "carnivore"], "text": "Describe the simple functions of the basic parts of the digestive system; identify different types of teeth; construct and interpret varied food chains." },
+  { "yearGroup": "Year 4", "subject": "Science", "keywords": ["sound", "vibration", "pitch", "volume", "travel", "medium", "ear", "hearing", "loudness", "quiet"], "text": "Identify how sounds are made when objects vibrate; find patterns between pitch of sound and features of the object; understand that sounds get fainter with distance." },
+  { "yearGroup": "Year 4", "subject": "Science", "keywords": ["states of matter", "solid", "liquid", "gas", "evaporation", "condensation", "melting", "freezing", "water cycle", "temperature"], "text": "Compare and group materials according to whether they are solids, liquids or gases; observe materials change state when heated or cooled; describe the water cycle." },
+  { "yearGroup": "Year 4", "subject": "History", "keywords": ["roman", "britain", "invasion", "emperor", "Boudicca", "settlement", "legacy", "roads", "bath", "Chester"], "text": "Understand the impact of Roman settlement and legacy in Britain including invasion, resistance, infrastructure and everyday life." },
+  { "yearGroup": "Year 4", "subject": "History", "keywords": ["ancient Greece", "democracy", "Athens", "Sparta", "Olympics", "mythology", "philosophy", "civilisation", "Alexander", "gods"], "text": "Study ancient Greece as a civilisation and its influence on the western world including democracy, art, architecture and the Olympic Games." },
+  { "yearGroup": "Year 4", "subject": "Geography", "keywords": ["rivers", "water cycle", "drainage", "flood", "erosion", "tributary", "source", "mouth", "meander", "deposition"], "text": "Describe and understand the physical geography of rivers including erosion, deposition and the water cycle; name and locate major rivers." },
+  { "yearGroup": "Year 4", "subject": "Geography", "keywords": ["rainforest", "deforestation", "biome", "Amazon", "climate", "ecosystem", "canopy", "layers", "species"], "text": "Understand the geographical features of tropical rainforests; explore the impact of deforestation and environmental challenges." },
+  { "yearGroup": "Year 4", "subject": "Geography", "keywords": ["Asia", "continent", "countries", "physical geography", "mountains", "Himalayas", "rivers", "population", "cities"], "text": "Locate Asia's countries using maps; identify key physical features such as mountain ranges and rivers; compare with the UK." },
+  { "yearGroup": "Year 4", "subject": "Computing", "keywords": ["programming", "Scratch", "variables", "selection", "if", "condition", "repeat", "game", "design"], "text": "Use sequence, selection and repetition in programs; work with variables; design and create programs that accomplish specific goals." },
+  { "yearGroup": "Year 4", "subject": "Computing", "keywords": ["data", "spreadsheet", "database", "collect", "organise", "present", "analyse", "survey"], "text": "Select, use and combine software to collect, organise and present data; analyse data to answer questions." },
+  { "yearGroup": "Year 4", "subject": "Art and Design", "keywords": ["watercolour", "printmaking", "collage", "artist", "Monet", "Warhol", "style", "influence", "clay", "3D"], "text": "Develop art and design techniques; explore the work of artists, craftspeople and designers from different cultures and time periods." },
+  { "yearGroup": "Year 4", "subject": "Music", "keywords": ["notation", "melody", "harmony", "improvisation", "composition", "samba", "orchestra", "instruments", "ensemble"], "text": "Play and perform in ensemble contexts; improvise and compose using musical elements; read and write musical notation." },
+  { "yearGroup": "Year 4", "subject": "PE", "keywords": ["invasion games", "football", "rugby", "netball", "hockey", "attacking", "defending", "tactics", "teamwork", "strategy"], "text": "Apply a broader range of skills; learn how to use skills in different ways; work effectively in a team using attacking and defending tactics." },
+  { "yearGroup": "Year 4", "subject": "PSHE", "keywords": ["puberty", "growing up", "health", "relationships", "emotions", "online safety", "media", "peer pressure", "first aid"], "text": "Understand physical and emotional changes; develop strategies for managing feelings; understand healthy relationships and online safety." },
+  { "yearGroup": "Year 4", "subject": "Design and Technology", "keywords": ["electrical systems", "circuits", "programmable", "control", "design", "evaluate", "product", "sewing", "textiles"], "text": "Apply understanding of computing to program and control products; design and make products with electrical or mechanical systems." },
+  { "yearGroup": "Year 4", "subject": "RE", "keywords": ["Hinduism", "Buddhism", "Sikhism", "dharma", "karma", "meditation", "worship", "scripture", "Guru", "Gurdwara", "Mandir"], "text": "Explore the beliefs, practices and key figures of major world religions; make connections between beliefs and ways of life." },
+  { "yearGroup": "Year 4", "subject": "French", "keywords": ["food", "family", "home", "town", "directions", "shopping", "conversation", "reading", "writing", "gender", "nouns", "articles"], "text": "Engage in conversations about familiar topics; read and write simple sentences in French; understand grammatical patterns including gender of nouns." },
+
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["place value", "millions", "powers of ten", "negative numbers", "round", "order", "compare"], "text": "Read, write, order and compare numbers to at least 1,000,000 and determine the value of each digit; round any number up to 1,000,000 to the nearest 10, 100, 1,000, 10,000 and 100,000." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["addition", "subtraction", "multi-step", "mental arithmetic", "estimation", "inverse", "large numbers"], "text": "Add and subtract whole numbers with more than 4 digits using formal written methods; use rounding to check answers; solve multi-step problems." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["multiplication", "division", "long multiplication", "short division", "factors", "prime", "composite", "square numbers", "cube numbers"], "text": "Multiply numbers up to 4 digits by a two-digit number using long multiplication; identify prime numbers, factors, multiples; recognise and use square and cube numbers." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["fractions", "improper fractions", "mixed numbers", "add", "subtract", "multiply", "compare", "order", "denominator"], "text": "Convert between mixed numbers and improper fractions; compare and order fractions with different denominators; add and subtract fractions with the same and different denominators." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["percentages", "decimals", "fraction equivalence", "percent", "proportion", "convert", "thousandths"], "text": "Recognise and use the percent symbol; understand percentages as fractions with denominator 100; write percentages as a fraction and as a decimal." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["measurement", "area", "perimeter", "volume", "convert", "metric", "imperial", "rectangle", "capacity"], "text": "Calculate and compare the area of rectangles; estimate the volume and capacity of cuboids; convert between different units of metric measure." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["geometry", "angles", "reflex", "coordinates", "translation", "reflection", "3D shapes", "nets", "degrees", "protractor"], "text": "Identify 3-D shapes from 2-D representations; know angles are measured in degrees; estimate, draw and measure angles; use coordinates in all four quadrants." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["statistics", "line graph", "data", "mean", "average", "interpret", "construct", "timetable"], "text": "Complete, read and interpret information in tables including timetables; calculate and interpret the mean as an average." },
+  { "yearGroup": "Year 5", "subject": "Maths", "keywords": ["ratio", "proportion", "scale", "problem solving", "relative size", "unequal sharing"], "text": "Solve problems involving ratio and proportion; understand relative sizes and scales; solve problems involving scaling by simple fractions." },
+  { "yearGroup": "Year 5", "subject": "English", "keywords": ["relative clauses", "modal verbs", "grammar", "conjunctions", "cohesion", "passive", "colons", "semicolons"], "text": "Use relative clauses beginning with who, which, where, when, whose, that; use modal verbs to indicate degrees of possibility; use colons and semicolons to mark boundaries." },
+  { "yearGroup": "Year 5", "subject": "English", "keywords": ["narrative", "character", "dialogue", "setting", "atmosphere", "creative writing", "story", "tension", "suspense"], "text": "Plan, draft and write narratives with complex characters and settings; integrate dialogue to convey character; create atmosphere and tension." },
+  { "yearGroup": "Year 5", "subject": "English", "keywords": ["non-fiction", "report", "persuasion", "argument", "debate", "formal", "writing for purpose", "audience"], "text": "Write for a range of real purposes and audiences; distinguish between formal and informal registers; write persuasively with reasoned argument." },
+  { "yearGroup": "Year 5", "subject": "English", "keywords": ["reading", "poetry", "literature", "author", "themes", "infer", "summarise", "compare", "evaluate"], "text": "Draw inferences and justify with evidence; identify how language, structure and presentation contribute to meaning; discuss and evaluate how authors use language." },
+  { "yearGroup": "Year 5", "subject": "Science", "keywords": ["earth", "space", "orbit", "solar system", "planets", "moon", "sun", "gravity", "day", "night", "asteroids"], "text": "Describe the movement of Earth and other planets relative to the Sun; describe the movement of the Moon relative to Earth; explain day and night using the rotation of the Earth." },
+  { "yearGroup": "Year 5", "subject": "Science", "keywords": ["forces", "gravity", "air resistance", "water resistance", "friction", "mechanisms", "pulleys", "levers", "gears"], "text": "Explain that unsupported objects fall towards Earth because of gravity; identify effects of air and water resistance and friction; recognise that simple machines allow a smaller force to have a greater effect." },
+  { "yearGroup": "Year 5", "subject": "Science", "keywords": ["animals", "life cycles", "reproduction", "metamorphosis", "mammals", "insects", "birds", "amphibians", "growth", "development"], "text": "Describe the life cycles of animals including mammals, amphibians, insects and birds; describe the changes as humans develop to old age." },
+  { "yearGroup": "Year 5", "subject": "Science", "keywords": ["materials", "properties", "reversible", "irreversible", "dissolving", "filtering", "evaporating", "separating", "mixtures", "solution"], "text": "Compare and group materials based on their properties; explain that some materials dissolve to form a solution; use knowledge to decide how to recover substances from mixtures." },
+  { "yearGroup": "Year 5", "subject": "History", "keywords": ["ancient Egypt", "pharaoh", "mummies", "Nile", "hieroglyphs", "gods", "civilisation", "Tutankhamun", "pyramids"], "text": "Develop detailed understanding of Ancient Egyptian civilisation including beliefs, achievements, social structure and the role of the Nile." },
+  { "yearGroup": "Year 5", "subject": "History", "keywords": ["anglo-saxons", "vikings", "settlement", "kingdom", "Danes", "Alfred the Great", "raids", "Danelaw", "monasteries"], "text": "Study Britain's settlement by Anglo-Saxons and Vikings; understand the struggle for the Kingdom of England to the time of Edward the Confessor." },
+  { "yearGroup": "Year 5", "subject": "History", "keywords": ["World War Two", "WW2", "Second World War", "Blitz", "evacuation", "rationing", "Holocaust", "D-Day", "home front"], "text": "Study the causes and key events of the Second World War; understand the impact on Britain and the wider world including evacuation, the Blitz and the Holocaust." },
+  { "yearGroup": "Year 5", "subject": "Geography", "keywords": ["biomes", "vegetation belts", "climate zones", "tropical", "tundra", "desert", "rainforest", "savanna"], "text": "Understand geographical similarities and differences through the study of biomes and climate zones; describe key aspects of physical geography." },
+  { "yearGroup": "Year 5", "subject": "Geography", "keywords": ["North America", "USA", "Canada", "Mexico", "continent", "countries", "states", "rivers", "mountains"], "text": "Locate the countries of North and South America; describe key physical and human characteristics; compare with UK geography." },
+  { "yearGroup": "Year 5", "subject": "Geography", "keywords": ["trade", "economy", "fair trade", "import", "export", "globalisation", "resources", "development"], "text": "Understand the distribution of natural resources and economic activity; explore concepts of fair trade and globalisation." },
+  { "yearGroup": "Year 5", "subject": "Computing", "keywords": ["programming", "Python", "text-based", "functions", "variables", "debugging", "algorithm", "decomposition"], "text": "Use a text-based programming language; understand how to design, write and debug programs using functions and variables." },
+  { "yearGroup": "Year 5", "subject": "Computing", "keywords": ["networks", "internet", "search", "evaluating", "reliability", "plagiarism", "copyright", "online safety", "data security"], "text": "Understand how computer networks including the internet work; evaluate online information for reliability; understand copyright and data security." },
+  { "yearGroup": "Year 5", "subject": "Art and Design", "keywords": ["perspective", "proportion", "shading", "portraiture", "artist study", "collage", "digital art", "mixed media"], "text": "Develop mastery of art and design techniques; study great artists from different cultures; explore perspective, portraiture and mixed media." },
+  { "yearGroup": "Year 5", "subject": "Music", "keywords": ["chord", "harmony", "jazz", "blues", "improvisation", "composition", "notation", "performance", "ensemble"], "text": "Play and perform with increasing confidence; improvise within given structures; compose using more complex musical forms; read musical notation." },
+  { "yearGroup": "Year 5", "subject": "PE", "keywords": ["athletics", "swimming", "competitive", "performance", "health", "fitness", "technique", "evaluate", "strategy", "tactics"], "text": "Apply and develop a broader range of skills; evaluate and recognise their own success; compare performances with previous ones." },
+  { "yearGroup": "Year 5", "subject": "PSHE", "keywords": ["mental health", "wellbeing", "puberty", "relationships", "consent", "online safety", "careers", "finance", "money"], "text": "Understand mental health and wellbeing strategies; explore puberty and healthy relationships; develop financial literacy and career awareness." },
+  { "yearGroup": "Year 5", "subject": "Design and Technology", "keywords": ["food", "nutrition", "healthy eating", "cooking", "recipe", "ingredients", "hygiene", "seasonality", "diet"], "text": "Understand and apply the principles of a healthy and varied diet; cook a range of savoury dishes; understand seasonality and provenance of ingredients." },
+  { "yearGroup": "Year 5", "subject": "RE", "keywords": ["Buddhism", "Sikhism", "Islam", "Christianity", "pilgrimage", "rites of passage", "ethics", "moral", "Mecca", "Hajj"], "text": "Explore ethical and moral questions from a religious perspective; learn about pilgrimage, rites of passage and religious codes of conduct." },
+  { "yearGroup": "Year 5", "subject": "French", "keywords": ["past tense", "future tense", "grammar", "conversation", "reading", "writing", "culture", "opinions", "adjectives"], "text": "Use French past and future tenses; express and justify opinions; read and write extended passages; develop cultural understanding of Francophone countries." },
+
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["place value", "millions", "negative numbers", "round", "problem solving", "order", "compare", "ten million"], "text": "Read, write, order and compare numbers to at least 10,000,000; round any whole number to a required degree of accuracy; use negative numbers in context." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["addition", "subtraction", "multi-step problems", "order of operations", "BIDMAS", "BODMAS", "mental arithmetic"], "text": "Perform mental calculations with mixed operations and large numbers; use order of operations; solve multi-step problems involving fractions, decimals and percentages." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["multiplication", "division", "long division", "factors", "prime", "common factors", "multiples", "HCF", "LCM"], "text": "Multiply multi-digit numbers up to 4 digits by a two-digit whole number using long multiplication; divide numbers up to 4 digits by a two-digit number using long division." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["fractions", "multiply", "divide", "simplify", "equivalent", "percentage", "decimal", "recurring"], "text": "Use common factors to simplify fractions; add and subtract fractions with different denominators; multiply simple pairs of proper fractions; divide proper fractions by whole numbers." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["ratio", "proportion", "scaling", "unequal sharing", "relative size", "percentage", "recipe"], "text": "Solve problems involving the relative sizes of two quantities where missing values can be found by using integer multiplication and division; use ratio to solve scaling problems." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["algebra", "formula", "unknown", "variable", "equation", "linear sequences", "expression", "substitution"], "text": "Use simple formulae; generate and describe linear number sequences; express missing number problems algebraically; find pairs of numbers that satisfy an equation." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["measurement", "area", "perimeter", "volume", "convert", "units", "parallelogram", "triangle", "cuboid"], "text": "Solve problems involving calculation and conversion of units; calculate area of parallelograms and triangles; calculate, estimate and compare volume of cubes and cuboids." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["geometry", "circles", "angles", "interior angles", "polygon", "coordinates", "translation", "reflection", "nets", "3D", "degrees"], "text": "Draw 2-D shapes using given dimensions and angles; recognise, describe and build 3-D shapes; find unknown angles in triangles, quadrilaterals and regular polygons." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["statistics", "pie chart", "mean", "average", "line graph", "interpret", "construct", "calculate"], "text": "Interpret and construct pie charts and line graphs; calculate and interpret the mean as an average; solve comparison, sum and difference problems." },
+  { "yearGroup": "Year 6", "subject": "Maths", "keywords": ["SATs", "reasoning", "problem solving", "arithmetic", "revision", "test", "KS2", "fluency"], "text": "Apply mathematical reasoning to solve increasingly complex problems; explain methods and justify reasoning; prepare for KS2 assessments." },
+  { "yearGroup": "Year 6", "subject": "English", "keywords": ["formal writing", "cohesion", "passive", "subjunctive", "register", "vocabulary", "grammar", "complex sentences"], "text": "Use the passive voice; use the subjunctive form; use a range of cohesive devices; distinguish between formal and informal registers." },
+  { "yearGroup": "Year 6", "subject": "English", "keywords": ["narrative", "character", "suspense", "atmosphere", "creative writing", "techniques", "structure", "metaphor", "simile", "imagery"], "text": "Plan, draft and write narratives with complex characters, settings and plot structures; use literary devices including metaphor, simile and personification." },
+  { "yearGroup": "Year 6", "subject": "English", "keywords": ["reading", "authors", "text types", "evaluate", "compare", "themes", "bias", "perspective", "inference"], "text": "Read and discuss an increasing range of fiction, poetry, plays, non-fiction; evaluate how authors use language and structure to achieve effects." },
+  { "yearGroup": "Year 6", "subject": "English", "keywords": ["SATs", "grammar", "SPaG", "punctuation", "spelling", "test", "KS2", "preparation", "comprehension"], "text": "Consolidate grammar, punctuation and spelling knowledge in preparation for KS2 assessments; apply understanding across different text types." },
+  { "yearGroup": "Year 6", "subject": "Science", "keywords": ["evolution", "inheritance", "adaptation", "natural selection", "Darwin", "fossils", "species", "variation"], "text": "Recognise that living things have changed over time; that fossils provide information about the past; identify how animals and plants are adapted to their environment." },
+  { "yearGroup": "Year 6", "subject": "Science", "keywords": ["classification", "vertebrates", "invertebrates", "plants", "micro-organisms", "taxonomy", "Linnaeus", "keys"], "text": "Describe how living things are classified into broad groups; give reasons for classifying plants and animals based on specific characteristics; use classification keys." },
+  { "yearGroup": "Year 6", "subject": "Science", "keywords": ["electricity", "circuits", "voltage", "symbols", "series", "parallel", "resistance", "brightness", "components"], "text": "Associate the brightness of a lamp or volume of a buzzer with the number and voltage of cells; use recognised symbols when representing a circuit diagram." },
+  { "yearGroup": "Year 6", "subject": "Science", "keywords": ["light", "reflection", "refraction", "shadow", "spectrum", "eye", "see", "travel", "straight lines"], "text": "Recognise that light travels in straight lines; explain that we see objects because they give out or reflect light into the eye; explain shadows and refraction." },
+  { "yearGroup": "Year 6", "subject": "Science", "keywords": ["animals", "circulatory system", "heart", "blood", "nutrients", "exercise", "health", "lungs", "nutrients", "diet"], "text": "Identify the main parts of the human circulatory system; describe the functions of the heart, blood vessels and blood; recognise the impact of diet, exercise and lifestyle." },
+  { "yearGroup": "Year 6", "subject": "History", "keywords": ["World War One", "WW1", "Great War", "trenches", "soldiers", "armistice", "causes", "empire", "allies"], "text": "Study the causes and key events of World War One; understand life in the trenches and the war's impact on Britain and the British Empire." },
+  { "yearGroup": "Year 6", "subject": "History", "keywords": ["civil rights", "Martin Luther King", "Rosa Parks", "USA", "discrimination", "protest", "equality", "segregation"], "text": "Study a significant turning point in world history such as the civil rights movement; evaluate its long-term impact on society." },
+  { "yearGroup": "Year 6", "subject": "History", "keywords": ["democracy", "parliament", "monarchy", "government", "voting", "British values", "Magna Carta", "rights", "citizens"], "text": "Understand the development of democracy, parliament and the monarchy in Britain; explore key historical turning points including Magna Carta." },
+  { "yearGroup": "Year 6", "subject": "Geography", "keywords": ["trade", "economic activity", "resources", "natural resources", "globalisation", "import", "export", "development"], "text": "Understand human geography including economic activity, trade links and the distribution of natural resources including energy, food, minerals and water." },
+  { "yearGroup": "Year 6", "subject": "Geography", "keywords": ["Africa", "continent", "countries", "Sahara", "Nile", "wildlife", "development", "climate", "biomes"], "text": "Locate Africa's countries; study physical and human characteristics; compare quality of life and development indicators between African and UK regions." },
+  { "yearGroup": "Year 6", "subject": "Geography", "keywords": ["climate change", "global warming", "environment", "sustainability", "carbon footprint", "renewable", "pollution", "conservation"], "text": "Understand the causes and consequences of climate change; explore sustainability and how individuals and nations can respond to environmental challenges." },
+  { "yearGroup": "Year 6", "subject": "Computing", "keywords": ["python", "programming", "functions", "algorithm", "problem solving", "debugging", "variables", "data types", "loops"], "text": "Design, write and debug programs; use procedures and functions in a text-based language; understand data types and apply computational thinking." },
+  { "yearGroup": "Year 6", "subject": "Computing", "keywords": ["cybersecurity", "privacy", "online safety", "digital footprint", "encryption", "protect", "personal data"], "text": "Understand cybersecurity principles; protect digital privacy; evaluate online information critically; understand the risks of sharing personal data." },
+  { "yearGroup": "Year 6", "subject": "Art and Design", "keywords": ["artist", "architecture", "design", "critique", "style", "influence", "mixed media", "identity", "evaluate", "portfolio"], "text": "Develop art and design skills to a high level; study great artists and designers; create work inspired by their style; evaluate their own and others' work critically." },
+  { "yearGroup": "Year 6", "subject": "Music", "keywords": ["performance", "composition", "notation", "history of music", "appreciation", "genres", "musical theatre", "classical", "jazz", "pop"], "text": "Perform with increasing confidence, skill and expressiveness; compose music to create a specific effect; analyse music from different historical periods and genres." },
+  { "yearGroup": "Year 6", "subject": "PE", "keywords": ["leadership", "competition", "tactics", "fitness testing", "health", "lifestyle", "team sports", "evaluate", "coaching"], "text": "Develop leadership and coaching skills; take part in competitive sport; evaluate performance and lead others in physical activity." },
+  { "yearGroup": "Year 6", "subject": "PSHE", "keywords": ["transition", "secondary school", "identity", "mental health", "relationships", "consent", "careers", "financial literacy", "aspirations"], "text": "Prepare for transition to secondary school; understand mental health strategies; explore identity and self-esteem; develop understanding of healthy relationships and consent." },
+  { "yearGroup": "Year 6", "subject": "Design and Technology", "keywords": ["mechanical systems", "gears", "pulleys", "cams", "product design", "engineering", "evaluate", "prototype"], "text": "Understand and use mechanical systems including gears and cams; apply design principles to create sophisticated products that solve real problems." },
+  { "yearGroup": "Year 6", "subject": "RE", "keywords": ["worldviews", "humanism", "ethics", "moral dilemmas", "justice", "equality", "philosophy", "compare", "non-religious"], "text": "Explore philosophical and ethical questions; compare religious and non-religious worldviews; evaluate different responses to moral dilemmas." },
+  { "yearGroup": "Year 6", "subject": "French", "keywords": ["grammar", "tenses", "conversation", "culture", "francophone", "reading", "writing", "present", "past", "future", "extend"], "text": "Use a range of tenses and grammatical structures; engage in extended conversations; read and respond to longer texts; develop cultural understanding of Francophone countries." }
 ]

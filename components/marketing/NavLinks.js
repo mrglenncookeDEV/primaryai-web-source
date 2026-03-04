@@ -28,9 +28,18 @@ export default function NavLinks({ session }) {
 
   const close = () => setIsOpen(false);
 
+  const appLinks = session
+    ? [
+        { href: "/lesson-pack", label: "Lesson Pack" },
+        { href: "/library", label: "Library" },
+        { href: "/settings", label: "Settings" },
+      ]
+    : [];
+
   const allLinks = [
     ...navLinks,
     ...(session ? [{ href: "/dashboard", label: "Dashboard" }] : []),
+    ...appLinks,
   ];
 
   return (

@@ -20,7 +20,10 @@ const SUBJECT_ALIASES: Record<string, string> = {
   "design and technology": "Design and Technology",
   "design technology": "Design and Technology",
   "d&t": "Design and Technology",
+  "design & technology": "Design and Technology",
+  "d and t": "Design and Technology",
   "art and design": "Art and Design",
+  "art & design": "Art and Design",
   art: "Art and Design",
   music: "Music",
   pe: "PE",
@@ -28,6 +31,12 @@ const SUBJECT_ALIASES: Record<string, string> = {
   re: "RE",
   "religious education": "RE",
   pshe: "PSHE",
+  french: "French",
+  spanish: "Spanish",
+  mfl: "Modern Foreign Languages",
+  "modern foreign languages": "Modern Foreign Languages",
+  german: "German",
+  mandarin: "Mandarin",
 };
 
 export function canonicalizeYearGroup(input: string) {

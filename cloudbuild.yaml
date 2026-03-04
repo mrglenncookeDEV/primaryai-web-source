@@ -24,7 +24,7 @@ steps:
       - '--region=europe-west1'
       - '--platform=managed'
       - '--allow-unauthenticated'
-      - '--set-env-vars=NEXT_PUBLIC_APP_URL=https://primaryai.org.uk'
+      - '--set-env-vars=NEXT_PUBLIC_APP_URL=https://primaryai.org.uk,EMAILJS_SERVICE_ID=service_44xya8s,EMAILJS_TEMPLATE_ID=template_xrijjic,EMAILJS_PUBLIC_KEY=6GWld2SJWchcCEZmJ,EMAILJS_PRIVATE_KEY=-nojcRDB9fgELXZqE4yiE'
       - '--set-secrets=GROQ_API_KEY=GROQ_API_KEY:latest'
       - '--project=primary-ai-saas'
       - '--quiet'
