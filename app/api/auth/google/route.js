@@ -5,7 +5,10 @@ import crypto from "node:crypto";
 // generate a fresh state token and issue a fresh Set-Cookie header.
 export const dynamic = "force-dynamic";
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID ||
+  process.env.GOOGLE_OAUTH_CLIENT_ID ||
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 export async function GET(request) {

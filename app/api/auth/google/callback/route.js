@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAnonClient } from "@/lib/supabase";
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID ||
+  process.env.GOOGLE_OAUTH_CLIENT_ID ||
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET =
+  process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_OAUTH_CLIENT_SECRET;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 function setSessionCookie(response, user, isHttps) {
@@ -53,6 +57,12 @@ export async function GET(request) {
   if (!code) {
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent("Google sign-in failed — no authorisation code received")}`, base),
+    );
+  }
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent("Google sign-in is not configured on the server")}`, base),
     );
   }
 
