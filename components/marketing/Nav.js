@@ -1,7 +1,9 @@
 import Link from "next/link";
 import NavLinks from "./NavLinks";
+import { getAuthSession } from "@/lib/auth";
 
-export default function Nav({ session }) {
+export default async function Nav({ session }) {
+  const resolvedSession = session === undefined ? await getAuthSession() : session;
   return (
     <nav className="top-nav" aria-label="Site navigation">
       <Link href="/" className="nav-logo-link">
@@ -26,7 +28,7 @@ export default function Nav({ session }) {
           Pr<span className="nav-logo-orange">i</span>m<span className="nav-logo-orange">a</span>ry<span className="nav-logo-orange">A</span><span className="nav-logo-orange">I</span>
         </span>
       </Link>
-      <NavLinks session={session} />
+      <NavLinks session={resolvedSession ?? null} />
     </nav>
   );
 }

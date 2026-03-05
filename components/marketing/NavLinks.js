@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
@@ -11,7 +10,6 @@ const navLinks = [
 ];
 
 export default function NavLinks({ session }) {
-  const pathname = usePathname();
   const [resolvedSession, setResolvedSession] = useState(session ?? null);
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -21,60 +19,8 @@ export default function NavLinks({ session }) {
   }, []);
 
   useEffect(() => {
-    if (session !== undefined) {
-      setResolvedSession(session ?? null);
-      return;
-    }
-
-    function readSessionFromCookies() {
-      if (typeof document === "undefined") return null;
-      const entries = document.cookie.split(";").map((v) => v.trim()).filter(Boolean);
-
-      // Legacy app cookie first
-      const legacy = entries.find((entry) => entry.startsWith("pa_session="));
-      if (legacy) {
-        try {
-          const raw = decodeURIComponent(legacy.slice("pa_session=".length));
-          const parsed = JSON.parse(raw);
-          if (parsed?.userId || parsed?.email) {
-            return {
-              userId: String(parsed.userId || ""),
-              email: String(parsed.email || ""),
-            };
-          }
-        } catch {
-          // Ignore malformed cookie and continue fallback parsing.
-        }
-      }
-
-      // Supabase auth cookie fallback
-      const supabaseTokenCookie = entries.find((entry) => entry.includes("-auth-token="));
-      if (!supabaseTokenCookie) return null;
-
-      try {
-        const raw = decodeURIComponent(supabaseTokenCookie.slice(supabaseTokenCookie.indexOf("=") + 1));
-        const parsed = JSON.parse(raw);
-        const accessToken = Array.isArray(parsed)
-          ? parsed[0]
-          : typeof parsed?.access_token === "string"
-            ? parsed.access_token
-            : "";
-        if (!accessToken) return null;
-        const payloadPart = String(accessToken).split(".")[1];
-        if (!payloadPart) return null;
-        const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-        const payload = JSON.parse(atob(base64));
-        return {
-          userId: typeof payload?.sub === "string" ? payload.sub : "",
-          email: typeof payload?.email === "string" ? payload.email : "",
-        };
-      } catch {
-        return null;
-      }
-    }
-
-    setResolvedSession(readSessionFromCookies());
-  }, [session, pathname]);
+    setResolvedSession(session ?? null);
+  }, [session]);
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
