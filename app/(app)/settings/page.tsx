@@ -312,7 +312,7 @@ export default function SettingsPage() {
           color: "var(--text)",
         }}>Teacher Settings</h1>
         <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted)", lineHeight: 1.5 }}>
-          Personalise how Primary AI generates content for your class.
+          Personalise how PrimaryAI generates content for your class.
         </p>
       </div>
 

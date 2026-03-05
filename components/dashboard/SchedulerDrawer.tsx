@@ -102,6 +102,7 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncingOutlook, setSyncingOutlook] = useState(false);
+  const [syncingApple, setSyncingApple] = useState(false);
   const [error, setError] = useState("");
 
   const dragRef = useRef<PackItem | null>(null);
@@ -411,6 +412,28 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
     }
   }
 
+  async function handleSyncAppleCalendar() {
+    setSyncingApple(true);
+    setError("");
+    try {
+      const res = await fetch("/api/schedule/outlook-link");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.webcalUrl) {
+        throw new Error(data?.error || "Could not create Apple Calendar sync link");
+      }
+
+      if (typeof window !== "undefined") {
+        // Apple Calendar supports subscribing to webcal:// feeds directly.
+        window.location.assign(String(data.webcalUrl));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not open Apple Calendar sync. Please try again.";
+      setError(message);
+    } finally {
+      setSyncingApple(false);
+    }
+  }
+
   const selectedEventHref = useMemo(() => {
     if (!selectedEvent?.lessonPackId) return "/lesson-pack";
     return `/lesson-pack?id=${encodeURIComponent(selectedEvent.lessonPackId)}`;
@@ -481,6 +504,22 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
                 <path d="m4 12 4-3 4 3-4 3-4-3z" />
               </svg>
               {syncingOutlook ? "Preparing Outlook link…" : "Sync with Outlook"}
+            </button>
+            <button
+              className="scheduler-custom-sync-btn"
+              onClick={() => { void handleSyncAppleCalendar(); }}
+              disabled={syncingApple}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="#000"
+                aria-hidden="true"
+              >
+                <path d="M16.03 12.23c.01 2.48 2.18 3.31 2.2 3.32-.02.06-.35 1.2-1.15 2.38-.69 1.02-1.41 2.04-2.54 2.06-1.11.02-1.47-.66-2.75-.66-1.27 0-1.67.64-2.73.68-1.09.04-1.92-1.1-2.62-2.11-1.43-2.08-2.52-5.88-1.05-8.43.73-1.27 2.04-2.08 3.46-2.1 1.08-.02 2.1.73 2.75.73.64 0 1.84-.9 3.1-.77.53.02 2.02.21 2.98 1.62-.08.05-1.79 1.04-1.77 3.08zM14.9 4.64c.58-.7.97-1.68.86-2.64-.84.03-1.85.56-2.46 1.27-.54.62-1.02 1.62-.89 2.57.93.07 1.9-.48 2.49-1.2z" />
+              </svg>
+              {syncingApple ? "Preparing Apple link…" : "Sync with Apple"}
             </button>
             <button
               className="scheduler-custom-add-btn"

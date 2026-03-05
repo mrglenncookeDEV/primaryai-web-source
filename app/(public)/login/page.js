@@ -93,7 +93,7 @@ export default async function LoginPage({ searchParams }) {
           </ul>
         </div>
 
-        <p className="auth-brand-footer">© {new Date().getFullYear()} Primary AI. All rights reserved.</p>
+        <p className="auth-brand-footer">© {new Date().getFullYear()} PrimaryAI. All rights reserved.</p>
       </aside>
 
       {/* ── Right: form panel ── */}
@@ -123,7 +123,7 @@ export default async function LoginPage({ searchParams }) {
           </Link>
 
           <h1 className="auth-heading">Welcome back</h1>
-          <p className="auth-subheading">Sign in to your Primary AI account</p>
+          <p className="auth-subheading">Sign in to your PrimaryAI account</p>
 
           {message && (
             <div

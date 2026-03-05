@@ -4,7 +4,7 @@ import BackgroundScene from "@/components/BackgroundScene";
 import PageLoader from "@/components/PageLoader";
 
 export const metadata = {
-  title: "Primary AI",
+  title: "PrimaryAI",
   description: "AI-powered lesson planning and teaching tools built for primary school educators.",
   icons: {
     icon: "/icon.svg",

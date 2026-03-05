@@ -74,7 +74,7 @@ export default async function SignupPage({ searchParams }) {
           </ul>
         </div>
 
-        <p className="auth-brand-footer">© {new Date().getFullYear()} Primary AI. All rights reserved.</p>
+        <p className="auth-brand-footer">© {new Date().getFullYear()} PrimaryAI. All rights reserved.</p>
       </aside>
 
       {/* ── Right: form panel ── */}
@@ -104,7 +104,7 @@ export default async function SignupPage({ searchParams }) {
           </Link>
 
           <h1 className="auth-heading">Create your account</h1>
-          <p className="auth-subheading">Join thousands of educators using Primary AI</p>
+          <p className="auth-subheading">Join thousands of educators using PrimaryAI</p>
 
           {message && (
             <div
