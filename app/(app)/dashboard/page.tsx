@@ -1,11 +1,28 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { subjectColor } from "@/lib/subjectColor";
 import { ScheduleEventIcon } from "@/lib/schedule-event-icon";
-import WeekCalendar, { type ScheduleEvent as CalendarScheduleEvent } from "@/components/dashboard/WeekCalendar";
+
+function useCountUp(target: number, duration = 900): number {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (target === 0) { setValue(0); return; }
+    const start = performance.now();
+    let raf: number;
+    function step(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return value;
+}
 
 const SchedulerDrawer = dynamic(() => import("@/components/dashboard/SchedulerDrawer"), {
   ssr: false,
@@ -46,7 +63,20 @@ type ScheduleEvent = {
   notes?: string | null;
 };
 
+type PersonalTask = {
+  id: string;
+  title: string;
+  due_date: string;
+  due_time?: string | null;
+  importance: "low" | "high";
+  completed: boolean;
+  schedule_event_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type DashboardSummaryPayload = {
+  userId?: string;
   email?: string;
   profileSetup?: {
     displayName?: string;
@@ -54,6 +84,7 @@ type DashboardSummaryPayload = {
   };
   libraryItems?: unknown[];
   scheduleEvents?: ScheduleEvent[];
+  tasks?: PersonalTask[];
 };
 
 const DASHBOARD_CACHE_KEY = "pa_dashboard_summary_v2";
@@ -70,6 +101,50 @@ function getClientSessionEmail(): string {
     return typeof parsed?.email === "string" ? parsed.email : "";
   } catch {
     return "";
+  }
+}
+
+function getClientSessionIdentity(): { userId: string; email: string } {
+  if (typeof document === "undefined") return { userId: "", email: "" };
+
+  const legacyEmail = getClientSessionEmail();
+  const cookies = document.cookie
+    .split(";")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const tokenCookie = cookies.find((entry) => entry.includes("-auth-token="));
+  if (!tokenCookie) {
+    return { userId: "", email: legacyEmail };
+  }
+
+  const rawValue = tokenCookie.slice(tokenCookie.indexOf("=") + 1);
+  try {
+    const decoded = decodeURIComponent(rawValue);
+    const parsed = JSON.parse(decoded);
+    const accessToken =
+      Array.isArray(parsed) && typeof parsed[0] === "string"
+        ? parsed[0]
+        : typeof parsed?.access_token === "string"
+          ? parsed.access_token
+          : "";
+    if (!accessToken) {
+      return { userId: "", email: legacyEmail };
+    }
+
+    const payloadPart = accessToken.split(".")[1];
+    if (!payloadPart) {
+      return { userId: "", email: legacyEmail };
+    }
+
+    const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(base64);
+    const payload = JSON.parse(json);
+    return {
+      userId: typeof payload?.sub === "string" ? payload.sub : "",
+      email: typeof payload?.email === "string" ? payload.email : legacyEmail,
+    };
+  } catch {
+    return { userId: "", email: legacyEmail };
   }
 }
 
@@ -306,10 +381,18 @@ function ScheduleWidget({ onOpen, events, scheduleLoading }: { onOpen: () => voi
                 onClick={(e) => e.stopPropagation()}
               >
                 {carouselEvents.map((evt) => {
+                  const taskCategory = String(evt.event_category || "").toLowerCase();
+                  const isTask = evt.event_type === "custom" && taskCategory.startsWith("task");
+                  const isDoneTask = taskCategory === "task_done" || /^\s*done\b/i.test(String(evt.title || ""));
                   const isPersonal = (evt.event_type === "custom" && String(evt.event_category || "").toLowerCase() === "personal")
                     || String(evt.subject || "").toLowerCase() === "personal";
                   const isConflict = conflictIds.has(evt.id);
-                  const color = isPersonal ? "#9ca3af" : subjectColor(evt.subject);
+                  const isHighTask = isTask && String(evt.title || "").toLowerCase().startsWith("high priority:");
+                  const color = isTask
+                    ? (isHighTask ? "#ef4444" : "#4169e1")
+                    : isPersonal
+                      ? "#9ca3af"
+                      : subjectColor(evt.subject);
                   return (
                     <div
                       key={evt.id}
@@ -321,7 +404,7 @@ function ScheduleWidget({ onOpen, events, scheduleLoading }: { onOpen: () => voi
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, display: "flex", alignItems: "center", gap: "0.35rem", textDecoration: isDoneTask ? "line-through" : undefined }}>
                           <ScheduleEventIcon
                             subject={evt.subject}
                             eventType={evt.event_type}
@@ -339,7 +422,7 @@ function ScheduleWidget({ onOpen, events, scheduleLoading }: { onOpen: () => voi
                           ) : null}
                           {evt.title}
                         </p>
-                        <p style={{ margin: 0, fontSize: "0.66rem", color: "var(--muted)" }}>
+                        <p style={{ margin: 0, fontSize: "0.66rem", color: "var(--muted)", textDecoration: isDoneTask ? "line-through" : undefined }}>
                           {fmtDate(evt.scheduled_date)} · {evt.start_time.slice(0, 5)}–{evt.end_time.slice(0, 5)}
                         </p>
                       </div>
@@ -666,6 +749,263 @@ function ActionCard({ href, icon, title, desc, accent = false }: {
   );
 }
 
+function PersonalTasksCard({
+  tasks,
+  onTasksChange,
+  onScheduleRefresh,
+}: {
+  tasks: PersonalTask[];
+  onTasksChange: (tasks: PersonalTask[]) => void;
+  onScheduleRefresh: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState(() => toISODate(new Date()));
+  const [dueTime, setDueTime] = useState("16:00");
+  const [importance, setImportance] = useState<"low" | "high">("low");
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{ title: string; due_date: string; due_time: string; importance: "low" | "high"; completed: boolean } | null>(null);
+  const [error, setError] = useState("");
+
+  async function refreshTasks() {
+    const res = await fetch("/api/tasks?includeCompleted=true");
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data?.tasks)) {
+      onTasksChange(data.tasks);
+    }
+  }
+
+  async function createTask() {
+    const taskTitle = title.trim();
+    if (!taskTitle || !dueDate) {
+      setError("Add a title and due date.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: taskTitle, dueDate, dueTime, importance }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Could not create task");
+      }
+      setTitle("");
+      setDueTime("16:00");
+      setImportance("low");
+      await refreshTasks();
+      onScheduleRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create task");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function beginEdit(task: PersonalTask) {
+    setEditingId(task.id);
+    setEditDraft({
+      title: task.title,
+      due_date: task.due_date,
+      due_time: task.due_time ? String(task.due_time).slice(0, 5) : "16:00",
+      importance: task.importance,
+      completed: Boolean(task.completed),
+    });
+    setError("");
+  }
+
+  async function saveEdit() {
+    if (!editingId || !editDraft) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/tasks/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editDraft.title,
+          dueDate: editDraft.due_date,
+          dueTime: editDraft.due_time,
+          importance: editDraft.importance,
+          completed: editDraft.completed,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Could not update task");
+      }
+      setEditingId(null);
+      setEditDraft(null);
+      await refreshTasks();
+      onScheduleRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update task");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleCompleted(task: PersonalTask) {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: !task.completed }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Could not update task");
+      }
+      await refreshTasks();
+      onScheduleRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update task");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteTask(task: PersonalTask) {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Could not delete task");
+      }
+      await refreshTasks();
+      onScheduleRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete task");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
+
+  return (
+    <div className="personal-tasks-card">
+      <div className="personal-tasks-header">
+        <p className="personal-tasks-eyebrow">
+          Personal To-Do
+        </p>
+        <span className="personal-tasks-count">{sortedTasks.filter((t) => !t.completed).length} open</span>
+      </div>
+
+      <div className="personal-tasks-form">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Add a task"
+          className="field personal-task-input"
+        />
+        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="field personal-task-input" />
+        <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className="field personal-task-input" />
+        <select value={importance} onChange={(e) => setImportance(e.target.value === "high" ? "high" : "low")} className="field personal-task-input">
+          <option value="low">Low</option>
+          <option value="high">High</option>
+        </select>
+        <button className="button personal-task-add-btn" onClick={() => { void createTask(); }} disabled={saving}>
+          Add
+        </button>
+      </div>
+
+      {error ? <p className="personal-tasks-error">{error}</p> : null}
+
+      <div className="personal-tasks-list">
+        {sortedTasks.length === 0 ? (
+          <p className="personal-tasks-empty">No tasks yet.</p>
+        ) : (
+          sortedTasks.map((task) => {
+            const isEditing = editingId === task.id && editDraft;
+            const now = new Date();
+            const nowIso = toISODate(now);
+            const nowTime = now.toTimeString().slice(0, 5);
+            const taskTime = task.due_time ? String(task.due_time).slice(0, 5) : "23:59";
+            const isOverdue = !task.completed && (
+              task.due_date < nowIso ||
+              (task.due_date === nowIso && taskTime < nowTime)
+            );
+            const dueLabel = new Date(`${task.due_date}T00:00:00`).toLocaleDateString("en-GB", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            });
+            return (
+              <div key={task.id} className={`personal-task-row${task.completed ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""}`}>
+                {isEditing ? (
+                  <div className="personal-task-edit-grid">
+                    <input
+                      value={editDraft.title}
+                      onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })}
+                      className="field personal-task-input"
+                    />
+                    <input
+                      type="date"
+                      value={editDraft.due_date}
+                      onChange={(e) => setEditDraft({ ...editDraft, due_date: e.target.value })}
+                      className="field personal-task-input"
+                    />
+                    <input
+                      type="time"
+                      value={editDraft.due_time}
+                      onChange={(e) => setEditDraft({ ...editDraft, due_time: e.target.value })}
+                      className="field personal-task-input"
+                    />
+                    <select
+                      value={editDraft.importance}
+                      onChange={(e) => setEditDraft({ ...editDraft, importance: e.target.value === "high" ? "high" : "low" })}
+                      className="field personal-task-input"
+                    >
+                      <option value="low">Low</option>
+                      <option value="high">High</option>
+                    </select>
+                    <button className="button" onClick={() => { void saveEdit(); }} disabled={saving}>Save</button>
+                    <button className="button secondary" onClick={() => { setEditingId(null); setEditDraft(null); }} disabled={saving}>Cancel</button>
+                  </div>
+                ) : (
+                  <div className="personal-task-grid">
+                    <input type="checkbox" checked={task.completed} onChange={() => { void toggleCompleted(task); }} />
+                    <div style={{ minWidth: 0 }}>
+                      <p className="personal-task-title">
+                        {task.title}
+                      </p>
+                      <p className="personal-task-meta">
+                        Due {dueLabel}{task.due_time ? ` at ${String(task.due_time).slice(0, 5)}` : ""} · <span className={`personal-task-priority ${task.importance === "high" ? "is-high" : "is-low"}`}>{task.importance === "high" ? "High" : "Low"} importance</span>
+                      </p>
+                    </div>
+                    <div className="personal-task-actions">
+                      <button
+                        className="button secondary"
+                        onClick={() => { void toggleCompleted(task); }}
+                        disabled={saving}
+                      >
+                        {task.completed ? "Undo" : "Done"}
+                      </button>
+                      <button className="button secondary" onClick={() => beginEdit(task)} disabled={saving}>Edit</button>
+                      <button className="button secondary" onClick={() => { void deleteTask(task); }} disabled={saving}>Delete</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -676,10 +1016,22 @@ export default function DashboardPage() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [tasks, setTasks] = useState<PersonalTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
+
+  const refreshTasksFromApi = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch("/api/tasks?includeCompleted=true", signal ? { signal } : undefined);
+      const data = await res.json().catch(() => ({}));
+      if (!(signal?.aborted) && res.ok && Array.isArray(data?.tasks)) {
+        setTasks(data.tasks);
+      }
+    } catch {
+      // Keep existing task state if task refresh fails.
+    }
+  }, []);
 
   useEffect(() => {
     let hydratedFromCache = false;
@@ -688,13 +1040,12 @@ export default function DashboardPage() {
       try {
         const cached = JSON.parse(cachedRaw) as { ts?: number; data?: DashboardSummaryPayload };
         const age = Date.now() - Number(cached?.ts || 0);
+        const cachedUserId = String(cached?.data?.userId ?? "");
         const cachedEmail = String(cached?.data?.email ?? "");
-        const activeSessionEmail = getClientSessionEmail();
-        const canHydrateCache =
-          Boolean(cached?.data) &&
-          Boolean(activeSessionEmail) &&
-          Boolean(cachedEmail) &&
-          cachedEmail === activeSessionEmail;
+        const { userId: activeSessionUserId, email: activeSessionEmail } = getClientSessionIdentity();
+        const userMatches = Boolean(activeSessionUserId) && Boolean(cachedUserId) && activeSessionUserId === cachedUserId;
+        const emailMatches = Boolean(activeSessionEmail) && Boolean(cachedEmail) && activeSessionEmail === cachedEmail;
+        const canHydrateCache = Boolean(cached?.data) && (userMatches || emailMatches);
 
         if (canHydrateCache && cached?.data) {
           setItems(normaliseLibraryItems(cached.data.libraryItems));
@@ -702,6 +1053,7 @@ export default function DashboardPage() {
           setEmail(String(cached.data.email ?? ""));
           setDisplayName(cached.data.profileSetup?.displayName ?? "");
           setAvatarUrl(cached.data.profileSetup?.avatarUrl ?? "");
+          setTasks(Array.isArray(cached.data.tasks) ? cached.data.tasks : []);
           hydratedFromCache = true;
           setScheduleLoading(false);
           setLoading(false);
@@ -727,6 +1079,7 @@ export default function DashboardPage() {
           setEmail(String(data?.email ?? ""));
           setDisplayName(data?.profileSetup?.displayName ?? "");
           setAvatarUrl(data?.profileSetup?.avatarUrl ?? "");
+          setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
           if (typeof window !== "undefined") {
             sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
           }
@@ -744,46 +1097,50 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    void refreshTasksFromApi(controller.signal);
+    return () => controller.abort();
+  }, [refreshTasksFromApi]);
+
+  const handleScheduleMutation = useCallback(() => {
+    setScheduleRefreshKey((k) => k + 1);
+    void refreshTasksFromApi();
+  }, [refreshTasksFromApi]);
+
+  const handleTaskCrudRefresh = useCallback(() => {
+    setScheduleRefreshKey((k) => k + 1);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pa:schedule-refresh"));
+    }
+  }, []);
+
+  useEffect(() => {
     const selectedWeekIso = toISODate(weekStart);
     const currentWeekIso = getMondayISO();
     if (scheduleRefreshKey === 0 && selectedWeekIso === currentWeekIso) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setScheduleLoading(true);
+        try {
+          const res = await fetch(`/api/schedule?weekStart=${selectedWeekIso}`, { signal: controller.signal });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok) {
+            setScheduleEvents(Array.isArray(data?.events) ? data.events : []);
+          }
+        } finally {
+          if (!controller.signal.aborted) {
+            setScheduleLoading(false);
+          }
+        }
+      })();
+    }, 120);
 
-    void (async () => {
-      setScheduleLoading(true);
-      const res = await fetch(`/api/schedule?weekStart=${selectedWeekIso}`);
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setScheduleEvents(Array.isArray(data?.events) ? data.events : []);
-      }
-      setScheduleLoading(false);
-    })();
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
   }, [scheduleRefreshKey, weekStart]);
-
-  const calendarEvents: CalendarScheduleEvent[] = useMemo(
-    () =>
-      scheduleEvents.map((evt) => ({
-        id: evt.id,
-        lessonPackId: evt.lesson_pack_id || "",
-        title: evt.title,
-        subject: evt.subject,
-        yearGroup: evt.year_group,
-        eventType: evt.event_type === "custom" ? "custom" : "lesson_pack",
-        eventCategory: evt.event_category ?? null,
-        scheduledDate: evt.scheduled_date,
-        startTime: String(evt.start_time || "").slice(0, 5),
-        endTime: String(evt.end_time || "").slice(0, 5),
-        notes: evt.notes || "",
-      })),
-    [scheduleEvents],
-  );
-
-  async function handleCalendarDelete(id: string) {
-    setScheduleEvents((prev) => prev.filter((e) => e.id !== id));
-    const res = await fetch(`/api/schedule/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      setScheduleRefreshKey((k) => k + 1);
-    }
-  }
 
   const recent = items.slice(0, 5);
   const emailPrefix = email.split("@")[0] ?? "";
@@ -796,6 +1153,34 @@ export default function DashboardPage() {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "PA";
+
+  // Hero strip stats
+  const todayISO = toISODate(new Date());
+  const uniqueSubjects = useMemo(() => new Set(items.map((i) => i.subject)).size, [items]);
+  const todayCount = useMemo(
+    () => scheduleEvents.filter((e) => e.scheduled_date === todayISO).length,
+    [scheduleEvents, todayISO],
+  );
+  const countPacks = useCountUp(loading ? 0 : items.length);
+  const countSubjects = useCountUp(loading ? 0 : uniqueSubjects);
+  const countScheduled = useCountUp(scheduleLoading ? 0 : scheduleEvents.length);
+  const countToday = useCountUp(scheduleLoading ? 0 : todayCount, 600);
+
+  // Insight card computation
+  const insightData = useMemo(() => {
+    if (items.length === 0) return null;
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      counts[item.subject] = (counts[item.subject] || 0) + 1;
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const topEntry = sorted[0];
+    const covered = new Set(Object.keys(counts));
+    const ALL_SUBJECTS = ["Maths", "English", "Science", "History", "Geography", "Computing", "Music", "Art", "PE", "PSHE", "RE"];
+    const missing = ALL_SUBJECTS.filter((s) => !covered.has(s));
+    const topPct = topEntry ? Math.round((topEntry[1] / items.length) * 100) : 0;
+    return { topSubject: topEntry?.[0], topPct, missing, coveredCount: covered.size };
+  }, [items]);
 
   return (
     <main className="page-wrap">
@@ -840,6 +1225,136 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Greeting header */}
+      <div style={{ padding: "0.2rem 0 0.35rem", marginBottom: "0.65rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", margin: "0 0 0.2rem" }}>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Profile"
+              style={{
+                width: "62px",
+                height: "62px",
+                borderRadius: "999px",
+                objectFit: "cover",
+                border: "1px solid #fff",
+                boxShadow: "0 0 0 3px #22c55e, 0 0 0 4px #000",
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <div style={{
+              width: "62px",
+              height: "62px",
+              borderRadius: "999px",
+              border: "1px solid #fff",
+              boxShadow: "0 0 0 3px #22c55e, 0 0 0 4px #000",
+              background: "var(--field-bg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--text)",
+              fontSize: "1.25rem",
+              fontWeight: 300,
+              letterSpacing: "0.05em",
+              flexShrink: 0,
+            }}>
+              {initials}
+            </div>
+          )}
+          <h1 style={{
+            margin: 0,
+            fontSize: "clamp(1.45rem, 5vw, 2rem)",
+            fontWeight: 300,
+            letterSpacing: "-0.04em",
+            color: "var(--accent)",
+            lineHeight: 1,
+          }}>
+            {greetingLine}
+          </h1>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.2rem" }}>
+          {(!displayName && email) ? (
+            <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)", paddingLeft: "70px" }}>
+              {email}
+            </p>
+          ) : <span />}
+          <button
+            type="button"
+            className="dashboard-cmdpal-btn"
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "k", bubbles: true }))}
+            aria-label="Open command palette"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            Search
+            <kbd style={{ fontSize: "0.64rem", padding: "0.1rem 0.35rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--btn-bg)", lineHeight: 1 }}>⌘K</kbd>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Hero stats strip ── */}
+      <div className="dashboard-hero" style={{ marginBottom: "1.25rem" }}>
+        <div className="dashboard-hero-stat">
+          <svg className="dashboard-hero-stat-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>
+          <span className="dashboard-hero-value">{loading ? "–" : countPacks}</span>
+          <span className="dashboard-hero-label">Lesson Packs</span>
+          {!loading && <span className="dashboard-hero-sub">{items.length === 0 ? "get started" : "in your library"}</span>}
+        </div>
+        <div className="dashboard-hero-stat">
+          <svg className="dashboard-hero-stat-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+          </svg>
+          <span className="dashboard-hero-value">{loading ? "–" : countSubjects}</span>
+          <span className="dashboard-hero-label">Subjects</span>
+          {!loading && <span className="dashboard-hero-sub">{uniqueSubjects > 0 ? `${uniqueSubjects} covered` : "none yet"}</span>}
+        </div>
+        <div className="dashboard-hero-stat">
+          <svg className="dashboard-hero-stat-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+          <span className="dashboard-hero-value">{scheduleLoading ? "–" : countScheduled}</span>
+          <span className="dashboard-hero-label">Scheduled</span>
+          {!scheduleLoading && <span className="dashboard-hero-sub">this week</span>}
+        </div>
+        <div className="dashboard-hero-stat">
+          <svg className="dashboard-hero-stat-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span className="dashboard-hero-value" style={!scheduleLoading && todayCount > 0 ? { color: "var(--accent)" } : {}}>
+            {scheduleLoading ? "–" : countToday}
+          </span>
+          <span className="dashboard-hero-label">Today</span>
+          {!scheduleLoading && (
+            <span className="dashboard-hero-sub">{todayCount > 0 ? `${todayCount} lesson${todayCount !== 1 ? "s" : ""}` : "nothing scheduled"}</span>
+          )}
+        </div>
+        <div className="dashboard-hero-stat">
+          <svg className="dashboard-hero-stat-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+          </svg>
+          <span className="dashboard-hero-label">Insight</span>
+          <span
+            style={{
+              marginTop: "0.2rem",
+              fontSize: "0.8rem",
+              lineHeight: 1.45,
+              color: "var(--text)",
+              fontWeight: 500,
+            }}
+          >
+            {loading || !insightData
+              ? "No insight yet."
+              : insightData.missing.length > 0
+                ? `Consider adding ${insightData.missing.slice(0, 2).join(" or ")} packs to broaden coverage.`
+                : `Excellent. You cover ${insightData.coveredCount} subjects in your library, with ${insightData.topSubject} as your top subject at ${insightData.topPct}%.`}
+          </span>
+        </div>
+      </div>
+
       {/* ── Two-column layout ── */}
       <div className="dashboard-main-grid" style={{
         display: "grid",
@@ -848,102 +1363,102 @@ export default function DashboardPage() {
         alignItems: "start",
       }}>
 
-        {/* ── LEFT: greeting + actions + recent ── */}
+        {/* ── LEFT: scheduler ── */}
         <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
 
-          {/* Greeting header */}
-          <div style={{ padding: "0.2rem 0 0.35rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", margin: "0 0 0.2rem" }}>
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile"
-                  style={{
-                    width: "62px",
-                    height: "62px",
-                    borderRadius: "999px",
-                    objectFit: "cover",
-                    border: "1px solid #fff",
-                    boxShadow: "0 0 0 3px #22c55e, 0 0 0 4px #000",
-                    flexShrink: 0,
-                  }}
-                />
-              ) : (
-                <div style={{
-                  width: "62px",
-                  height: "62px",
-                  borderRadius: "999px",
-                  border: "1px solid #fff",
-                  boxShadow: "0 0 0 3px #22c55e, 0 0 0 4px #000",
-                  background: "var(--field-bg)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--text)",
-                  fontSize: "1.25rem",
-                  fontWeight: 300,
-                  letterSpacing: "0.05em",
-                  flexShrink: 0,
-                }}>
-                  {initials}
-                </div>
-              )}
-              <h1 style={{
-                margin: 0,
-                fontSize: "clamp(1.45rem, 5vw, 2rem)",
-                fontWeight: 300,
-                letterSpacing: "-0.04em",
-                color: "var(--accent)",
-                lineHeight: 1,
-              }}>
-                {greetingLine}
-              </h1>
-            </div>
-            {(!displayName && email) ? (
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)", paddingLeft: "60px" }}>
-                {email}
-              </p>
-            ) : null}
-          </div>
-
-          {/* Full Calendar */}
+          {/* Full Scheduler */}
           <div style={{
             borderRadius: "16px",
             border: "1px solid var(--border-card)",
             background: "var(--surface)",
-            padding: "0.95rem 0.95rem 0.75rem",
+            padding: 0,
+            overflow: "hidden",
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem", gap: "0.7rem" }}>
-              <p style={{ margin: 0, fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--muted)" }}>
-                Weekly Calendar
-              </p>
-              <button
-                type="button"
-                className="nav-btn-ghost"
-                onClick={() => setDrawerOpen(true)}
-                style={{ padding: "0.48rem 0.85rem", fontSize: "0.78rem", minHeight: "32px" }}
-              >
-                Open Scheduler
-              </button>
-            </div>
-            {scheduleLoading ? (
-              <div style={{ height: "320px", borderRadius: "12px", background: "var(--field-bg)", border: "1px solid var(--border)", animation: "pulse 1.5s ease-in-out infinite" }} />
-            ) : (
-              <WeekCalendar
-                events={calendarEvents}
-                weekStart={weekStart}
-                onWeekChange={(delta) => setWeekStart((prev) => {
-                  const d = new Date(prev);
-                  d.setDate(d.getDate() + delta * 7);
-                  return d;
-                })}
-                onGoToday={() => setWeekStart(getMondayDate(new Date()))}
-                onDrop={() => setDrawerOpen(true)}
-                onEventReschedule={() => setDrawerOpen(true)}
-                onEventDelete={(id) => { void handleCalendarDelete(id); }}
-                onEventClick={() => setDrawerOpen(true)}
-              />
-            )}
+            <SchedulerDrawer
+              embedded
+              open
+              onClose={() => {}}
+              onScheduleChange={handleScheduleMutation}
+              initialPacks={items.map((item) => ({
+                id: item.id,
+                title: item.title,
+                subject: item.subject,
+                yearGroup: item.yearGroup,
+                topic: item.topic,
+              }))}
+              initialWeekEvents={scheduleEvents}
+            />
+          </div>
+
+          <PersonalTasksCard
+            tasks={tasks}
+            onTasksChange={setTasks}
+            onScheduleRefresh={handleTaskCrudRefresh}
+          />
+
+        </div>{/* /left column */}
+
+        {/* ── RIGHT: quick actions + library visuals ── */}
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            <ActionCard
+              href="/lesson-pack"
+              accent
+              title="Generate Lesson Pack"
+              desc="AI-powered resources for any topic in seconds"
+              icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                </svg>
+              }
+            />
+
+            <ActionCard
+              href="/library"
+              title="Lesson Library"
+              desc="Browse and manage your saved packs"
+              icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
+              }
+            />
+
+            <ActionCard
+              href="/settings"
+              title="Teacher Settings"
+              desc="Defaults, tone, school type and preferences"
+              icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              }
+            />
+          </div>
+          <LibraryOverview items={items} scheduleEvents={scheduleEvents} loading={loading} weekStart={weekStart} />
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.25rem" }}>
+            <ActionCard
+              href="/account"
+              title="Account"
+              desc="Manage your profile and sign-in details"
+              icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21a8 8 0 1 0-16 0" /><circle cx="12" cy="7" r="4" />
+                </svg>
+              }
+            />
+
+            <ActionCard
+              href="/billing"
+              title="Billing"
+              desc="Manage your subscription and plan"
+              icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" />
+                </svg>
+              }
+            />
           </div>
 
           {/* Recent packs */}
@@ -1013,93 +1528,9 @@ export default function DashboardPage() {
               })}
             </div>
           </div>
-
-        </div>{/* /left column */}
-
-        {/* ── RIGHT: quick actions + library visuals ── */}
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            <p style={{ margin: "0 0 0.3rem", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--muted)" }}>
-              Quick actions
-            </p>
-
-            <ActionCard
-              href="/lesson-pack"
-              accent
-              title="Generate Lesson Pack"
-              desc="AI-powered resources for any topic in seconds"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-                </svg>
-              }
-            />
-
-            <ActionCard
-              href="/library"
-              title="Lesson Library"
-              desc="Browse and manage your saved packs"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                </svg>
-              }
-            />
-
-            <ActionCard
-              href="/settings"
-              title="Teacher Settings"
-              desc="Defaults, tone, school type and preferences"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
-              }
-            />
-          </div>
-          <LibraryOverview items={items} scheduleEvents={scheduleEvents} loading={loading} weekStart={weekStart} />
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.25rem" }}>
-            <ActionCard
-              href="/account"
-              title="Account"
-              desc="Manage your profile and sign-in details"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21a8 8 0 1 0-16 0" /><circle cx="12" cy="7" r="4" />
-                </svg>
-              }
-            />
-
-            <ActionCard
-              href="/billing"
-              title="Billing"
-              desc="Manage your subscription and plan"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" />
-                </svg>
-              }
-            />
-          </div>
         </div>
 
       </div>{/* /outer grid */}
-
-      {drawerOpen ? (
-        <SchedulerDrawer
-          open={drawerOpen}
-          onClose={() => { setDrawerOpen(false); setScheduleRefreshKey((k) => k + 1); }}
-          onScheduleChange={() => setScheduleRefreshKey((k) => k + 1)}
-          initialPacks={items.map((item) => ({
-            id: item.id,
-            title: item.title,
-            subject: item.subject,
-            yearGroup: item.yearGroup,
-            topic: item.topic,
-          }))}
-          initialWeekEvents={scheduleEvents}
-        />
-      ) : null}
 
     </main>
   );

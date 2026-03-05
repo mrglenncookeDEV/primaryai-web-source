@@ -29,7 +29,7 @@ export async function GET() {
   end.setDate(end.getDate() + 7);
   const weekEnd = end.toISOString().split("T")[0];
 
-  const [libraryResult, scheduleResult, profileResult] = await Promise.allSettled([
+  const [libraryResult, scheduleResult, profileResult, tasksResult] = await Promise.allSettled([
     supabase
       .from("lesson_packs")
       .select("id,title,year_group,subject,topic,created_at")
@@ -49,6 +49,28 @@ export async function GET() {
       .select("display_name,avatar_url,profile_completed")
       .eq("user_id", session.userId)
       .maybeSingle(),
+    (async () => {
+      const primary = await supabase
+        .from("personal_tasks")
+        .select("id,title,due_date,due_time,importance,completed,schedule_event_id,created_at,updated_at")
+        .eq("user_id", session.userId)
+        .order("completed", { ascending: true })
+        .order("due_date", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(50);
+      const primaryErr = String(primary.error?.message || "").toLowerCase();
+      if (primary.error && primaryErr.includes("due_time")) {
+        return supabase
+          .from("personal_tasks")
+          .select("id,title,due_date,importance,completed,schedule_event_id,created_at,updated_at")
+          .eq("user_id", session.userId)
+          .order("completed", { ascending: true })
+          .order("due_date", { ascending: true })
+          .order("created_at", { ascending: false })
+          .limit(50);
+      }
+      return primary;
+    })(),
   ]);
 
   const libraryItems =
@@ -63,6 +85,8 @@ export async function GET() {
           profileCompleted: Boolean(profileResult.value.data.profile_completed),
         }
       : { displayName: "", avatarUrl: "", profileCompleted: false };
+  const tasks =
+    tasksResult.status === "fulfilled" && !tasksResult.value.error ? (tasksResult.value.data ?? []) : [];
 
   // Backward-compatible fallback while user_profile_setup is being backfilled/migrated.
   if (!profileSetup.displayName && !profileSetup.avatarUrl) {
@@ -81,10 +105,12 @@ export async function GET() {
   return NextResponse.json(
     {
       ok: true,
+      userId: session.userId,
       email: session.email ?? "",
       libraryItems,
       scheduleEvents,
       profileSetup,
+      tasks,
     },
     { headers: { "Cache-Control": "private, max-age=20, stale-while-revalidate=60" } },
   );

@@ -55,14 +55,6 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
       nextErrors.c_staff_concerns_other = "Please specify the other concern.";
     }
 
-    if (isBlank(answers.c_policy_consistency_rating)) nextErrors.c_policy_consistency_rating = "Please add a rating.";
-
-    const ratings = answers.c_leader_feature_ratings || {};
-    if (LEADER_FEATURE_ITEMS.some((item) => !ratings[item.key])) {
-      nextErrors.c_leader_feature_ratings = "Please rate each feature.";
-    }
-
-    if (isBlank(answers.c_wellbeing_priority_rating)) nextErrors.c_wellbeing_priority_rating = "Please add a rating.";
     if (isBlank(answers.c_teacher_attrition)) nextErrors.c_teacher_attrition = "Please select one option.";
 
     setErrors(nextErrors);
@@ -111,8 +103,6 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
       <QuestionBlock
         number={26}
         label="How confident are you that planning across your school currently reflects your school policies and non-negotiables consistently?"
-        required
-        error={errors.c_policy_consistency_rating}
       >
         <RatingScale
           name="c_policy_consistency_rating"
@@ -133,8 +123,6 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
       <QuestionBlock
         number={28}
         label="How important is it to you that a platform like PrimaryAI can:"
-        required
-        error={errors.c_leader_feature_ratings}
       >
         <RatingGrid
           name="c_leader_feature_ratings"
@@ -171,8 +159,6 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
       <QuestionBlock
         number={31}
         label="On a scale of 1-6, how much of a priority is staff wellbeing and workload reduction when you make decisions about systems and tools?"
-        required
-        error={errors.c_wellbeing_priority_rating}
       >
         <RatingScale
           name="c_wellbeing_priority_rating"

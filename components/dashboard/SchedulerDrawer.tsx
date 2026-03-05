@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import PackList, { type PackItem } from "./PackList";
-import WeekCalendar, { type ScheduleEvent } from "./WeekCalendar";
+import WeekCalendar, { type CalendarViewMode, type ScheduleEvent } from "./WeekCalendar";
 import ScheduleModal, { type ModalPayload } from "./ScheduleModal";
 import CustomEventModal from "./CustomEventModal";
 
 type Props = {
-  open: boolean;
-  onClose: () => void;
+  open?: boolean;
+  onClose?: () => void;
+  embedded?: boolean;
   onScheduleChange?: () => void;
   initialPacks?: PackItem[];
   initialWeekEvents?: Array<{
@@ -41,6 +42,23 @@ function toISO(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
+function getRangeForView(mode: CalendarViewMode, cursorDate: Date) {
+  const start = new Date(cursorDate);
+  start.setHours(0, 0, 0, 0);
+  if (mode === "day") {
+    return { from: toISO(start), to: toISO(start) };
+  }
+  if (mode === "month") {
+    const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
+    const monthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    return { from: toISO(monthStart), to: toISO(monthEnd) };
+  }
+  const monday = getMondayOf(start);
+  const friday = new Date(monday);
+  friday.setDate(friday.getDate() + 4);
+  return { from: toISO(monday), to: toISO(friday) };
+}
+
 function prettyDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
@@ -58,7 +76,14 @@ function addMinutes(time: string, mins: number): string {
   return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
 }
 
-export default function SchedulerDrawer({ open, onClose, onScheduleChange, initialPacks = [], initialWeekEvents = [] }: Props) {
+export default function SchedulerDrawer({
+  open = true,
+  onClose = () => {},
+  embedded = false,
+  onScheduleChange,
+  initialPacks = [],
+  initialWeekEvents = [],
+}: Props) {
   const mapApiEvent = useCallback(
     (e: {
       id: string;
@@ -93,7 +118,8 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
   const [events, setEvents] = useState<ScheduleEvent[]>(
     initialWeekEvents.map(mapApiEvent),
   );
-  const [weekStart, setWeekStart] = useState<Date>(() => getMondayOf(new Date()));
+  const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
+  const [cursorDate, setCursorDate] = useState<Date>(() => new Date());
   const [packsLoading, setPacksLoading] = useState(initialPacks.length === 0);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [modal, setModal] = useState<ModalPayload | null>(null);
@@ -123,9 +149,10 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
 
   // Body scroll lock
   useEffect(() => {
+    if (embedded) return;
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [open]);
+  }, [embedded, open]);
 
   // Load packs once on first open
   const packsLoaded = useRef(initialPacks.length > 0);
@@ -140,11 +167,11 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
   }, [initialPacks, packs.length]);
 
   useEffect(() => {
-    if (events.length === 0 && toISO(weekStart) === todayWeekIso) {
+    if (events.length === 0 && viewMode === "week" && toISO(getMondayOf(cursorDate)) === todayWeekIso) {
       setEvents(initialWeekEvents.map(mapApiEvent));
       seededWeekEvents.current = true;
     }
-  }, [events.length, initialWeekEvents, mapApiEvent, todayWeekIso, weekStart]);
+  }, [events.length, initialWeekEvents, mapApiEvent, todayWeekIso, viewMode, cursorDate]);
 
   useEffect(() => {
     if (!open || packsLoaded.current) return;
@@ -169,11 +196,12 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
       .finally(() => setPacksLoading(false));
   }, [open]);
 
-  // Load events for the current week
-  const loadEvents = useCallback((monday: Date) => {
+  // Load events for the current view range
+  const loadEvents = useCallback((mode: CalendarViewMode, anchorDate: Date) => {
+    const { from, to } = getRangeForView(mode, anchorDate);
     setEventsLoading(true);
     setError("");
-    fetch(`/api/schedule?weekStart=${toISO(monday)}`)
+    fetch(`/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.ok && Array.isArray(data.events)) {
@@ -186,23 +214,36 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
 
   useEffect(() => {
     if (!open) return;
-    if (toISO(weekStart) === todayWeekIso && seededWeekEvents.current) {
+    if (viewMode === "week" && toISO(getMondayOf(cursorDate)) === todayWeekIso && seededWeekEvents.current) {
       seededWeekEvents.current = false;
       return;
     }
-    loadEvents(weekStart);
-  }, [open, weekStart, loadEvents, todayWeekIso]);
+    loadEvents(viewMode, cursorDate);
+  }, [open, viewMode, cursorDate, loadEvents, todayWeekIso]);
 
-  function handleWeekChange(delta: -1 | 1) {
-    setWeekStart((prev) => {
+  useEffect(() => {
+    if (!open) return;
+    const handleExternalRefresh = () => {
+      loadEvents(viewMode, cursorDate);
+    };
+    window.addEventListener("pa:schedule-refresh", handleExternalRefresh);
+    return () => {
+      window.removeEventListener("pa:schedule-refresh", handleExternalRefresh);
+    };
+  }, [open, loadEvents, viewMode, cursorDate]);
+
+  function handleNavigate(delta: -1 | 1) {
+    setCursorDate((prev) => {
       const d = new Date(prev);
-      d.setDate(d.getDate() + delta * 7);
+      if (viewMode === "day") d.setDate(d.getDate() + delta);
+      else if (viewMode === "month") d.setMonth(d.getMonth() + delta);
+      else d.setDate(d.getDate() + delta * 7);
       return d;
     });
   }
 
   function handleGoToday() {
-    setWeekStart(getMondayOf(new Date()));
+    setCursorDate(new Date());
   }
 
   function handleDrop(date: string, slotTime: string) {
@@ -233,7 +274,6 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
           : evt,
       ),
     );
-    onScheduleChange?.();
 
     try {
       const res = await fetch(`/api/schedule/${eventId}`, {
@@ -247,6 +287,7 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to reschedule");
+      onScheduleChange?.();
     } catch {
       setEvents((prev) =>
         prev.map((evt) =>
@@ -329,7 +370,7 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
     } catch {
       // Reload to restore correct state on failure
       setError("Could not remove event.");
-      loadEvents(weekStart);
+      loadEvents(viewMode, cursorDate);
       onScheduleChange?.();
     }
   }
@@ -456,27 +497,57 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
     });
   }
 
-  if (!mounted) return null;
+  if (!embedded && !mounted) return null;
 
-  return createPortal(
+  const schedulerBody = (
     <>
-      <div className={`scheduler-backdrop${open ? " open" : ""}`} onClick={onClose} />
-      <aside className={`scheduler-drawer${open ? " open" : ""}`} aria-label="Lesson scheduler" aria-modal="true" role="dialog">
+      <aside
+        className={embedded ? "scheduler-inline" : `scheduler-drawer${open ? " open" : ""}`}
+        aria-label="Lesson scheduler"
+        aria-modal={embedded ? undefined : "true"}
+        role={embedded ? "region" : "dialog"}
+      >
         {/* Header */}
-        <div className="scheduler-drawer-header">
+        <div className={`scheduler-drawer-header${embedded ? " scheduler-drawer-header-embedded" : ""}`}>
           <h2 className="scheduler-drawer-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", marginRight: "0.45rem", verticalAlign: "-2px" }}>
+            <svg className="scheduler-drawer-title-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", marginRight: "0.45rem", verticalAlign: "-2px" }}>
               <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18"/>
             </svg>
             Lesson Scheduler
           </h2>
+          <div style={{ marginLeft: "auto", display: "inline-flex", border: "1px solid var(--border)", borderRadius: "999px", overflow: "hidden" }}>
+            {(["week", "day", "month"] as CalendarViewMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                style={{
+                  border: "none",
+                  borderRight: mode !== "month" ? "1px solid var(--border)" : "none",
+                  background: viewMode === mode ? "var(--accent)" : "var(--surface)",
+                  color: viewMode === mode ? "white" : "var(--muted)",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.02em",
+                  textTransform: "capitalize",
+                  padding: "0.28rem 0.62rem",
+                  cursor: "pointer",
+                  textShadow: viewMode === mode ? "0 1px 0 rgb(0 0 0 / 0.22)" : undefined,
+                }}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
           {error && <span className="scheduler-error-banner">{error}</span>}
           {eventsLoading && !error && (
             <span className="scheduler-error-banner" style={{ color: "var(--muted)" }}>Loading…</span>
           )}
-          <button className="scheduler-close-btn" onClick={onClose} aria-label="Close scheduler">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M1 1l10 10M11 1L1 11"/></svg>
-          </button>
+          {!embedded ? (
+            <button className="scheduler-close-btn" onClick={onClose} aria-label="Close scheduler">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M1 1l10 10M11 1L1 11"/></svg>
+            </button>
+          ) : null}
         </div>
 
         {/* Body */}
@@ -523,7 +594,7 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
             </button>
             <button
               className="scheduler-custom-add-btn"
-              onClick={() => setCustomModalDate(toISO(weekStart))}
+              onClick={() => setCustomModalDate(toISO(cursorDate))}
             >
               Add custom event
             </button>
@@ -547,8 +618,11 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
 
           <WeekCalendar
             events={events}
-            weekStart={weekStart}
-            onWeekChange={handleWeekChange}
+            viewMode={viewMode}
+            cursorDate={cursorDate}
+            showViewToggle={false}
+            onViewModeChange={setViewMode}
+            onNavigate={handleNavigate}
             onGoToday={handleGoToday}
             onDrop={handleDrop}
             onEventReschedule={handleEventReschedule}
@@ -611,6 +685,17 @@ export default function SchedulerDrawer({ open, onClose, onScheduleChange, initi
           />
         )}
       </aside>
+    </>
+  );
+
+  if (embedded) {
+    return schedulerBody;
+  }
+
+  return createPortal(
+    <>
+      <div className={`scheduler-backdrop${open ? " open" : ""}`} onClick={onClose} />
+      {schedulerBody}
     </>,
     document.body
   );

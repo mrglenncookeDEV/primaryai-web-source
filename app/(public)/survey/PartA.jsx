@@ -31,19 +31,20 @@ const SCHOOL_TYPE_OPTIONS = [
   "Currently not in school",
 ];
 
-const OOR_HOURS_OPTIONS = ["0-2 hours", "3-5 hours", "6-8 hours", "9-12 hours", "More than 12 hours"];
+const TEMPLATE_ALIGNMENT_OPTIONS = [
+  "Plans from commercial schemes or AI don't align to school or trust templates automatically.",
+  "No single clear view of my week, term or year - I have to use a combination of planners to see my week.",
+  "Commercial schemes of work aren't mapped to my children's needs or class data.",
+];
 
 const CHALLENGE_OPTIONS = [
   "Lesson planning takes too long",
-  "Plans don't align to school or trust templates automatically",
   "Marking and feedback burden is unsustainable",
-  "No single clear view of my week, term or year",
   "Personal and professional life constantly clash",
   "Deadlines surprise me or cluster together badly",
   "Cover planning is chaotic",
   "Assessment data doesn't connect to what I plan",
   "I start from a blank page too often",
-  "Licensed schemes of work aren't mapped to my lessons",
   "I feel overwhelmed and unable to prioritise",
   "Weekend and evening work feels unavoidable",
 ];
@@ -72,14 +73,11 @@ const AI_SAT_OPTIONS = [
 const FEATURE_RATING_ITEMS = [
   { key: "weekly_timetable", label: "Weekly timetable that integrates personal and professional commitments" },
   { key: "ai_lesson_plan", label: "AI lesson plan generator aligned to the National Curriculum" },
-  { key: "ai_slides", label: "AI slide deck generator following EEF and cognitive load principles" },
   { key: "workload_warnings", label: "Workload warnings and clash alerts" },
   { key: "assessment_import", label: "Assessment data import with retrieval/next-step suggestions" },
-  { key: "scheme_indexing", label: "School scheme-of-work indexing in plans" },
-  { key: "smart_todo", label: "Smart to-do list that schedules tasks into free windows" },
-  { key: "printable_outputs", label: "Printable outputs (plans, timetables, weekly overviews)" },
   { key: "policy_enforcement", label: "School/trust policy and template enforcement built in" },
   { key: "cover_builder", label: "Cover lesson builder" },
+  { key: "smart_todo", label: "Smart to-do list that schedules tasks into free windows" },
 ];
 
 function isBlank(value) {
@@ -99,13 +97,13 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
 
     if (isBlank(answers.a_years_experience)) nextErrors.a_years_experience = "Please select one option.";
     if (isBlank(answers.a_school_type)) nextErrors.a_school_type = "Please select your setting.";
-    if (isBlank(answers.a_oor_hours)) nextErrors.a_oor_hours = "Please select one option.";
+    if (!Array.isArray(answers.a_template_alignment_issues) || answers.a_template_alignment_issues.length === 0) {
+      nextErrors.a_template_alignment_issues = "Select at least one option.";
+    }
 
     if (!Array.isArray(answers.a_challenges) || answers.a_challenges.length === 0) {
       nextErrors.a_challenges = "Select at least one challenge.";
     }
-
-    if (isBlank(answers.a_wlb_rating)) nextErrors.a_wlb_rating = "Please give a rating.";
 
     if (!Array.isArray(answers.a_current_tools) || answers.a_current_tools.length === 0) {
       nextErrors.a_current_tools = "Select at least one tool or choose none of the above.";
@@ -116,12 +114,6 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
     }
 
     if (isBlank(answers.a_ai_satisfaction)) nextErrors.a_ai_satisfaction = "Please select one option.";
-
-    const featureRatings = answers.a_feature_ratings || {};
-    const hasMissingFeatureRatings = FEATURE_RATING_ITEMS.some((item) => !featureRatings[item.key]);
-    if (hasMissingFeatureRatings) {
-      nextErrors.a_feature_ratings = "Please rate every feature in this section.";
-    }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -174,11 +166,16 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
 
       <QuestionBlock
         number={4}
-        label="Roughly how many hours per week do you spend on planning, preparation and assessment outside designated PPA time?"
+        label="Roughly how many hours per week do you, or your staff if non teaching, spend on planning, preparation and assessment outside designated PPA time?"
         required
-        error={errors.a_oor_hours}
+        error={errors.a_template_alignment_issues}
       >
-        <RadioGroup name="a_oor_hours" options={OOR_HOURS_OPTIONS} value={answers.a_oor_hours} onChange={(value) => onChange("a_oor_hours", value)} />
+        <CheckboxGroup
+          name="a_template_alignment_issues"
+          options={TEMPLATE_ALIGNMENT_OPTIONS}
+          values={answers.a_template_alignment_issues || []}
+          onChange={(value) => onChange("a_template_alignment_issues", value)}
+        />
       </QuestionBlock>
 
       <QuestionBlock
@@ -206,8 +203,6 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
       <QuestionBlock
         number={7}
         label="How would you rate your current work-life balance?"
-        required
-        error={errors.a_wlb_rating}
       >
         <RatingScale
           name="a_wlb_rating"
@@ -257,7 +252,7 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
 
       <QuestionBlock
         number={10}
-        label="Imagine PrimaryAI existed and worked perfectly. What would be the single biggest difference it would make to your working week?"
+        label="Imagine an AI system existed and worked perfectly. What would be the single biggest difference it would make to your working week?"
       >
         <TextArea
           value={answers.a_biggest_difference || ""}
@@ -269,8 +264,6 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
       <QuestionBlock
         number={11}
         label="Rate how important each of the following potential features is to you (1 = Not important at all, 6 = Absolutely essential)."
-        required
-        error={errors.a_feature_ratings}
       >
         <RatingGrid
           name="a_feature_ratings"

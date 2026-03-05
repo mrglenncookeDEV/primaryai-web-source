@@ -56,15 +56,6 @@ export default function PartD({ answers, onChange, onNext, onBack, saving, isFin
       nextErrors.d_trust_challenges_other = "Please specify the other challenge.";
     }
 
-    if (isBlank(answers.d_planning_consistency_rating)) nextErrors.d_planning_consistency_rating = "Please add a rating.";
-
-    const requirements = answers.d_platform_requirements || {};
-    if (PLATFORM_REQUIREMENT_ITEMS.some((item) => !requirements[item.key])) {
-      nextErrors.d_platform_requirements = "Please rate every requirement.";
-    }
-
-    if (isBlank(answers.d_workload_analytics_rating)) nextErrors.d_workload_analytics_rating = "Please add a rating.";
-
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -111,8 +102,6 @@ export default function PartD({ answers, onChange, onNext, onBack, saving, isFin
       <QuestionBlock
         number={36}
         label="To what extent does your trust currently have a consistent school-wide approach to lesson planning formats and templates?"
-        required
-        error={errors.d_planning_consistency_rating}
       >
         <RatingScale
           name="d_planning_consistency_rating"
@@ -126,8 +115,6 @@ export default function PartD({ answers, onChange, onNext, onBack, saving, isFin
       <QuestionBlock
         number={37}
         label="How important are the following when evaluating any EdTech platform for trust-wide adoption?"
-        required
-        error={errors.d_platform_requirements}
       >
         <RatingGrid
           name="d_platform_requirements"
@@ -145,8 +132,6 @@ export default function PartD({ answers, onChange, onNext, onBack, saving, isFin
       <QuestionBlock
         number={38}
         label="If PrimaryAI could give you a trust-wide view of teacher workload patterns and burnout risk, how valuable would that be?"
-        required
-        error={errors.d_workload_analytics_rating}
       >
         <RatingScale
           name="d_workload_analytics_rating"

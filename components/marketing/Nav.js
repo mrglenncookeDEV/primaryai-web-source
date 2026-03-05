@@ -1,10 +1,7 @@
 import Link from "next/link";
-import { getAuthSession } from "@/lib/auth";
 import NavLinks from "./NavLinks";
 
-export default async function Nav() {
-  const session = await getAuthSession();
-
+export default function Nav({ session }) {
   return (
     <nav className="top-nav" aria-label="Site navigation">
       <Link href="/" className="nav-logo-link">

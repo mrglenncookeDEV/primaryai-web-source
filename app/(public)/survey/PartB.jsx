@@ -4,8 +4,6 @@ import { useState } from "react";
 import RadioGroup from "@/components/survey/RadioGroup";
 import CheckboxGroup from "@/components/survey/CheckboxGroup";
 import RatingScale from "@/components/survey/RatingScale";
-import RatingGrid from "@/components/survey/RatingGrid";
-import RankOrder from "@/components/survey/RankOrder";
 import TextArea from "@/components/survey/TextArea";
 import QuestionBlock from "@/components/survey/QuestionBlock";
 import PartNav from "@/components/survey/PartNav";
@@ -29,14 +27,6 @@ const LESSON_TIME_OPTIONS = [
   "More than 2 hours",
 ];
 
-const TIME_SPENT_ITEMS = [
-  "Writing learning intentions and success criteria",
-  "Sourcing or creating resources and slides",
-  "Adapting plans for SEND / lower and higher attainers",
-  "Aligning to your school's scheme of work",
-  "Formatting plans to match school templates",
-];
-
 const DIFFERENTIATION_OPTIONS = [
   "I create separate tasks for different ability groups",
   "I adapt resources on the day based on what I observe",
@@ -47,21 +37,8 @@ const DIFFERENTIATION_OPTIONS = [
   "Other",
 ];
 
-const COMPLIANCE_ITEMS = [
-  { key: "uk_gdpr", label: "UK GDPR and data protection law" },
-  { key: "dfe_expectations", label: "DfE AI safety expectations" },
-  { key: "school_policy", label: "Your school's own data policy" },
-  { key: "no_model_training", label: "No training of AI models on your pupils' data" },
-  { key: "audit_trail", label: "Clear audit trail of what was generated and when" },
-];
-
 function isBlank(value) {
   return String(value || "").trim().length === 0;
-}
-
-function rankingIsValid(ranking) {
-  const values = Object.values(ranking || {}).filter(Boolean);
-  return values.length === TIME_SPENT_ITEMS.length && new Set(values).size === TIME_SPENT_ITEMS.length;
 }
 
 export default function PartB({ answers, onChange, onNext, onBack, saving, isFinal, onValidationError }) {
@@ -78,26 +55,12 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
       nextErrors.b_lesson_plan_time = "Please select one option.";
     }
 
-    if (!rankingIsValid(answers.b_time_spent_ranking)) {
-      nextErrors.b_time_spent_ranking = "Please rank each item from 1 to 5 using each rank once.";
-    }
-
-    if (isBlank(answers.b_scheme_alignment_rating)) nextErrors.b_scheme_alignment_rating = "Please add a rating.";
-    if (isBlank(answers.b_nc_confidence_rating)) nextErrors.b_nc_confidence_rating = "Please add a rating.";
-
     if (!Array.isArray(answers.b_differentiation_methods) || answers.b_differentiation_methods.length === 0) {
       nextErrors.b_differentiation_methods = "Select at least one approach.";
     }
 
     if (answers.b_differentiation_methods?.includes("Other") && isBlank(answers.b_differentiation_methods_other)) {
       nextErrors.b_differentiation_methods_other = "Please specify the other method.";
-    }
-
-    if (isBlank(answers.b_assessment_ai_rating)) nextErrors.b_assessment_ai_rating = "Please add a rating.";
-
-    const compliance = answers.b_compliance_ratings || {};
-    if (COMPLIANCE_ITEMS.some((item) => !compliance[item.key])) {
-      nextErrors.b_compliance_ratings = "Please rate each compliance requirement.";
     }
 
     setErrors(nextErrors);
@@ -141,29 +104,7 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
 
       <QuestionBlock
         number={15}
-        label="Where do you currently spend most of your planning time?"
-        hint="Rank each area from 1 to 5."
-        required
-        error={errors.b_time_spent_ranking}
-      >
-        <RankOrder
-          name="b_time_spent_ranking"
-          items={TIME_SPENT_ITEMS}
-          values={answers.b_time_spent_ranking || {}}
-          onChange={(item, rank) =>
-            onChange("b_time_spent_ranking", {
-              ...(answers.b_time_spent_ranking || {}),
-              [item]: rank,
-            })
-          }
-        />
-      </QuestionBlock>
-
-      <QuestionBlock
-        number={16}
         label="How well do your current lesson plans connect to your school's scheme of work?"
-        required
-        error={errors.b_scheme_alignment_rating}
       >
         <RatingScale
           name="b_scheme_alignment_rating"
@@ -175,10 +116,8 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
       </QuestionBlock>
 
       <QuestionBlock
-        number={17}
+        number={16}
         label="How confident are you that your lessons currently cover National Curriculum objectives consistently?"
-        required
-        error={errors.b_nc_confidence_rating}
       >
         <RatingScale
           name="b_nc_confidence_rating"
@@ -190,7 +129,7 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
       </QuestionBlock>
 
       <QuestionBlock
-        number={18}
+        number={17}
         label="How do you currently differentiate lessons for different learners?"
         hint="Select all that apply."
         required
@@ -208,10 +147,8 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
       </QuestionBlock>
 
       <QuestionBlock
-        number={19}
+        number={18}
         label="If an AI tool could use your latest assessment data to suggest retrieval starters and adapted activities for next week, how useful would that be?"
-        required
-        error={errors.b_assessment_ai_rating}
       >
         <RatingScale
           name="b_assessment_ai_rating"
@@ -223,7 +160,7 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
       </QuestionBlock>
 
       <QuestionBlock
-        number={20}
+        number={19}
         label="Describe your ideal lesson-planning experience in 3-5 sentences."
       >
         <TextArea
@@ -234,36 +171,8 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
         />
       </QuestionBlock>
 
-      <QuestionBlock number={21} label="What would you never want an AI planning tool to do?">
-        <TextArea
-          value={answers.b_ai_red_lines || ""}
-          onChange={(value) => onChange("b_ai_red_lines", value)}
-          rows={4}
-          placeholder="E.g. generate generic activities, ignore your class context, override your judgement..."
-        />
-      </QuestionBlock>
-
       <QuestionBlock
-        number={22}
-        label="How important is it that any AI tool your school uses complies with the following?"
-        required
-        error={errors.b_compliance_ratings}
-      >
-        <RatingGrid
-          name="b_compliance_ratings"
-          items={COMPLIANCE_ITEMS}
-          values={answers.b_compliance_ratings || {}}
-          onChange={(key, value) =>
-            onChange("b_compliance_ratings", {
-              ...(answers.b_compliance_ratings || {}),
-              [key]: value,
-            })
-          }
-        />
-      </QuestionBlock>
-
-      <QuestionBlock
-        number={23}
+        number={20}
         label="What's one thing you wish whoever is designing this platform truly understood about your day-to-day life as a teacher?"
       >
         <TextArea

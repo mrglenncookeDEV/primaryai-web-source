@@ -19,7 +19,7 @@ export default function RootLayout({ children }) {
         {/* Set theme before first paint to prevent flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme')||'light';var p=localStorage.getItem('palette')||'duck-egg';document.documentElement.dataset.theme=t;document.documentElement.dataset.palette=p;}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('theme')||'light';var p=localStorage.getItem('palette')||'slate';document.documentElement.dataset.theme=t;document.documentElement.dataset.palette=p;}catch(e){}})()`,
           }}
         />
       </head>

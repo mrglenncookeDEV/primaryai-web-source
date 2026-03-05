@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import CyclingIframe from "@/components/CyclingIframe";
+import ScaledIframe from "@/components/ScaledIframe";
 
 export default function LandingHero() {
   const [iconKey, setIconKey] = useState(0);
   const [sparkleLive, setSparkleLive] = useState(false);
+  const [showPreviews, setShowPreviews] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowPreviews(true), 180);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   function replayIcon() {
     setSparkleLive(false);
@@ -77,6 +85,48 @@ export default function LandingHero() {
       <p className="landing-subtitle">
         Our intelligent SaaS platform is currently under construction.
       </p>
+
+      <div className="landing-device-showcase" aria-label="PrimaryAI dashboard preview">
+        <div className="landing-laptop-wrap">
+          <div className="landing-laptop-screen-shell">
+            <div className="landing-laptop-screen">
+              {showPreviews ? (
+                <CyclingIframe
+                  title="PrimaryAI desktop preview"
+                  srcs={[
+                    "/preview/dashboard",
+                    "/preview/library",
+                    "/preview/lesson-result",
+                    "/preview/dashboard",
+                  ]}
+                  nativeWidth={1440}
+                  nativeHeight={900}
+                  interval={8500}
+                  alternateTheme
+                />
+              ) : null}
+            </div>
+          </div>
+          <div className="landing-laptop-base">
+            <div className="landing-laptop-notch" />
+          </div>
+        </div>
+
+        <div className="landing-phone-back-glow" aria-hidden="true" />
+        <div className="landing-phone-wrap">
+          <div className="landing-phone-notch" />
+          <div className="landing-phone-screen">
+            {showPreviews ? (
+              <ScaledIframe
+                title="PrimaryAI mobile preview"
+                src="/preview/library-mobile"
+                nativeWidth={430}
+                nativeHeight={932}
+              />
+            ) : null}
+          </div>
+        </div>
+      </div>
 
       <div className="landing-cta-row">
         <Link className="landing-thoughts-btn" href="/survey">

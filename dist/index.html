@@ -1,75 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrimaryAI | Coming Soon</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            display: flex; 
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            text-align: center;
-        }
-        .container {
-            max-width: 600px;
-            padding: 2rem;
-        }
-        h1 {
-            font-family: "Arial Narrow", "Avenir Next Condensed", "Helvetica Neue", sans-serif;
-            font-size: 4rem;
-            font-weight: 300;
-            letter-spacing: 0.04em;
-            margin-bottom: 1rem;
-            background: linear-gradient(90deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        p {
-            font-size: 1.25rem;
-            color: #94a3b8;
-            line-height: 1.6;
-        }
-        .onepoint-link:link,
-        .onepoint-link:visited,
-        .onepoint-link:hover,
-        .onepoint-link:active {
-            color: #c7f3ee;
-            text-decoration: none;
-        }
-        .loader {
-            margin-top: 2rem;
-            height: 4px;
-            width: 100%;
-            background: #1e293b;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .progress {
-            height: 100%;
-            width: 30%;
-            background: #38bdf8;
-            animation: move 2s infinite ease-in-out;
-        }
-        @keyframes move {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(400%); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrimaryAI</title>
+  <style>
+    :root { --bg:#f4f8fb; --text:#0f172a; --muted:#64748b; --accent:#6b91c0; --orange:#f97316; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Avenir Next","Segoe UI",Tahoma,Geneva,Verdana,sans-serif; color:var(--text); background:radial-gradient(circle at 10% 0%,#edf4ff 0%,var(--bg) 38%); }
+    .page { width:min(1240px,96vw); margin:0 auto; padding:2rem 1rem 2.5rem; }
+    .hero { text-align:center; }
+    .title { margin:0; font-family:"Avenir Next Condensed","HelveticaNeue-Thin","Arial Narrow",sans-serif; font-size:clamp(3rem,10vw,5.6rem); font-weight:100; letter-spacing:.04em; line-height:1; color:var(--accent); }
+    .title .orange { color:var(--orange); }
+    .subtitle { margin:1rem 0 0; font-size:clamp(1rem,2.3vw,1.25rem); color:var(--muted); }
+    .device-showcase { position:relative; width:min(980px,96vw); margin:1.35rem auto 0; display:flex; align-items:flex-end; justify-content:center; gap:clamp(.65rem,2.2vw,1.6rem); }
+    .laptop-wrap { position:relative; width:min(700px,78vw); }
+    .laptop-shell { position:relative; z-index:2; width:100%; aspect-ratio:16/10; background:linear-gradient(to bottom,#8b95a7,#566173 58%,#2e3746); border-radius:clamp(1rem,2vw,1.6rem) clamp(1rem,2vw,1.6rem) 0 0; padding:1%; border-top:1px solid rgb(255 255 255 / .36); box-shadow:0 42px 92px -38px rgb(0 0 0 / .58); }
+    .laptop-screen { width:100%; height:100%; border-radius:clamp(.7rem,1.5vw,1.15rem); overflow:hidden; background:#07090f; border:8px solid #0a0a0a; box-shadow:inset 0 0 24px rgb(0 0 0 / .75); }
+    .laptop-screen img,.phone-screen img { width:100%; height:100%; object-fit:cover; object-position:center top; display:block; }
+    .laptop-base { position:relative; z-index:1; width:116%; height:28px; margin-left:-8%; border-radius:0 0 56px 56px; background:linear-gradient(to bottom,#4c5668,#2f3542 45%,#171c28); border-top:1px solid rgb(255 255 255 / .2); box-shadow:0 30px 70px -20px rgb(0 0 0 / .56); }
+    .laptop-notch { width:23%; height:10px; margin:0 auto; border-radius:0 0 28px 28px; background:rgb(5 8 14 / .54); border-top:1px solid rgb(255 255 255 / .06); }
+    .phone-wrap { position:absolute; right:clamp(.3rem,2.5vw,1.2rem); bottom:clamp(.8rem,1.8vw,1.3rem); z-index:3; width:clamp(120px,16vw,160px); aspect-ratio:9/19.2; padding:8px; border-radius:2.4rem; border:5px solid #0d1320; background:#04050a; box-shadow:0 40px 76px -28px rgb(0 0 0 / .72); }
+    .phone-notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:5.7rem; height:1rem; background:#0d1320; border-radius:0 0 20px 20px; z-index:2; }
+    .phone-screen { width:100%; height:100%; overflow:hidden; border-radius:1.75rem; background:#05070c; }
+    .footer-note { font-size:.9rem; margin:1.5rem 0 0; color:var(--muted); text-align:center; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>primaryAI</h1>
-        <p>Our intelligent SaaS platform is currently under construction. </p>
-        <div class="loader">
-            <div class="progress"></div>
+  <main class="page">
+    <section class="hero" aria-label="PrimaryAI dashboard preview">
+      <h1 class="title">Pr<span class="orange">i</span>m<span class="orange">a</span>ry<span class="orange">A</span><span class="orange">I</span></h1>
+      <p class="subtitle">Our intelligent SaaS platform is currently under construction.</p>
+      <div class="device-showcase">
+        <div class="laptop-wrap">
+          <div class="laptop-shell"><div class="laptop-screen"><img src="./dashboard-final.png" alt="PrimaryAI app preview" /></div></div>
+          <div class="laptop-base"><div class="laptop-notch"></div></div>
         </div>
-        <p style="font-size: 0.9rem; margin-top: 2rem;">Launching Spring 2026 | Design & Build by <a class="onepoint-link" href="https://www.onepointconsult.com">onepointconsult.com</a></p>
-    </div>
+        <div class="phone-wrap"><div class="phone-notch"></div><div class="phone-screen"><img src="./home-final-24s.png" alt="PrimaryAI mobile preview" /></div></div>
+      </div>
+      <p class="footer-note">Launching Spring 2026 | Design &amp; Build by onepointconsult.com</p>
+    </section>
+  </main>
 </body>
 </html>

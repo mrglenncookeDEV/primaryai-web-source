@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+
 import PartA from "./PartA";
-import PartB from "./PartB";
-import PartC from "./PartC";
-import PartD from "./PartD";
-import ThankYou from "./ThankYou";
+const PartB = dynamic(() => import("./PartB"));
+const PartC = dynamic(() => import("./PartC"));
+const PartD = dynamic(() => import("./PartD"));
+const ThankYou = dynamic(() => import("./ThankYou"));
 
 const STORAGE_KEY = "primaryai-survey-id";
 
@@ -50,7 +52,6 @@ export default function SurveyShell() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
-  const [hydrated, setHydrated] = useState(false);
 
   const partsForRole = useMemo(() => PARTS_FOR_ROLE[role] || [], [role]);
   const currentPartIndex = partsForRole.findIndex((item) => item === step);
@@ -61,18 +62,19 @@ export default function SurveyShell() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function restoreProgress() {
       const savedSurveyId = sessionStorage.getItem(STORAGE_KEY);
       if (!savedSurveyId) {
-        if (active) setHydrated(true);
         return;
       }
 
-      const response = await fetch(`/api/survey/${savedSurveyId}`);
+      const timeout = window.setTimeout(() => controller.abort(), 1800);
+      const response = await fetch(`/api/survey/${savedSurveyId}`, { signal: controller.signal });
+      window.clearTimeout(timeout);
       if (!response.ok) {
         sessionStorage.removeItem(STORAGE_KEY);
-        if (active) setHydrated(true);
         return;
       }
 
@@ -93,15 +95,13 @@ export default function SurveyShell() {
       const effectiveRole = restoredRole || "impartial";
       if (!restoredRole) setRole("impartial");
       setStep(getFirstIncompleteStep(effectiveRole, restoredAnswers, row.completed));
-      setHydrated(true);
     }
 
-    restoreProgress().catch(() => {
-      if (active) setHydrated(true);
-    });
+    restoreProgress().catch(() => {});
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, []);
 
@@ -181,14 +181,6 @@ export default function SurveyShell() {
       setSaving(false);
       setError("Network error while saving your response. Please retry.");
     }
-  }
-
-  if (!hydrated) {
-    return (
-      <section className="surveyx-card card">
-        <p className="muted">Loading your survey...</p>
-      </section>
-    );
   }
 
   if (step === "done") {

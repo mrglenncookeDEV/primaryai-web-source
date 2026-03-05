@@ -32,7 +32,7 @@ async function savePrefs(patch) {
 
 export default function ThemeToggle({ userId }) {
   const [theme,   setTheme]   = useState("light");
-  const [palette, setPalette] = useState("duck-egg");
+  const [palette, setPalette] = useState("slate");
   const [open,    setOpen]    = useState(false);
   const wrapperRef = useRef(null);
 
@@ -40,7 +40,7 @@ export default function ThemeToggle({ userId }) {
     // Always re-apply from localStorage on every mount so navigating between
     // pages never flashes defaults or resets the theme/palette.
     const savedTheme   = localStorage.getItem("theme")   || "light";
-    const savedPalette = localStorage.getItem("palette") || "duck-egg";
+    const savedPalette = localStorage.getItem("palette") || "slate";
     applyPrefs(savedTheme, savedPalette);
     setTheme(savedTheme);
     setPalette(savedPalette);

@@ -10,29 +10,42 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const weekStart = searchParams.get("weekStart");
-  if (!weekStart || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  const hasRange = Boolean(from && to);
+
+  if (hasRange) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(from)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(to))) {
+      return NextResponse.json({ error: "from/to must be YYYY-MM-DD" }, { status: 400 });
+    }
+  } else if (!weekStart || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
     return NextResponse.json({ error: "weekStart (YYYY-MM-DD) is required" }, { status: 400 });
   }
-
-  // Compute end of week (exclusive): weekStart + 7 days
-  const start = new Date(weekStart);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
-  const weekEnd = end.toISOString().split("T")[0];
 
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json({ error: "Schedule store unavailable" }, { status: 503 });
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("lesson_schedule")
     .select("*")
     .eq("user_id", session.userId)
-    .gte("scheduled_date", weekStart)
-    .lt("scheduled_date", weekEnd)
     .order("scheduled_date", { ascending: true })
     .order("start_time", { ascending: true });
+
+  if (hasRange) {
+    query = query.gte("scheduled_date", String(from)).lte("scheduled_date", String(to));
+  } else {
+    // Preserve existing week view behaviour: [weekStart, weekStart + 7d)
+    const start = new Date(String(weekStart));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    const weekEnd = end.toISOString().split("T")[0];
+    query = query.gte("scheduled_date", String(weekStart)).lt("scheduled_date", weekEnd);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: "Schedule store unavailable" }, { status: 503 });

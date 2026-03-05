@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const MIN_DISPLAY_MS = 1_200; // ensure house has time to be mostly drawn
+const MIN_DISPLAY_MS = 180; // keep transitions snappy without feeling abrupt
 
 function HouseDrawSVG() {
   return (

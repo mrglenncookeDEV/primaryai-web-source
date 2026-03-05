@@ -1,0 +1,2 @@
+-- Placeholder to align local migration history with remote.
+-- Remote migration 20260304000001 already exists in Supabase.

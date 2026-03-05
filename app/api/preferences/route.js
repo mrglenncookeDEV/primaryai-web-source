@@ -54,7 +54,7 @@ export async function POST(request) {
   await db.from("user_preferences").upsert({
     user_id:    session.userId,
     theme:      theme   ?? existing?.theme   ?? "light",
-    palette:    palette ?? existing?.palette ?? "duck-egg",
+    palette:    palette ?? existing?.palette ?? "slate",
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id" });
 
