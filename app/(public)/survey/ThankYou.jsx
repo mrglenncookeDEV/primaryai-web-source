@@ -32,16 +32,15 @@ export default function ThankYou({ surveyId }) {
 
   return (
     <section className="surveyx-card card">
-      <h1 className="survey-title">Thank you - your response has been saved.</h1>
-      <p className="survey-description muted">Your input will directly shape how PrimaryAI is built.</p>
-      <p className="surveyx-thanks-body">
-        We&apos;re aiming to launch Spring 2026. If you&apos;d like to be a pilot tester, leave your email
-        below and we&apos;ll be in touch.
+      <p className="surveyx-part-kicker">Complete</p>
+      <h1 className="surveyx-part-title" style={{ marginBottom: "0.4rem" }}>Thank you.</h1>
+      <p className="surveyx-thanks-body" style={{ marginBottom: "1.5rem" }}>
+        Your input will directly shape how PrimaryAI is built. We&apos;re aiming to launch Spring 2026 — if you&apos;d like early access as a pilot tester, leave your email below.
       </p>
 
       <form className="surveyx-pilot-form" onSubmit={submitPilotInterest}>
         <label className="surveyx-field">
-          <span>Email</span>
+          <span>Email address</span>
           <input
             type="email"
             value={email}
@@ -51,7 +50,7 @@ export default function ThankYou({ surveyId }) {
           />
         </label>
         <button type="submit" className="button surveyx-next-btn" disabled={saving}>
-          {saving ? "Saving..." : "Join Pilot Interest"}
+          {saving ? "Saving..." : "Join the pilot"}
         </button>
       </form>
 

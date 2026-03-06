@@ -5,9 +5,16 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import ThemeToggle from "./ThemeToggle";
 
-const navLinks = [
+const PERSISTENT_LINKS = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/settings", label: "Settings" },
   { href: "/contact", label: "Contact Us" },
 ];
+
+function getLinkHref(href, resolvedSession) {
+  if (resolvedSession) return href;
+  return `/login?next=${encodeURIComponent(href)}`;
+}
 
 export default function NavLinks({ session }) {
   const [resolvedSession, setResolvedSession] = useState(session ?? null);
@@ -31,21 +38,13 @@ export default function NavLinks({ session }) {
 
   const close = () => setIsOpen(false);
 
-  const appLinks = resolvedSession
-    ? [
-        { href: "/settings", label: "Settings" },
-      ]
-    : [];
-
-  const allLinks = [
-    ...(resolvedSession ? [{ href: "/dashboard", label: "Dashboard" }] : []),
-    ...appLinks,
-    ...navLinks,
-  ];
+  const allLinks = PERSISTENT_LINKS.map((link) => ({
+    ...link,
+    resolvedHref: getLinkHref(link.href, resolvedSession),
+  }));
 
   const email = resolvedSession?.email ?? "";
-  const inferredName = email.includes("@") ? email.split("@")[0] : "";
-  const statusText = resolvedSession ? inferredName || "Signed in" : "Offline";
+  const statusText = resolvedSession ? email || "Signed in" : "Offline";
 
   return (
     <>
@@ -54,7 +53,7 @@ export default function NavLinks({ session }) {
         {allLinks.map((link) => (
           <Link
             key={link.href}
-            href={link.href}
+            href={link.resolvedHref}
             className={`nav-link${link.phone ? " nav-link-stack" : ""}`}
           >
             <span>{link.label}</span>
@@ -119,7 +118,7 @@ export default function NavLinks({ session }) {
             {allLinks.map((link, i) => (
               <Link
                 key={link.href}
-                href={link.href}
+                href={link.resolvedHref}
                 className="mobile-nav-link"
                 style={{ "--i": i }}
                 onClick={close}

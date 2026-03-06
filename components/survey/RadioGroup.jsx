@@ -11,15 +11,17 @@ export default function RadioGroup({ name, options = [], value, onChange }) {
         {options.map((raw) => {
           const option = normalizeOption(raw);
           const id = `${name}-${option.value}`.replace(/\s+/g, "-").toLowerCase();
+          const isSelected = value === option.value;
           return (
-            <label key={option.value} htmlFor={id} className="surveyx-radio-item">
+            <label key={option.value} htmlFor={id} className={`surveyx-radio-item${isSelected ? " is-selected" : ""}`}>
               <input
                 id={id}
                 type="radio"
                 name={name}
-                checked={value === option.value}
+                checked={isSelected}
                 onChange={() => onChange(option.value)}
               />
+              <span className="surveyx-radio-dot" aria-hidden="true" />
               <span>{option.label}</span>
             </label>
           );

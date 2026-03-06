@@ -214,7 +214,9 @@ export default function CommandPalette() {
             autoComplete="off"
             spellCheck={false}
           />
-          <kbd className="cmdpal-kbd">Esc</kbd>
+          <button type="button" className="cmdpal-close-btn" onClick={() => setOpen(false)} aria-label="Close search">
+            Close
+          </button>
         </div>
 
         {/* Results */}

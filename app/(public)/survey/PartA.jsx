@@ -31,10 +31,12 @@ const SCHOOL_TYPE_OPTIONS = [
   "Currently not in school",
 ];
 
-const TEMPLATE_ALIGNMENT_OPTIONS = [
-  "Plans from commercial schemes or AI don't align to school or trust templates automatically.",
-  "No single clear view of my week, term or year - I have to use a combination of planners to see my week.",
-  "Commercial schemes of work aren't mapped to my children's needs or class data.",
+const PPA_HOURS_OPTIONS = [
+  "0-2 hours",
+  "3-5 hours",
+  "6-8 hours",
+  "9-12 hours",
+  "13+ hours",
 ];
 
 const CHALLENGE_OPTIONS = [
@@ -97,8 +99,8 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
 
     if (isBlank(answers.a_years_experience)) nextErrors.a_years_experience = "Please select one option.";
     if (isBlank(answers.a_school_type)) nextErrors.a_school_type = "Please select your setting.";
-    if (!Array.isArray(answers.a_template_alignment_issues) || answers.a_template_alignment_issues.length === 0) {
-      nextErrors.a_template_alignment_issues = "Select at least one option.";
+    if (isBlank(answers.a_planning_hours_outside_ppa)) {
+      nextErrors.a_planning_hours_outside_ppa = "Please select one option.";
     }
 
     if (!Array.isArray(answers.a_challenges) || answers.a_challenges.length === 0) {
@@ -129,7 +131,8 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
 
   return (
     <section className="surveyx-card card">
-      <h2 className="surveyx-part-title">Part A - Your Context & Current Reality</h2>
+      <p className="surveyx-part-kicker">Part A</p>
+      <h2 className="surveyx-part-title">Your Context &amp; Current Reality</h2>
 
       <QuestionBlock number={1} label="What is your current primary role?" required error={errors.a_role || errors.a_role_other}>
         <RadioGroup
@@ -168,13 +171,13 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
         number={4}
         label="Roughly how many hours per week do you, or your staff if non teaching, spend on planning, preparation and assessment outside designated PPA time?"
         required
-        error={errors.a_template_alignment_issues}
+        error={errors.a_planning_hours_outside_ppa}
       >
-        <CheckboxGroup
-          name="a_template_alignment_issues"
-          options={TEMPLATE_ALIGNMENT_OPTIONS}
-          values={answers.a_template_alignment_issues || []}
-          onChange={(value) => onChange("a_template_alignment_issues", value)}
+        <RadioGroup
+          name="a_planning_hours_outside_ppa"
+          options={PPA_HOURS_OPTIONS}
+          value={answers.a_planning_hours_outside_ppa}
+          onChange={(value) => onChange("a_planning_hours_outside_ppa", value)}
         />
       </QuestionBlock>
 
@@ -252,7 +255,7 @@ export default function PartA({ answers, onChange, onNext, onBack, saving, onVal
 
       <QuestionBlock
         number={10}
-        label="Imagine an AI system existed and worked perfectly. What would be the single biggest difference it would make to your working week?"
+        label="Imagine an AI system and worked perfectly. What would be the single biggest difference it would make to your working week?"
       >
         <TextArea
           value={answers.a_biggest_difference || ""}

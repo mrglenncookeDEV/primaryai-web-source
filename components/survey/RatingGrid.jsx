@@ -1,49 +1,38 @@
-import { useEffect } from "react";
+const LEVELS = [1, 2, 3, 4, 5, 6];
 
 export default function RatingGrid({ name, items = [], values = {}, onChange }) {
-  useEffect(() => {
-    items.forEach((item) => {
-      const current = Number(values?.[item.key]);
-      if (!(current >= 1 && current <= 6)) {
-        onChange(item.key, 3);
-      }
-    });
-  }, [items, values, onChange]);
-
   return (
     <fieldset className="surveyx-fieldset">
       <legend className="sr-only">Rate each item from 1 to 6</legend>
+      <div className="surveyx-scale-labels" style={{ marginBottom: "0.9rem" }}>
+        <span>1 — Not important</span>
+        <span>Absolutely essential — 6</span>
+      </div>
       <div className="surveyx-grid-wrap">
-        {items.map((item) => (
-          <div key={item.key} className="surveyx-grid-row">
-            <p>{item.label}</p>
-            <div className="surveyx-grid-slider-row">
-              <input
-                id={`${name}-${item.key}-slider`}
-                className="surveyx-slider"
-                type="range"
-                min={1}
-                max={6}
-                step={1}
-                value={Number(values?.[item.key]) >= 1 && Number(values?.[item.key]) <= 6 ? Number(values[item.key]) : 3}
-                onChange={(event) => onChange(item.key, Number(event.target.value))}
-              />
-              <div className="surveyx-slider-meta">
-                <div className="surveyx-slider-ticks" aria-hidden="true">
-                  <span>1</span>
-                  <span>2</span>
-                  <span>3</span>
-                  <span>4</span>
-                  <span>5</span>
-                  <span>6</span>
-                </div>
-                <strong className="surveyx-slider-value">
-                  {Number(values?.[item.key]) >= 1 && Number(values?.[item.key]) <= 6 ? Number(values[item.key]) : 3}
-                </strong>
+        {items.map((item) => {
+          const current = Number(values?.[item.key]) >= 1 && Number(values?.[item.key]) <= 6
+            ? Number(values[item.key])
+            : null;
+          return (
+            <div key={item.key} className="surveyx-grid-row">
+              <p>{item.label}</p>
+              <div className="surveyx-seg-group" role="group" aria-label={item.label}>
+                {LEVELS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`surveyx-seg-btn${current === n ? " is-active" : ""}`}
+                    onClick={() => onChange(item.key, n)}
+                    aria-pressed={current === n}
+                    aria-label={String(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </fieldset>
   );

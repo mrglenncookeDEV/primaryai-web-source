@@ -3,7 +3,7 @@ export default function QuestionBlock({ number, label, required = false, hint, e
     <section className="surveyx-question-block" aria-live="polite">
       <header className="surveyx-question-head">
         <h3>
-          <span className="surveyx-q-number">Q{number}.</span> {label}
+          {label}
           {required ? <span className="surveyx-required"> *</span> : null}
         </h3>
         {hint ? <p className="surveyx-hint">{hint}</p> : null}

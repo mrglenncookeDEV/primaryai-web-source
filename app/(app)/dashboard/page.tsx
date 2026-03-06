@@ -1199,7 +1199,7 @@ export default function DashboardPage() {
             fontWeight: 600,
             letterSpacing: "0.01em",
             color: "var(--text)",
-            border: "1px solid var(--border)",
+            border: "1px solid #22c55e",
             background: "var(--surface)",
             borderRadius: "999px",
             boxShadow: "0 10px 28px rgba(10, 18, 28, 0.12)",
@@ -1227,7 +1227,7 @@ export default function DashboardPage() {
 
       {/* Greeting header */}
       <div style={{ padding: "0.2rem 0 0.35rem", marginBottom: "0.65rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", margin: "0 0 0.2rem" }}>
+        <div className="dashboard-greeting-row" style={{ display: "flex", alignItems: "center", gap: "0.8rem", margin: "0 0 0.2rem" }}>
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -1273,7 +1273,7 @@ export default function DashboardPage() {
             {greetingLine}
           </h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.2rem" }}>
+        <div className="dashboard-greeting-actions" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.2rem" }}>
           {(!displayName && email) ? (
             <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)", paddingLeft: "70px" }}>
               {email}

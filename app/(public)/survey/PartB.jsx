@@ -77,7 +77,8 @@ export default function PartB({ answers, onChange, onNext, onBack, saving, isFin
 
   return (
     <section className="surveyx-card card">
-      <h2 className="surveyx-part-title">Part B - Your Classroom & Planning Reality</h2>
+      <p className="surveyx-part-kicker">Part B</p>
+      <h2 className="surveyx-part-title">Your Classroom &amp; Planning Reality</h2>
 
       <QuestionBlock number={13} label="What year group(s) do you currently teach?" required error={errors.b_year_groups}>
         <CheckboxGroup

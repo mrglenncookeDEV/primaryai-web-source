@@ -24,16 +24,14 @@ const STAFF_CONCERN_OPTIONS = [
 ];
 
 const LEADER_FEATURE_ITEMS = [
-  { key: "template_enforcement", label: "Enforce your school's planning templates automatically" },
-  { key: "marking_policy", label: "Reference and apply your feedback and marking policy" },
-  { key: "send_expectations", label: "Apply your SEND toolkit and inclusion expectations" },
-  { key: "non_negotiables", label: "Allow upload/enforcement of trust/school non-negotiables" },
-  { key: "visibility", label: "Give visibility of staff planning (without micromanaging)" },
-  { key: "workload_flags", label: "Flag when a teacher's workload looks unsustainable" },
-  { key: "leader_reminders", label: "Allow you to send reminders, key dates, and priorities" },
+  { key: "template_enforcement", label: "Automatically align planning to school or trust templates" },
+  { key: "marking_policy", label: "Reference and apply feedback and marking policies" },
+  { key: "send_expectations", label: "Apply SEND and inclusion expectations consistently" },
+  { key: "non_negotiables", label: "Support school or trust non-negotiables within planning" },
+  { key: "visibility", label: "Provide a clearer view of planning across teams and classes" },
+  { key: "workload_flags", label: "Highlight when workload looks unsustainable" },
+  { key: "leader_reminders", label: "Surface reminders, key dates, and priorities in one place" },
 ];
-
-const ATTRITION_OPTIONS = ["Yes, multiple", "Yes, one or two", "Not directly but I suspect it was a factor", "No"];
 
 function isBlank(value) {
   return String(value || "").trim().length === 0;
@@ -54,9 +52,6 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
     if (answers.c_staff_concerns?.includes("Other") && isBlank(answers.c_staff_concerns_other)) {
       nextErrors.c_staff_concerns_other = "Please specify the other concern.";
     }
-
-    if (isBlank(answers.c_teacher_attrition)) nextErrors.c_teacher_attrition = "Please select one option.";
-
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -71,7 +66,8 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
 
   return (
     <section className="surveyx-card card">
-      <h2 className="surveyx-part-title">Part C - Your School, Your Staff, Your Standards</h2>
+      <p className="surveyx-part-kicker">Part C</p>
+      <h2 className="surveyx-part-title">Your School, Your Staff, Your Standards</h2>
 
       <QuestionBlock number={24} label="How many teaching staff are in your school?" required error={errors.c_staff_count}>
         <RadioGroup
@@ -122,7 +118,7 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
 
       <QuestionBlock
         number={28}
-        label="How important is it to you that a platform like PrimaryAI can:"
+        label="How important would the following capabilities be in a platform like PrimaryAI?"
       >
         <RatingGrid
           name="c_leader_feature_ratings"
@@ -158,33 +154,6 @@ export default function PartC({ answers, onChange, onNext, onBack, saving, isFin
 
       <QuestionBlock
         number={31}
-        label="On a scale of 1-6, how much of a priority is staff wellbeing and workload reduction when you make decisions about systems and tools?"
-      >
-        <RatingScale
-          name="c_wellbeing_priority_rating"
-          value={answers.c_wellbeing_priority_rating}
-          onChange={(value) => onChange("c_wellbeing_priority_rating", value)}
-          leftLabel="Not a significant factor"
-          rightLabel="It is my primary concern"
-        />
-      </QuestionBlock>
-
-      <QuestionBlock
-        number={32}
-        label="Have you seen teachers leave your school (or the profession) due to workload in the last three years?"
-        required
-        error={errors.c_teacher_attrition}
-      >
-        <RadioGroup
-          name="c_teacher_attrition"
-          options={ATTRITION_OPTIONS}
-          value={answers.c_teacher_attrition}
-          onChange={(value) => onChange("c_teacher_attrition", value)}
-        />
-      </QuestionBlock>
-
-      <QuestionBlock
-        number={33}
         label="What's the one thing you would want a platform like PrimaryAI to help you do that no existing tool currently does?"
       >
         <TextArea value={answers.c_one_thing || ""} onChange={(value) => onChange("c_one_thing", value)} rows={4} />

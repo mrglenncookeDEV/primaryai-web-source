@@ -1,43 +1,28 @@
-import { useEffect } from "react";
+const LEVELS = [1, 2, 3, 4, 5, 6];
 
 export default function RatingScale({ name, value, onChange, leftLabel, rightLabel }) {
-  const resolvedValue = Number(value) >= 1 && Number(value) <= 6 ? Number(value) : 3;
-
-  useEffect(() => {
-    if (!(Number(value) >= 1 && Number(value) <= 6)) {
-      onChange(3);
-    }
-  }, [value, onChange]);
+  const resolved = Number(value) >= 1 && Number(value) <= 6 ? Number(value) : null;
 
   return (
     <fieldset className="surveyx-fieldset">
       <legend className="sr-only">Rate on a scale from 1 to 6</legend>
       <div className="surveyx-scale-labels">
-        <span>{leftLabel}</span>
-        <span>{rightLabel}</span>
+        <span>1 — {leftLabel}</span>
+        <span>{rightLabel} — 6</span>
       </div>
-      <div className="surveyx-slider-wrap">
-        <input
-          id={`${name}-slider`}
-          className="surveyx-slider"
-          type="range"
-          min={1}
-          max={6}
-          step={1}
-          value={resolvedValue}
-          onChange={(event) => onChange(Number(event.target.value))}
-        />
-        <div className="surveyx-slider-meta">
-          <div className="surveyx-slider-ticks" aria-hidden="true">
-            <span>1</span>
-            <span>2</span>
-            <span>3</span>
-            <span>4</span>
-            <span>5</span>
-            <span>6</span>
-          </div>
-          <strong className="surveyx-slider-value">{resolvedValue}</strong>
-        </div>
+      <div className="surveyx-seg-group" role="group">
+        {LEVELS.map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`surveyx-seg-btn${resolved === n ? " is-active" : ""}`}
+            onClick={() => onChange(n)}
+            aria-pressed={resolved === n}
+            aria-label={String(n)}
+          >
+            {n}
+          </button>
+        ))}
       </div>
     </fieldset>
   );

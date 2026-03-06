@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import PartA from "./PartA";
 const PartB = dynamic(() => import("./PartB"));
 const PartC = dynamic(() => import("./PartC"));
-const PartD = dynamic(() => import("./PartD"));
 const ThankYou = dynamic(() => import("./ThankYou"));
 
 const STORAGE_KEY = "primaryai-survey-id";
@@ -14,15 +13,14 @@ const STORAGE_KEY = "primaryai-survey-id";
 const PARTS_FOR_ROLE = {
   teacher: ["partA", "partB"],
   headteacher: ["partA", "partC"],
-  trustleader: ["partA", "partD"],
-  impartial: ["partA", "partB", "partC", "partD"],
+  trustleader: ["partA", "partC"],
+  impartial: ["partA", "partB", "partC"],
 };
 
 const PART_NAMES = {
   partA: "Your Context & Current Reality",
   partB: "Your Classroom & Planning Reality",
   partC: "Your School, Your Staff, Your Standards",
-  partD: "System-Wide Consistency & Strategic Oversight",
 };
 
 const INITIAL_ANSWERS = {
@@ -194,9 +192,7 @@ export default function SurveyShell() {
     <div className="surveyx-wrap">
       {showProgress ? (
         <section className="surveyx-progress card" aria-live="polite">
-          <p>
-            Part {currentPartIndex + 1} of {partsForRole.length} - {PART_NAMES[step]}
-          </p>
+          <p>Part {currentPartIndex + 1} of {partsForRole.length}</p>
           <div className="surveyx-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPct)}>
             <span style={{ width: `${progressPct}%` }} />
           </div>
@@ -245,17 +241,6 @@ export default function SurveyShell() {
         />
       ) : null}
 
-      {step === "partD" ? (
-        <PartD
-          answers={answers.partD}
-          onChange={(key, value) => handleChange("partD", key, value)}
-          onBack={goBack}
-          onNext={() => saveAndNext("partD")}
-          onValidationError={showValidationToast}
-          saving={saving}
-          isFinal={currentPartIndex === partsForRole.length - 1}
-        />
-      ) : null}
     </div>
   );
 }
