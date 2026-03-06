@@ -104,7 +104,7 @@ export default async function SignupPage({ searchParams }) {
           </Link>
 
           <h1 className="auth-heading">Create your account</h1>
-          <p className="auth-subheading">Join thousands of educators using PrimaryAI</p>
+          <p className="auth-subheading">Join pioneering educators using PrimaryAI</p>
 
           {message && (
             <div
