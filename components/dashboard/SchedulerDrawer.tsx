@@ -902,14 +902,14 @@ export default function SchedulerDrawer({
               </button>
             ) : null}
             <button
-              className="scheduler-custom-add-btn"
+              className="scheduler-custom-add-btn scheduler-custom-add-btn-personal"
               onClick={() => setCustomModalDraft({ date: toISO(cursorDate), startTime: "09:00", endTime: "10:00" })}
             >
-              Add custom event
+              New Personal Event
             </button>
             <Link
               href="/lesson-pack?from=scheduler"
-              className="scheduler-custom-add-btn"
+              className="scheduler-custom-add-btn scheduler-custom-add-btn-lesson"
               onClick={onClose}
               style={{ textDecoration: "none", textAlign: "center" as const }}
             >

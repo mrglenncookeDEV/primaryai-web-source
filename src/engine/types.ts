@@ -26,6 +26,9 @@ export interface LessonPackRequest {
     belowStandardPercent?: number | null;
     hugelyAboveStandardPercent?: number | null;
     hugelyBelowStandardPercent?: number | null;
+    termName?: string | null;
+    termStartDate?: string | null;
+    termEndDate?: string | null;
   };
 }
 
@@ -53,4 +56,7 @@ export type TeacherProfile = {
   belowStandardPercent?: number | null;
   hugelyAboveStandardPercent?: number | null;
   hugelyBelowStandardPercent?: number | null;
+  termName?: string | null;
+  termStartDate?: string | null;
+  termEndDate?: string | null;
 };

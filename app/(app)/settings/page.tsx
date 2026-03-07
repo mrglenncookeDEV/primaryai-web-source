@@ -23,6 +23,13 @@ type Profile = {
   hugelyBelowStandardPercent: number | "";
 };
 
+type TermEntry = {
+  id: string;
+  termName: string;
+  termStartDate: string;
+  termEndDate: string;
+};
+
 const INITIAL_PROFILE: Profile = {
   displayName: "",
   avatarUrl: "",
@@ -86,6 +93,13 @@ function toInputPercent(value: unknown): number | "" {
 
 function toPayloadPercent(value: number | ""): number | null {
   return value === "" ? null : value;
+}
+
+function toISODate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -184,6 +198,7 @@ const FIELD_LABEL_STYLE_TALL: React.CSSProperties = {
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile>(INITIAL_PROFILE);
+  const [terms, setTerms] = useState<TermEntry[]>([]);
   const [avatarFileName, setAvatarFileName] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -191,8 +206,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/profile");
-      const data = await res.json();
+      const [res, termsRes] = await Promise.all([
+        fetch("/api/profile"),
+        fetch("/api/profile/terms"),
+      ]);
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data?.profile) {
         setProfile({
           displayName: "",
@@ -213,6 +231,16 @@ export default function SettingsPage() {
           hugelyAboveStandardPercent: toInputPercent(data.profile.hugelyAboveStandardPercent),
           hugelyBelowStandardPercent: toInputPercent(data.profile.hugelyBelowStandardPercent),
         });
+      }
+
+      const termsData = await termsRes.json().catch(() => ({}));
+      if (termsRes.ok && Array.isArray(termsData?.terms)) {
+        setTerms(termsData.terms.map((term: any, index: number) => ({
+          id: String(term?.id || `term-${index}`),
+          termName: String(term?.termName || ""),
+          termStartDate: String(term?.termStartDate || ""),
+          termEndDate: String(term?.termEndDate || ""),
+        })));
       }
 
       const setupRes = await fetch("/api/profile/setup");
@@ -268,26 +296,58 @@ export default function SettingsPage() {
       hugelyBelowStandardPercent: toPayloadPercent(profile.hugelyBelowStandardPercent),
     };
 
-    const res = await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const [res, setupRes, termsRes] = await Promise.all([
+      fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
+      fetch("/api/profile/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: profile.displayName, avatarUrl: profile.avatarUrl }),
+      }),
+      fetch("/api/profile/terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ terms }),
+      }),
+    ]);
 
-    const setupRes = await fetch("/api/profile/setup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName: profile.displayName, avatarUrl: profile.avatarUrl }),
-    });
-
-    if (res.ok && setupRes.ok) {
+    if (res.ok && setupRes.ok && termsRes.ok) {
       setStatus("saved");
       setTimeout(() => setStatus("idle"), 3000);
     } else {
-      const data = await (res.ok ? setupRes : res).json().catch(() => ({}));
+      const data = await (!res.ok ? res : !setupRes.ok ? setupRes : termsRes).json().catch(() => ({}));
       setStatus("error");
       setErrorMsg(data?.error ?? "Save failed. Please try again.");
     }
+  }
+
+  function termStatus(term: TermEntry) {
+    if (!term.termStartDate || !term.termEndDate) return "Inactive";
+    const todayIso = toISODate(new Date());
+    return todayIso >= term.termStartDate && todayIso <= term.termEndDate ? "Active" : "Inactive";
+  }
+
+  function addEmptyTerm() {
+    setTerms((prev) => [
+      ...prev,
+      {
+        id: `term-${Date.now()}-${prev.length}`,
+        termName: "",
+        termStartDate: "",
+        termEndDate: "",
+      },
+    ]);
+  }
+
+  function updateTerm(id: string, patch: Partial<TermEntry>) {
+    setTerms((prev) => prev.map((term) => (term.id === id ? { ...term, ...patch } : term)));
+  }
+
+  function removeTerm(id: string) {
+    setTerms((prev) => prev.filter((term) => term.id !== id));
   }
 
   const isSaving = status === "saving";
@@ -413,6 +473,86 @@ export default function SettingsPage() {
                   </optgroup>
                 ))}
               </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <SectionLabel>Terms</SectionLabel>
+          <p style={{ margin: "0 0 1.1rem", fontSize: "0.82rem", color: "var(--muted)" }}>
+            Add your current and future terms so planning can work across the school year.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+            {terms.length === 0 ? (
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted)", fontStyle: "italic" }}>
+                No terms added yet.
+              </p>
+            ) : (
+              terms.map((term, index) => {
+                const status = termStatus(term);
+                return (
+                  <div key={term.id} style={{ border: "1px solid var(--border)", borderRadius: "14px", padding: "0.95rem", background: "var(--field-bg)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.8rem", marginBottom: "0.8rem", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "0.84rem", fontWeight: 700, color: "var(--text)" }}>
+                        Term {index + 1}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.45rem",
+                          padding: "0.28rem 0.7rem",
+                          borderRadius: "999px",
+                          background: status === "Active" ? "rgb(16 185 129 / 0.12)" : "rgb(148 163 184 / 0.14)",
+                          color: status === "Active" ? "#10b981" : "var(--muted)",
+                          border: `1px solid ${status === "Active" ? "rgb(16 185 129 / 0.35)" : "var(--border)"}`,
+                          fontSize: "0.76rem",
+                          fontWeight: 700,
+                          letterSpacing: "0.02em",
+                        }}>
+                          {status}
+                        </span>
+                        <button type="button" className="button secondary" onClick={() => removeTerm(term.id)}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.9rem" }}>
+                      <div className="field">
+                        <label style={FIELD_LABEL_STYLE}>Term Name</label>
+                        <input
+                          value={term.termName}
+                          onChange={(e) => updateTerm(term.id, { termName: e.target.value })}
+                          placeholder="e.g. Spring 1"
+                        />
+                      </div>
+                      <div className="field">
+                        <label style={FIELD_LABEL_STYLE}>Start Date</label>
+                        <input
+                          type="date"
+                          value={term.termStartDate}
+                          onChange={(e) => updateTerm(term.id, { termStartDate: e.target.value })}
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                      <div className="field">
+                        <label style={FIELD_LABEL_STYLE}>End Date</label>
+                        <input
+                          type="date"
+                          value={term.termEndDate}
+                          onChange={(e) => updateTerm(term.id, { termEndDate: e.target.value })}
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div>
+              <button type="button" className="button secondary" onClick={addEmptyTerm}>
+                Add Term
+              </button>
             </div>
           </div>
         </div>

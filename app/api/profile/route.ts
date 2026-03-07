@@ -12,6 +12,14 @@ function toNullablePercent(value: unknown): number | null | undefined {
   return rounded;
 }
 
+function toNullableDate(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
+}
+
 export async function GET() {
   const session = await getCurrentUserSession();
   if (!session?.userId) {
@@ -52,6 +60,9 @@ export async function POST(req: Request) {
       belowStandardPercent: toNullablePercent(body?.belowStandardPercent),
       hugelyAboveStandardPercent: toNullablePercent(body?.hugelyAboveStandardPercent),
       hugelyBelowStandardPercent: toNullablePercent(body?.hugelyBelowStandardPercent),
+      termName: typeof body?.termName === "string" ? body.termName.trim() : undefined,
+      termStartDate: toNullableDate(body?.termStartDate),
+      termEndDate: toNullableDate(body?.termEndDate),
     });
 
     return NextResponse.json({ ok: true, profile });

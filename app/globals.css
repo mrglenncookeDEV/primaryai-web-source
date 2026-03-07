@@ -4037,6 +4037,32 @@ html[data-theme="dark"] .libraryx-preview-paper {
   color: var(--text);
 }
 
+.scheduler-custom-add-btn-personal {
+  border-color: rgb(16 185 129 / 0.42);
+  background: rgb(16 185 129 / 0.14);
+  color: #065f46;
+}
+
+.scheduler-custom-add-btn-personal:hover,
+.scheduler-custom-add-btn-personal:focus-visible {
+  border-color: rgb(16 185 129 / 0.72);
+  background: rgb(16 185 129 / 0.24);
+  color: #064e3b;
+}
+
+.scheduler-custom-add-btn-lesson {
+  border-color: rgb(var(--accent-rgb) / 0.56);
+  background: rgb(var(--accent-rgb) / 0.18);
+  color: var(--accent);
+}
+
+.scheduler-custom-add-btn-lesson:hover,
+.scheduler-custom-add-btn-lesson:focus-visible {
+  border-color: rgb(var(--accent-rgb) / 0.82);
+  background: rgb(var(--accent-rgb) / 0.28);
+  color: var(--accent);
+}
+
 .scheduler-custom-sync-btn {
   width: calc(100% - 1.2rem);
   margin: 0.6rem;
@@ -5467,12 +5493,14 @@ html[data-theme="light"] .cmdpal-box {
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.07), 0 6px 20px rgb(0 0 0 / 0.07), inset 0 1px 0 rgb(255 255 255 / 0.05);
   overflow: hidden;
   cursor: default;
+  transform-origin: top center;
   transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 220ms ease, border-color 200ms ease;
+  animation: dashboard-hero-unfold 1.15s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.dashboard-hero-stat:nth-child(1) { --tile-accent: rgb(var(--accent-rgb)); }
-.dashboard-hero-stat:nth-child(2) { --tile-accent: #8b5cf6; }
-.dashboard-hero-stat:nth-child(3) { --tile-accent: #10b981; }
+.dashboard-hero-stat:nth-child(1) { --tile-accent: #10b981; }
+.dashboard-hero-stat:nth-child(2) { --tile-accent: rgb(var(--accent-rgb)); }
+.dashboard-hero-stat:nth-child(3) { --tile-accent: #8b5cf6; }
 .dashboard-hero-stat:nth-child(4) { --tile-accent: #f59e0b; }
 .dashboard-hero-stat:nth-child(5) { --tile-accent: #0ea5e9; }
 
@@ -5496,6 +5524,33 @@ html[data-theme="light"] .cmdpal-box {
 .dashboard-hero-stat:hover::before {
   left: 0; right: 0;
   opacity: 1;
+}
+
+@keyframes dashboard-hero-unfold {
+  0% {
+    opacity: 0.18;
+    transform: translateY(-10px) scaleY(0.06);
+    clip-path: inset(0 0 94% 0 round 18px);
+    filter: saturate(0.88);
+  }
+  55% {
+    opacity: 0.72;
+    transform: translateY(-2px) scaleY(1.01);
+    clip-path: inset(0 0 0 0 round 18px);
+    filter: saturate(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    clip-path: inset(0 0 0 0 round 18px);
+    filter: saturate(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-hero-stat {
+    animation: none;
+  }
 }
 
 .dashboard-hero-icon-badge {

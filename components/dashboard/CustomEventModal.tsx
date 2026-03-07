@@ -47,7 +47,7 @@ export default function CustomEventModal({
   onCancel,
 }: Props) {
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Meeting");
+  const [category, setCategory] = useState("Personal");
   const [scheduledDate, setScheduledDate] = useState(date);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);

@@ -109,6 +109,11 @@ function isImportedCalendarEvent(event: ScheduleEvent) {
   return event.eventType === "custom" && (category === "outlook_import" || category === "google_import");
 }
 
+function isPersonalEvent(event: ScheduleEvent) {
+  const category = String(event.eventCategory || "").toLowerCase();
+  return event.eventType === "custom" && (category === "personal" || String(event.subject || "").toLowerCase() === "personal");
+}
+
 export default function WeekCalendar({
   events,
   viewMode,
@@ -290,9 +295,10 @@ export default function WeekCalendar({
                   <div style={{ display: "grid", gap: "0.22rem" }}>
                     {dayEvents.map((evt) => {
                       const isImported = isImportedCalendarEvent(evt);
+                      const isPersonal = isPersonalEvent(evt);
                       const taskCategory = String(evt.eventCategory || "").toLowerCase();
                       const isDoneTask = taskCategory === "task_done" || /^\s*done\b/i.test(String(evt.title || ""));
-                      const color = isImported ? "#2563eb" : subjectColor(evt.subject);
+                      const color = isImported ? "#2563eb" : isPersonal ? "#10b981" : subjectColor(evt.subject);
                       return (
                         <button
                           key={evt.id}
@@ -373,12 +379,10 @@ export default function WeekCalendar({
                         const taskCategory = String(evt.eventCategory || "").toLowerCase();
                         const isTask = evt.eventType === "custom" && taskCategory.startsWith("task");
                         const isDoneTask = taskCategory === "task_done" || /^\s*done\b/i.test(String(evt.title || ""));
-                        const isPersonal =
-                          (evt.eventType === "custom" && taskCategory === "personal") ||
-                          String(evt.subject || "").toLowerCase() === "personal";
+                        const isPersonal = isPersonalEvent(evt);
                         const isConflict = conflictIds.has(evt.id);
                         const isHighTask = isTask && String(evt.title || "").toLowerCase().startsWith("high priority:");
-                        const color = isImported ? "#2563eb" : isTask ? (isHighTask ? "#ef4444" : "#4169e1") : isPersonal ? "#9ca3af" : subjectColor(evt.subject);
+                        const color = isImported ? "#2563eb" : isTask ? (isHighTask ? "#ef4444" : "#4169e1") : isPersonal ? "#10b981" : subjectColor(evt.subject);
                         const spanSlots = durationToSlots(evt.startTime, evt.endTime);
 
                         return (

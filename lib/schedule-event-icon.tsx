@@ -73,7 +73,7 @@ export function ScheduleEventIcon({
         : provider === "outlook"
           ? "#2563eb"
           : personal
-            ? "#3b82f6"
+            ? "#10b981"
             : "currentColor",
     ...style,
   };

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserSession } from "@/lib/user-session";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getProfileSetup } from "@/lib/profile-setup";
+import { getActiveTermSummary } from "@/lib/user-terms";
 
 function getMondayISO(d = new Date()) {
   const day = d.getDay();
@@ -37,7 +38,7 @@ export async function GET() {
   const todayIso = new Date().toISOString().split("T")[0];
   const upcomingEnd = addDaysISO(todayIso, 30);
 
-  const [libraryResult, scheduleResult, upcomingResult, profileResult, tasksResult] = await Promise.allSettled([
+  const [libraryResult, scheduleResult, upcomingResult, profileResult, tasksResult, activeTermResult] = await Promise.allSettled([
     supabase
       .from("lesson_packs")
       .select("id,title,year_group,subject,topic,created_at")
@@ -87,6 +88,7 @@ export async function GET() {
       }
       return primary;
     })(),
+    getActiveTermSummary(session.userId),
   ]);
 
   const libraryItems =
@@ -105,6 +107,8 @@ export async function GET() {
       : { displayName: "", avatarUrl: "", profileCompleted: false };
   const tasks =
     tasksResult.status === "fulfilled" && !tasksResult.value.error ? (tasksResult.value.data ?? []) : [];
+  const activeTerm =
+    activeTermResult.status === "fulfilled" ? activeTermResult.value : null;
 
   // Backward-compatible fallback while user_profile_setup is being backfilled/migrated.
   if (!profileSetup.displayName && !profileSetup.avatarUrl) {
@@ -130,6 +134,7 @@ export async function GET() {
       upNextEvents,
       profileSetup,
       tasks,
+      activeTerm,
     },
     { headers: { "Cache-Control": "private, max-age=20, stale-while-revalidate=60" } },
   );

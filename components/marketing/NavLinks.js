@@ -11,10 +11,20 @@ const PERSISTENT_LINKS = [
   { href: "/settings", label: "Settings" },
   { href: "/contact", label: "Contact Us" },
 ];
+const SESSION_USER_KEY = "pa_active_user_key";
 
 function getLinkHref(href, resolvedSession) {
   if (resolvedSession) return href;
   return `/login?next=${encodeURIComponent(href)}`;
+}
+
+function clearUserScopedBrowserState() {
+  try {
+    sessionStorage.removeItem("pa_dashboard_summary_v2");
+    sessionStorage.clear();
+  } catch {
+    // Ignore browser storage failures.
+  }
 }
 
 export default function NavLinks({ session }) {
@@ -29,6 +39,23 @@ export default function NavLinks({ session }) {
   useEffect(() => {
     setResolvedSession(session ?? null);
   }, [session]);
+
+  useEffect(() => {
+    const currentUserKey = resolvedSession?.userId || resolvedSession?.email || "";
+    try {
+      const previousUserKey = sessionStorage.getItem(SESSION_USER_KEY) || "";
+      if (previousUserKey && previousUserKey !== currentUserKey) {
+        clearUserScopedBrowserState();
+      }
+      if (currentUserKey) {
+        sessionStorage.setItem(SESSION_USER_KEY, currentUserKey);
+      } else {
+        sessionStorage.removeItem(SESSION_USER_KEY);
+      }
+    } catch {
+      // Ignore browser storage failures.
+    }
+  }, [resolvedSession]);
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -82,7 +109,7 @@ export default function NavLinks({ session }) {
             </Link>
           </>
         ) : (
-          <form action="/api/auth/logout" method="post">
+          <form action="/api/auth/logout" method="post" onSubmit={clearUserScopedBrowserState}>
             <button type="submit" className="nav-btn-ghost">
               Sign out
             </button>
@@ -163,7 +190,7 @@ export default function NavLinks({ session }) {
                 </Link>
               </>
             ) : (
-              <form action="/api/auth/logout" method="post">
+              <form action="/api/auth/logout" method="post" onSubmit={clearUserScopedBrowserState}>
                 <button type="submit" className="mobile-nav-btn-ghost">
                   Sign out
                 </button>

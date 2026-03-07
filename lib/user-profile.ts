@@ -3,7 +3,7 @@ import type { TeacherProfile } from "@/src/engine/types";
 
 const DEFAULT_PROFILE: Required<Pick<TeacherProfile,
   "defaultYearGroup" | "defaultSubject" | "tone" | "schoolType" | "sendFocus" | "autoSave" | "formatPrefs"
->> & Pick<TeacherProfile, "classNotes" | "teachingApproach" | "abilityMix" | "ealPercent" | "pupilPremiumPercent" | "aboveStandardPercent" | "belowStandardPercent" | "hugelyAboveStandardPercent" | "hugelyBelowStandardPercent"> = {
+>> & Pick<TeacherProfile, "classNotes" | "teachingApproach" | "abilityMix" | "ealPercent" | "pupilPremiumPercent" | "aboveStandardPercent" | "belowStandardPercent" | "hugelyAboveStandardPercent" | "hugelyBelowStandardPercent" | "termName" | "termStartDate" | "termEndDate"> = {
   defaultYearGroup: "Year 4",
   defaultSubject: "Maths",
   tone: "professional_uk",
@@ -20,6 +20,9 @@ const DEFAULT_PROFILE: Required<Pick<TeacherProfile,
   belowStandardPercent: null,
   hugelyAboveStandardPercent: null,
   hugelyBelowStandardPercent: null,
+  termName: null,
+  termStartDate: null,
+  termEndDate: null,
 };
 
 type ProfileRow = {
@@ -40,6 +43,9 @@ type ProfileRow = {
   below_standard_percent: number | null;
   hugely_above_standard_percent: number | null;
   hugely_below_standard_percent: number | null;
+  term_name: string | null;
+  term_start_date: string | null;
+  term_end_date: string | null;
 };
 
 function toTeacherProfile(userId: string, row?: Partial<ProfileRow> | null): TeacherProfile {
@@ -62,6 +68,9 @@ function toTeacherProfile(userId: string, row?: Partial<ProfileRow> | null): Tea
     belowStandardPercent: row?.below_standard_percent ?? DEFAULT_PROFILE.belowStandardPercent,
     hugelyAboveStandardPercent: row?.hugely_above_standard_percent ?? DEFAULT_PROFILE.hugelyAboveStandardPercent,
     hugelyBelowStandardPercent: row?.hugely_below_standard_percent ?? DEFAULT_PROFILE.hugelyBelowStandardPercent,
+    termName: row?.term_name ?? DEFAULT_PROFILE.termName,
+    termStartDate: row?.term_start_date ?? DEFAULT_PROFILE.termStartDate,
+    termEndDate: row?.term_end_date ?? DEFAULT_PROFILE.termEndDate,
   };
 }
 
@@ -98,6 +107,9 @@ export async function getOrCreateUserProfile(userId: string): Promise<TeacherPro
       below_standard_percent: DEFAULT_PROFILE.belowStandardPercent,
       hugely_above_standard_percent: DEFAULT_PROFILE.hugelyAboveStandardPercent,
       hugely_below_standard_percent: DEFAULT_PROFILE.hugelyBelowStandardPercent,
+      term_name: DEFAULT_PROFILE.termName,
+      term_start_date: DEFAULT_PROFILE.termStartDate,
+      term_end_date: DEFAULT_PROFILE.termEndDate,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
@@ -126,6 +138,9 @@ export async function updateUserProfile(userId: string, patch: Partial<TeacherPr
     belowStandardPercent: patch.belowStandardPercent !== undefined ? patch.belowStandardPercent : (current.belowStandardPercent ?? null),
     hugelyAboveStandardPercent: patch.hugelyAboveStandardPercent !== undefined ? patch.hugelyAboveStandardPercent : (current.hugelyAboveStandardPercent ?? null),
     hugelyBelowStandardPercent: patch.hugelyBelowStandardPercent !== undefined ? patch.hugelyBelowStandardPercent : (current.hugelyBelowStandardPercent ?? null),
+    termName: patch.termName !== undefined ? patch.termName : (current.termName ?? null),
+    termStartDate: patch.termStartDate !== undefined ? patch.termStartDate : (current.termStartDate ?? null),
+    termEndDate: patch.termEndDate !== undefined ? patch.termEndDate : (current.termEndDate ?? null),
   } as TeacherProfile;
 
   const db = getSupabaseAdminClient();
@@ -149,6 +164,9 @@ export async function updateUserProfile(userId: string, patch: Partial<TeacherPr
         below_standard_percent: next.belowStandardPercent ?? null,
         hugely_above_standard_percent: next.hugelyAboveStandardPercent ?? null,
         hugely_below_standard_percent: next.hugelyBelowStandardPercent ?? null,
+        term_name: next.termName ?? null,
+        term_start_date: next.termStartDate ?? null,
+        term_end_date: next.termEndDate ?? null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },
@@ -174,5 +192,8 @@ export function toEngineProfile(profile: TeacherProfile) {
     belowStandardPercent: profile.belowStandardPercent ?? null,
     hugelyAboveStandardPercent: profile.hugelyAboveStandardPercent ?? null,
     hugelyBelowStandardPercent: profile.hugelyBelowStandardPercent ?? null,
+    termName: profile.termName ?? null,
+    termStartDate: profile.termStartDate ?? null,
+    termEndDate: profile.termEndDate ?? null,
   };
 }

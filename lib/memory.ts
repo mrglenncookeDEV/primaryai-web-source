@@ -70,6 +70,9 @@ export async function updateTeacherProfile(userId: string, patch: Partial<Teache
       classNotes: patch.classNotes ?? null,
       teachingApproach: patch.teachingApproach ?? null,
       abilityMix: patch.abilityMix ?? null,
+      termName: patch.termName ?? null,
+      termStartDate: patch.termStartDate ?? null,
+      termEndDate: patch.termEndDate ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -86,5 +89,8 @@ export function toEngineProfile(profile: Awaited<ReturnType<typeof getOrCreateTe
     classNotes: null,
     teachingApproach: null,
     abilityMix: null,
+    termName: null,
+    termStartDate: null,
+    termEndDate: null,
   };
 }
