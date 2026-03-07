@@ -84,6 +84,7 @@ type DashboardSummaryPayload = {
   };
   libraryItems?: unknown[];
   scheduleEvents?: ScheduleEvent[];
+  upNextEvents?: ScheduleEvent[];
   tasks?: PersonalTask[];
 };
 
@@ -384,11 +385,14 @@ function ScheduleWidget({ onOpen, events, scheduleLoading }: { onOpen: () => voi
                   const taskCategory = String(evt.event_category || "").toLowerCase();
                   const isTask = evt.event_type === "custom" && taskCategory.startsWith("task");
                   const isDoneTask = taskCategory === "task_done" || /^\s*done\b/i.test(String(evt.title || ""));
+                  const isImportedCalendar = evt.event_type === "custom" && (taskCategory === "outlook_import" || taskCategory === "google_import");
                   const isPersonal = (evt.event_type === "custom" && String(evt.event_category || "").toLowerCase() === "personal")
                     || String(evt.subject || "").toLowerCase() === "personal";
                   const isConflict = conflictIds.has(evt.id);
                   const isHighTask = isTask && String(evt.title || "").toLowerCase().startsWith("high priority:");
-                  const color = isTask
+                  const color = isImportedCalendar
+                    ? "#2563eb"
+                    : isTask
                     ? (isHighTask ? "#ef4444" : "#4169e1")
                     : isPersonal
                       ? "#9ca3af"
@@ -447,7 +451,7 @@ function ScheduleWidget({ onOpen, events, scheduleLoading }: { onOpen: () => voi
 
 // ── Library overview ──────────────────────────────────────────────────────────
 
-function LibraryOverview({ items, scheduleEvents, loading, weekStart }: { items: LibraryItem[]; scheduleEvents: ScheduleEvent[]; loading: boolean; weekStart: Date }) {
+function LibraryOverview({ items, loading }: { items: LibraryItem[]; loading: boolean }) {
   // Subject breakdown
   const subjectCounts = items.reduce((acc, item) => {
     acc[item.subject] = (acc[item.subject] || 0) + 1;
@@ -457,178 +461,8 @@ function LibraryOverview({ items, scheduleEvents, loading, weekStart }: { items:
   const maxCount = sortedSubjects[0]?.[1] || 1;
   const total = items.length;
 
-  // 7-day activity aligned to the selected schedule week
-  const weekDays = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  const weekIsoSet = new Set(weekDays.map((day) => day.toISOString().split("T")[0]));
-  const daySubjectCounts = weekDays.map((day) => {
-    const iso = day.toISOString().split("T")[0];
-    const bySubject = scheduleEvents.reduce((acc, evt) => {
-      if (String(evt.scheduled_date || "") !== iso) return acc;
-      const subject = String(evt.subject || "Other");
-      acc[subject] = (acc[subject] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    const totalForDay = Object.values(bySubject).reduce((sum, value) => sum + value, 0);
-    return { iso, bySubject, totalForDay };
-  });
-  const weeklySubjectCounts = scheduleEvents.reduce((acc, evt) => {
-    const iso = String(evt.scheduled_date || "");
-    if (!weekIsoSet.has(iso)) return acc;
-    const subject = String(evt.subject || "Other");
-    acc[subject] = (acc[subject] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  const topSubjects = Object.entries(weeklySubjectCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([subject]) => subject);
-  const dailyStacks = daySubjectCounts.map((day) => {
-    let otherCount = 0;
-    const segments = topSubjects.reduce((acc, subject) => {
-      const count = day.bySubject[subject] || 0;
-      if (count > 0) acc.push({ subject, count, color: subjectColor(subject) });
-      return acc;
-    }, [] as Array<{ subject: string; count: number; color: string }>);
-
-    Object.entries(day.bySubject).forEach(([subject, count]) => {
-      if (!topSubjects.includes(subject)) otherCount += count;
-    });
-
-    if (otherCount > 0) {
-      segments.push({ subject: "Other", count: otherCount, color: "#94a3b8" });
-    }
-
-    return {
-      iso: day.iso,
-      total: day.totalForDay,
-      segments,
-    };
-  });
-  const dailyCounts = dailyStacks.map((day) => day.total);
-  const maxDaily = Math.max(...dailyCounts, 1);
-  const thisWeek = dailyCounts.reduce((a, b) => a + b, 0);
-  const dayLabels = weekDays.map(d => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"][d.getDay()]);
-  const todayIso = toISODate(new Date());
-  const stackLegend = [
-    ...topSubjects.map((subject) => ({ subject, color: subjectColor(subject), count: weeklySubjectCounts[subject] || 0 })),
-    ...(Object.keys(weeklySubjectCounts).some((subject) => !topSubjects.includes(subject))
-      ? [{ subject: "Other", color: "#94a3b8", count: Object.entries(weeklySubjectCounts).reduce((sum, [subject, count]) => topSubjects.includes(subject) ? sum : sum + count, 0) }]
-      : []),
-  ].filter((item) => item.count > 0);
-
   return (
     <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.85rem" }}>
-
-      {/* 7-day activity chart */}
-      <div style={{
-        borderRadius: "16px",
-        border: "1px solid var(--border-card)",
-        background: "var(--surface)",
-        padding: "1.2rem 1.2rem 1rem",
-        position: "relative" as const,
-        overflow: "hidden",
-        height: "100%",
-        boxSizing: "border-box" as const,
-        display: "flex",
-        flexDirection: "column" as const,
-      }}>
-        <div style={{ position: "absolute" as const, top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, #0ea5e9 0%, #14b8a6 60%, transparent 100%)" }} />
-
-        <p style={{ margin: "0 0 0.1rem", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--muted)" }}>Activity by Subject</p>
-
-        {loading ? (
-          <div style={{ flex: 1 }}>
-            <div style={{ height: "2rem", borderRadius: "6px", background: "var(--border)", animation: "pulse 1.5s ease-in-out infinite", width: "50%", marginBottom: "0.5rem" }} />
-          </div>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", margin: "0.3rem 0 auto" }}>
-              <span style={{ fontSize: "2.4rem", fontWeight: 300, letterSpacing: "-0.04em", color: "var(--text)", lineHeight: 1 }}>{thisWeek}</span>
-              <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 500 }}>this week</span>
-            </div>
-
-            {/* Bar chart */}
-            <div style={{ marginTop: "auto", paddingTop: "1rem" }}>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "56px" }}>
-                {dailyStacks.map((day, i) => {
-                  const isToday = day.iso === todayIso;
-                  const heightPct = day.total > 0 ? Math.max(18, (day.total / maxDaily) * 100) : 10;
-                  return (
-                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column" as const, alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
-                      <div style={{
-                        width: "100%",
-                        height: `${heightPct}%`,
-                        borderRadius: "4px 4px 2px 2px",
-                        background: day.total > 0
-                          ? "transparent"
-                          : "var(--border)",
-                        border: day.total > 0 ? "1px solid color-mix(in srgb, var(--border-card) 75%, transparent)" : "none",
-                        transition: "height 500ms cubic-bezier(0.4,0,0.2,1) 200ms",
-                        position: "relative" as const,
-                        overflow: "hidden",
-                        display: "flex",
-                        flexDirection: "column-reverse",
-                      }}>
-                        {day.segments.map((segment, segmentIndex) => (
-                          <span
-                            key={`${segment.subject}-${segmentIndex}`}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              height: `${(segment.count / day.total) * 100}%`,
-                              background: segment.color,
-                              opacity: isToday ? 1 : 0.9,
-                            }}
-                            title={`${segment.subject}: ${segment.count}`}
-                          />
-                        ))}
-                        {day.total > 0 && (
-                          <span style={{
-                            position: "absolute" as const,
-                            bottom: "calc(100% + 2px)",
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            fontSize: "0.55rem",
-                            fontWeight: 700,
-                            color: isToday ? "var(--accent)" : "var(--muted)",
-                            whiteSpace: "nowrap" as const,
-                          }}>{day.total}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ display: "flex", gap: "4px", marginTop: "5px" }}>
-                {dayLabels.map((label, i) => (
-                  <div key={i} style={{
-                    flex: 1, textAlign: "center" as const,
-                    fontSize: "0.58rem",
-                    color: dailyStacks[i]?.iso === todayIso ? "var(--accent)" : "var(--muted)",
-                    fontWeight: dailyStacks[i]?.iso === todayIso ? 700 : 400,
-                  }}>{label}</div>
-                ))}
-              </div>
-              {stackLegend.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem 0.7rem", marginTop: "0.55rem" }}>
-                  {stackLegend.map((item) => (
-                    <span key={item.subject} style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontSize: "0.62rem", color: "var(--muted)" }}>
-                      <span style={{ width: "8px", height: "8px", borderRadius: "999px", background: item.color, display: "inline-block" }} />
-                      {item.subject}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
       {/* Subject bars */}
       <div style={{
         borderRadius: "16px",
@@ -700,6 +534,182 @@ function LibraryOverview({ items, scheduleEvents, loading, weekStart }: { items:
         )}
       </div>
 
+    </div>
+  );
+}
+
+function ActivityBySubjectCard({
+  scheduleEvents,
+  loading,
+  weekStart,
+}: {
+  scheduleEvents: ScheduleEvent[];
+  loading: boolean;
+  weekStart: Date;
+}) {
+  const weekDays = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const weekIsoSet = new Set(weekDays.map((day) => day.toISOString().split("T")[0]));
+  const daySubjectCounts = weekDays.map((day) => {
+    const iso = day.toISOString().split("T")[0];
+    const bySubject = scheduleEvents.reduce((acc, evt) => {
+      if (String(evt.scheduled_date || "") !== iso) return acc;
+      const subject = String(evt.subject || "Other");
+      acc[subject] = (acc[subject] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const totalForDay = Object.values(bySubject).reduce((sum, value) => sum + value, 0);
+    return { iso, bySubject, totalForDay };
+  });
+  const weeklySubjectCounts = scheduleEvents.reduce((acc, evt) => {
+    const iso = String(evt.scheduled_date || "");
+    if (!weekIsoSet.has(iso)) return acc;
+    const subject = String(evt.subject || "Other");
+    acc[subject] = (acc[subject] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const topSubjects = Object.entries(weeklySubjectCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([subject]) => subject);
+  const dailyStacks = daySubjectCounts.map((day) => {
+    let otherCount = 0;
+    const segments = topSubjects.reduce((acc, subject) => {
+      const count = day.bySubject[subject] || 0;
+      if (count > 0) acc.push({ subject, count, color: subjectColor(subject) });
+      return acc;
+    }, [] as Array<{ subject: string; count: number; color: string }>);
+
+    Object.entries(day.bySubject).forEach(([subject, count]) => {
+      if (!topSubjects.includes(subject)) otherCount += count;
+    });
+
+    if (otherCount > 0) {
+      segments.push({ subject: "Other", count: otherCount, color: "#94a3b8" });
+    }
+
+    return {
+      iso: day.iso,
+      total: day.totalForDay,
+      segments,
+    };
+  });
+  const dailyCounts = dailyStacks.map((day) => day.total);
+  const maxDaily = Math.max(...dailyCounts, 1);
+  const thisWeek = dailyCounts.reduce((a, b) => a + b, 0);
+  const dayLabels = weekDays.map((d) => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"][d.getDay()]);
+  const todayIso = toISODate(new Date());
+  const stackLegend = [
+    ...topSubjects.map((subject) => ({ subject, color: subjectColor(subject), count: weeklySubjectCounts[subject] || 0 })),
+    ...(Object.keys(weeklySubjectCounts).some((subject) => !topSubjects.includes(subject))
+      ? [{ subject: "Other", color: "#94a3b8", count: Object.entries(weeklySubjectCounts).reduce((sum, [subject, count]) => topSubjects.includes(subject) ? sum : sum + count, 0) }]
+      : []),
+  ].filter((item) => item.count > 0);
+
+  return (
+    <div style={{
+      borderRadius: "16px",
+      border: "1px solid var(--border-card)",
+      background: "var(--surface)",
+      padding: "1.2rem 1.2rem 1rem",
+      position: "relative" as const,
+      overflow: "hidden",
+      height: "100%",
+      boxSizing: "border-box" as const,
+      display: "flex",
+      flexDirection: "column" as const,
+    }}>
+      <div style={{ position: "absolute" as const, top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, #0ea5e9 0%, #14b8a6 60%, transparent 100%)" }} />
+
+      <p style={{ margin: "0 0 0.1rem", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--muted)" }}>Activity by Subject</p>
+
+      {loading ? (
+        <div style={{ flex: 1 }}>
+          <div style={{ height: "2rem", borderRadius: "6px", background: "var(--border)", animation: "pulse 1.5s ease-in-out infinite", width: "50%", marginBottom: "0.5rem" }} />
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", margin: "0.3rem 0 auto" }}>
+            <span style={{ fontSize: "2.4rem", fontWeight: 300, letterSpacing: "-0.04em", color: "var(--text)", lineHeight: 1 }}>{thisWeek}</span>
+            <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 500 }}>this week</span>
+          </div>
+
+          <div style={{ marginTop: "auto", paddingTop: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "56px" }}>
+              {dailyStacks.map((day, i) => {
+                const isToday = day.iso === todayIso;
+                const heightPct = day.total > 0 ? Math.max(18, (day.total / maxDaily) * 100) : 10;
+                return (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column" as const, alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
+                    <div style={{
+                      width: "100%",
+                      height: `${heightPct}%`,
+                      borderRadius: "4px 4px 2px 2px",
+                      background: day.total > 0 ? "transparent" : "var(--border)",
+                      border: day.total > 0 ? "1px solid color-mix(in srgb, var(--border-card) 75%, transparent)" : "none",
+                      transition: "height 500ms cubic-bezier(0.4,0,0.2,1) 200ms",
+                      position: "relative" as const,
+                      overflow: "hidden",
+                      display: "flex",
+                      flexDirection: "column-reverse",
+                    }}>
+                      {day.segments.map((segment, segmentIndex) => (
+                        <span
+                          key={`${segment.subject}-${segmentIndex}`}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            height: `${(segment.count / day.total) * 100}%`,
+                            background: segment.color,
+                            opacity: isToday ? 1 : 0.9,
+                          }}
+                          title={`${segment.subject}: ${segment.count}`}
+                        />
+                      ))}
+                      {day.total > 0 && (
+                        <span style={{
+                          position: "absolute" as const,
+                          bottom: "calc(100% + 2px)",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          fontSize: "0.55rem",
+                          fontWeight: 700,
+                          color: isToday ? "var(--accent)" : "var(--muted)",
+                          whiteSpace: "nowrap" as const,
+                        }}>{day.total}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: "4px", marginTop: "5px" }}>
+              {dayLabels.map((label, i) => (
+                <div key={i} style={{
+                  flex: 1, textAlign: "center" as const,
+                  fontSize: "0.58rem",
+                  color: dailyStacks[i]?.iso === todayIso ? "var(--accent)" : "var(--muted)",
+                  fontWeight: dailyStacks[i]?.iso === todayIso ? 700 : 400,
+                }}>{label}</div>
+              ))}
+            </div>
+            {stackLegend.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem 0.7rem", marginTop: "0.55rem" }}>
+                {stackLegend.map((item) => (
+                  <span key={item.subject} style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontSize: "0.62rem", color: "var(--muted)" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "999px", background: item.color, display: "inline-block" }} />
+                    {item.subject}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1011,6 +1021,7 @@ function PersonalTasksCard({
 export default function DashboardPage() {
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [scheduleEvents, setScheduleEvents] = useState<ScheduleEvent[]>([]);
+  const [upNextScheduleEvents, setUpNextScheduleEvents] = useState<ScheduleEvent[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [weekStart, setWeekStart] = useState<Date>(() => getMondayDate(new Date()));
   const [email, setEmail] = useState("");
@@ -1020,6 +1031,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(true);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
+  const [upNextIndex, setUpNextIndex] = useState(0);
 
   const refreshTasksFromApi = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -1050,6 +1062,7 @@ export default function DashboardPage() {
         if (canHydrateCache && cached?.data) {
           setItems(normaliseLibraryItems(cached.data.libraryItems));
           setScheduleEvents(Array.isArray(cached.data.scheduleEvents) ? cached.data.scheduleEvents : []);
+          setUpNextScheduleEvents(Array.isArray(cached.data.upNextEvents) ? cached.data.upNextEvents : []);
           setEmail(String(cached.data.email ?? ""));
           setDisplayName(cached.data.profileSetup?.displayName ?? "");
           setAvatarUrl(cached.data.profileSetup?.avatarUrl ?? "");
@@ -1076,6 +1089,7 @@ export default function DashboardPage() {
           const data = (await res.json()) as DashboardSummaryPayload;
           setItems(normaliseLibraryItems(data?.libraryItems));
           setScheduleEvents(Array.isArray(data?.scheduleEvents) ? data.scheduleEvents : []);
+          setUpNextScheduleEvents(Array.isArray(data?.upNextEvents) ? data.upNextEvents : []);
           setEmail(String(data?.email ?? ""));
           setDisplayName(data?.profileSetup?.displayName ?? "");
           setAvatarUrl(data?.profileSetup?.avatarUrl ?? "");
@@ -1119,14 +1133,25 @@ export default function DashboardPage() {
     const currentWeekIso = getMondayISO();
     if (scheduleRefreshKey === 0 && selectedWeekIso === currentWeekIso) return;
     const controller = new AbortController();
+    const todayIso = toISODate(new Date());
+    const upNextRangeEnd = new Date();
+    upNextRangeEnd.setDate(upNextRangeEnd.getDate() + 30);
+    const upNextRangeEndIso = toISODate(upNextRangeEnd);
     const timer = window.setTimeout(() => {
       void (async () => {
         setScheduleLoading(true);
         try {
-          const res = await fetch(`/api/schedule?weekStart=${selectedWeekIso}`, { signal: controller.signal });
-          const data = await res.json().catch(() => ({}));
-          if (res.ok) {
-            setScheduleEvents(Array.isArray(data?.events) ? data.events : []);
+          const [weekRes, upNextRes] = await Promise.all([
+            fetch(`/api/schedule?weekStart=${selectedWeekIso}`, { signal: controller.signal }),
+            fetch(`/api/schedule?from=${todayIso}&to=${upNextRangeEndIso}`, { signal: controller.signal }),
+          ]);
+          const weekData = await weekRes.json().catch(() => ({}));
+          const upNextData = await upNextRes.json().catch(() => ({}));
+          if (weekRes.ok) {
+            setScheduleEvents(Array.isArray(weekData?.events) ? weekData.events : []);
+          }
+          if (upNextRes.ok) {
+            setUpNextScheduleEvents(Array.isArray(upNextData?.events) ? upNextData.events : []);
           }
         } finally {
           if (!controller.signal.aborted) {
@@ -1161,10 +1186,42 @@ export default function DashboardPage() {
     () => scheduleEvents.filter((e) => e.scheduled_date === todayISO).length,
     [scheduleEvents, todayISO],
   );
+  const upNextEvents = useMemo(() => {
+    const now = new Date();
+    const nowDate = toISODate(now);
+    const nowTime = now.toTimeString().slice(0, 5);
+    return upNextScheduleEvents
+      .filter((event) => {
+        const eventDate = String(event.scheduled_date || "");
+        const eventTime = String(event.start_time || "").slice(0, 5);
+        return eventDate > nowDate || (eventDate === nowDate && eventTime >= nowTime);
+      })
+      .sort((a, b) =>
+        a.scheduled_date !== b.scheduled_date
+          ? a.scheduled_date.localeCompare(b.scheduled_date)
+          : a.start_time.localeCompare(b.start_time),
+      )
+      .slice(0, 8);
+  }, [upNextScheduleEvents]);
   const countPacks = useCountUp(loading ? 0 : items.length);
   const countSubjects = useCountUp(loading ? 0 : uniqueSubjects);
-  const countScheduled = useCountUp(scheduleLoading ? 0 : scheduleEvents.length);
-  const countToday = useCountUp(scheduleLoading ? 0 : todayCount, 600);
+  function formatUpNextDate(iso: string) {
+    const [y, m, d] = iso.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (iso === todayISO) return "Today";
+    if (iso === toISODate(tomorrow)) return "Tomorrow";
+    return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  useEffect(() => {
+    if (upNextEvents.length === 0) {
+      setUpNextIndex(0);
+      return;
+    }
+    setUpNextIndex((current) => Math.min(current, upNextEvents.length - 1));
+  }, [upNextEvents]);
 
   // Tile 1: progress ring (cap at 20 packs)
   const packRingCircumference = 2 * Math.PI * 20;
@@ -1172,14 +1229,6 @@ export default function DashboardPage() {
 
   // Tile 2: unique subject list for color dots
   const subjectDots = useMemo(() => Array.from(new Set(items.map((i) => i.subject))), [items]);
-
-  // Tile 3: per-day event counts for the visible week
-  const weekSparkline = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    return scheduleEvents.filter((e) => e.scheduled_date === toISODate(d)).length;
-  }), [scheduleEvents, weekStart]);
-  const sparkMax = Math.max(1, ...weekSparkline);
 
   // Insight card computation
   const insightData = useMemo(() => {
@@ -1312,83 +1361,150 @@ export default function DashboardPage() {
       {/* ── Hero stats strip ── */}
       <div className="dashboard-hero" style={{ marginBottom: "1.25rem" }}>
         <div className="dashboard-hero-stat">
+          <div className="dashboard-hero-badge-wrap">
+            <div className="dashboard-hero-icon-badge">
+              <svg className="dashboard-hero-stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" fill="currentColor" opacity="0.3" />
+                            <polyline points="12 6 12 12 16 14" stroke="currentColor" fill="none" />
+                          </svg>            </div>
+            {!scheduleLoading && todayCount > 0 && <span className="dashboard-hero-live-dot" aria-label="lessons scheduled today" />}
+          </div>
+          {!scheduleLoading && upNextEvents.length > 0 ? (
+            <div className="dashboard-upnext-wrap">
+              <div className="dashboard-upnext-controls">
+                <span className="dashboard-hero-sub">Next scheduler events</span>
+              </div>
+              <div className="dashboard-upnext-track">
+                {(() => {
+                  const event = upNextEvents[upNextIndex];
+                  if (!event) return null;
+                  const taskCategory = String(event.event_category || "").toLowerCase();
+                  const isImportedCalendar = event.event_type === "custom" && (taskCategory === "outlook_import" || taskCategory === "google_import");
+                  const color = isImportedCalendar ? "#2563eb" : subjectColor(event.subject);
+                  return (
+                    <div
+                      key={event.id}
+                      className="dashboard-upnext-card"
+                      role="button"
+                      tabIndex={0}
+                      style={{
+                        background: `color-mix(in srgb, ${color} 10%, var(--field-bg))`,
+                        borderLeft: `3px solid ${color}`,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent("pa:schedule-open-event", { detail: event }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.dispatchEvent(new CustomEvent("pa:schedule-open-event", { detail: event }));
+                        }
+                      }}
+                    >
+                      <p className="dashboard-upnext-title">
+                        <ScheduleEventIcon
+                          subject={event.subject}
+                          eventType={event.event_type}
+                          eventCategory={event.event_category}
+                          size={12}
+                        />
+                        <span>{event.title}</span>
+                      </p>
+                      <p className="dashboard-upnext-meta">
+                        {formatUpNextDate(event.scheduled_date)} · {String(event.start_time || "").slice(0, 5)}–{String(event.end_time || "").slice(0, 5)}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="dashboard-upnext-controls dashboard-upnext-controls-bottom">
+                <span className="dashboard-upnext-position">
+                  {upNextIndex + 1} / {upNextEvents.length}
+                </span>
+                <div className="schedule-carousel-controls">
+                  <button
+                    type="button"
+                    className="schedule-carousel-arrow"
+                    aria-label="Previous upcoming events"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setUpNextIndex((current) => Math.max(0, current - 1));
+                    }}
+                    disabled={upNextIndex === 0}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-carousel-arrow"
+                    aria-label="Next upcoming events"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setUpNextIndex((current) => Math.min(upNextEvents.length - 1, current + 1));
+                    }}
+                    disabled={upNextIndex >= upNextEvents.length - 1}
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : !scheduleLoading ? (
+            <span className="dashboard-hero-sub">no upcoming events</span>
+          ) : (
+            <span className="dashboard-hero-sub">loading next event…</span>
+          )}
+        </div>
+        <div className="dashboard-hero-stat">
           <div className="dashboard-hero-ring-wrap">
             <svg className="dashboard-hero-ring" viewBox="0 0 48 48" aria-hidden="true">
               <circle cx="24" cy="24" r="20" className="dashboard-hero-ring-track" />
               <circle cx="24" cy="24" r="20" className="dashboard-hero-ring-fill" style={{ strokeDashoffset: packRingOffset }} />
             </svg>
             <div className="dashboard-hero-icon-badge">
-              <svg className="dashboard-hero-stat-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              <svg className="dashboard-hero-stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" fill="none" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" fill="currentColor" opacity="0.3" />
               </svg>
             </div>
           </div>
-          <span className="dashboard-hero-value">{loading ? "–" : countPacks}</span>
+          <span className="dashboard-hero-value dashboard-hero-metric">{loading ? "–" : countPacks}</span>
           <span className="dashboard-hero-label">Lesson Packs</span>
           {!loading && <span className="dashboard-hero-sub">{items.length === 0 ? "get started" : "in your library"}</span>}
         </div>
         <div className="dashboard-hero-stat">
           <div className="dashboard-hero-icon-badge">
-            <svg className="dashboard-hero-stat-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+            <svg className="dashboard-hero-stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" fill="currentColor" opacity="0.3" />
+              <path d="M2 17l10 5 10-5" stroke="currentColor" fill="none" />
+              <path d="M2 12l10 5 10-5" stroke="currentColor" fill="none" />
             </svg>
           </div>
-          <span className="dashboard-hero-value">{loading ? "–" : countSubjects}</span>
+          <span className="dashboard-hero-value dashboard-hero-metric">{loading ? "–" : countSubjects}</span>
           <span className="dashboard-hero-label">Subjects</span>
           {!loading && <span className="dashboard-hero-sub">{uniqueSubjects > 0 ? `${uniqueSubjects} covered` : "none yet"}</span>}
           {!loading && subjectDots.length > 0 && (
             <div className="dashboard-hero-dots" aria-hidden="true">
               {subjectDots.slice(0, 9).map((subj) => (
-                <span key={subj} className="dashboard-hero-dot" style={{ background: subjectColor(subj) }} />
+                <ScheduleEventIcon key={subj} subject={subj} size={13} style={{ color: subjectColor(subj) }} />
               ))}
             </div>
           )}
         </div>
+        <ActivityBySubjectCard
+          scheduleEvents={scheduleEvents}
+          loading={scheduleLoading}
+          weekStart={weekStart}
+        />
         <div className="dashboard-hero-stat">
           <div className="dashboard-hero-icon-badge">
-            <svg className="dashboard-hero-stat-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-            </svg>
-          </div>
-          <span className="dashboard-hero-value">{scheduleLoading ? "–" : countScheduled}</span>
-          <span className="dashboard-hero-label">Scheduled</span>
-          {!scheduleLoading && <span className="dashboard-hero-sub">this week</span>}
-          {!scheduleLoading && (
-            <div className="dashboard-hero-sparkline" aria-hidden="true">
-              {weekSparkline.map((count, i) => {
-                const d = new Date(weekStart);
-                d.setDate(weekStart.getDate() + i);
-                const isToday = toISODate(d) === todayISO;
-                return (
-                  <div
-                    key={i}
-                    className={`dashboard-hero-spark-bar${isToday ? " is-today" : ""}`}
-                    style={{ height: `${Math.max(15, Math.round((count / sparkMax) * 100))}%` }}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-        <div className="dashboard-hero-stat">
-          <div className="dashboard-hero-badge-wrap">
-            <div className="dashboard-hero-icon-badge">
-              <svg className="dashboard-hero-stat-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            {!scheduleLoading && todayCount > 0 && <span className="dashboard-hero-live-dot" aria-label="lessons scheduled today" />}
-          </div>
-          <span className="dashboard-hero-value">{scheduleLoading ? "–" : countToday}</span>
-          <span className="dashboard-hero-label">Today</span>
-          {!scheduleLoading && (
-            <span className="dashboard-hero-sub">{todayCount > 0 ? `${todayCount} lesson${todayCount !== 1 ? "s" : ""}` : "nothing scheduled"}</span>
-          )}
-        </div>
-        <div className="dashboard-hero-stat">
-          <div className="dashboard-hero-icon-badge">
-            <svg className="dashboard-hero-stat-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />
+            <svg className="dashboard-hero-stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" fill="currentColor" opacity="0.3" />
+              <polyline points="12 6 12 12 16 14" stroke="currentColor" fill="none" />
             </svg>
           </div>
           <span className="dashboard-hero-label">Insight</span>
@@ -1450,7 +1566,6 @@ export default function DashboardPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
             <ActionCard
               href="/lesson-pack"
-              accent
               title="Generate Lesson Pack"
               desc="AI-powered resources for any topic in seconds"
               icon={
@@ -1482,7 +1597,7 @@ export default function DashboardPage() {
               }
             />
           </div>
-          <LibraryOverview items={items} scheduleEvents={scheduleEvents} loading={loading} weekStart={weekStart} />
+            <LibraryOverview items={items} loading={loading} />
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.25rem" }}>
             <ActionCard

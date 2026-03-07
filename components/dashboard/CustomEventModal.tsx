@@ -4,6 +4,8 @@ import { useState } from "react";
 
 type Props = {
   date: string;
+  initialStartTime?: string;
+  initialEndTime?: string;
   saving: boolean;
   onConfirm: (data: {
     title: string;
@@ -36,12 +38,19 @@ const CATEGORIES = [
   "Other",
 ];
 
-export default function CustomEventModal({ date, saving, onConfirm, onCancel }: Props) {
+export default function CustomEventModal({
+  date,
+  initialStartTime = "09:00",
+  initialEndTime = "10:00",
+  saving,
+  onConfirm,
+  onCancel,
+}: Props) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Meeting");
   const [scheduledDate, setScheduledDate] = useState(date);
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("10:00");
+  const [startTime, setStartTime] = useState(initialStartTime);
+  const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
 

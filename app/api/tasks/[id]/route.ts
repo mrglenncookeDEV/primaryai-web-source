@@ -1,4 +1,14 @@
 import { NextResponse } from "next/server";
+import {
+  deleteScheduleEventFromGoogle,
+  getGoogleSyncStatus,
+  syncScheduleEventToGoogle,
+} from "@/lib/google-sync";
+import {
+  deleteScheduleEventFromOutlook,
+  getOutlookSyncStatus,
+  syncScheduleEventToOutlook,
+} from "@/lib/outlook-sync";
 import { getCurrentUserSession } from "@/lib/user-session";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
@@ -244,7 +254,33 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
-  return NextResponse.json({ ok: true, task: mapTask(updatedTask), scheduleEvent });
+  const syncWarnings: string[] = [];
+  if (scheduleEvent?.id) {
+    try {
+      const outlookStatus = await getOutlookSyncStatus(session.userId);
+      if (outlookStatus.connected) {
+        await syncScheduleEventToOutlook(session.userId, scheduleEvent);
+      }
+    } catch (syncError) {
+      syncWarnings.push(String((syncError as Error)?.message || "Could not sync this task to Outlook"));
+    }
+
+    try {
+      const googleStatus = await getGoogleSyncStatus(session.userId);
+      if (googleStatus.connected) {
+        await syncScheduleEventToGoogle(session.userId, scheduleEvent);
+      }
+    } catch (syncError) {
+      syncWarnings.push(String((syncError as Error)?.message || "Could not sync this task to Google Calendar"));
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    task: mapTask(updatedTask),
+    scheduleEvent,
+    syncWarning: syncWarnings.length > 0 ? syncWarnings.join(" ") : undefined,
+  });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -270,7 +306,16 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
+  let scheduleRow: { outlook_event_id?: string | null; google_event_id?: string | null } | null = null;
   if (existing.schedule_event_id) {
+    const { data } = await supabase
+      .from("lesson_schedule")
+      .select("outlook_event_id,google_event_id")
+      .eq("id", existing.schedule_event_id)
+      .eq("user_id", session.userId)
+      .maybeSingle();
+    scheduleRow = data || null;
+
     await supabase
       .from("lesson_schedule")
       .delete()
@@ -288,5 +333,24 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Could not delete task" }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true });
+  const syncWarnings: string[] = [];
+  try {
+    const outlookStatus = await getOutlookSyncStatus(session.userId);
+    if (outlookStatus.connected && scheduleRow?.outlook_event_id) {
+      await deleteScheduleEventFromOutlook(session.userId, scheduleRow.outlook_event_id);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not delete this task from Outlook"));
+  }
+
+  try {
+    const googleStatus = await getGoogleSyncStatus(session.userId);
+    if (googleStatus.connected && scheduleRow?.google_event_id) {
+      await deleteScheduleEventFromGoogle(session.userId, scheduleRow.google_event_id);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not delete this task from Google Calendar"));
+  }
+
+  return NextResponse.json({ ok: true, syncWarning: syncWarnings.length > 0 ? syncWarnings.join(" ") : undefined });
 }

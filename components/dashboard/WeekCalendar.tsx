@@ -29,6 +29,7 @@ type Props = {
   onNavigate: (delta: -1 | 1) => void;
   onGoToday: () => void;
   onDrop: (date: string, slotTime: string) => void;
+  onEmptySlotClick?: (date: string, slotTime: string) => void;
   onEventReschedule: (eventId: string, date: string, slotTime: string) => void;
   onEventDelete: (id: string) => void;
   onEventClick: (event: ScheduleEvent) => void;
@@ -65,7 +66,10 @@ function startOfWeekMonday(date: Date): Date {
 }
 
 function toISO(date: Date): string {
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function formatWeekLabel(monday: Date): string {
@@ -100,6 +104,11 @@ function monthGridDays(cursorDate: Date): Date[] {
   return Array.from({ length: 42 }, (_, i) => addDays(start, i));
 }
 
+function isImportedCalendarEvent(event: ScheduleEvent) {
+  const category = String(event.eventCategory || "").toLowerCase();
+  return event.eventType === "custom" && (category === "outlook_import" || category === "google_import");
+}
+
 export default function WeekCalendar({
   events,
   viewMode,
@@ -109,6 +118,7 @@ export default function WeekCalendar({
   onNavigate,
   onGoToday,
   onDrop,
+  onEmptySlotClick,
   onEventReschedule,
   onEventDelete,
   onEventClick,
@@ -279,9 +289,10 @@ export default function WeekCalendar({
                   <div style={{ fontSize: "0.68rem", fontWeight: 700, color: iso === todayISO ? "#16a34a" : "var(--text)", marginBottom: "0.25rem" }}>{day.getDate()}</div>
                   <div style={{ display: "grid", gap: "0.22rem" }}>
                     {dayEvents.map((evt) => {
+                      const isImported = isImportedCalendarEvent(evt);
                       const taskCategory = String(evt.eventCategory || "").toLowerCase();
                       const isDoneTask = taskCategory === "task_done" || /^\s*done\b/i.test(String(evt.title || ""));
-                      const color = subjectColor(evt.subject);
+                      const color = isImported ? "#2563eb" : subjectColor(evt.subject);
                       return (
                         <button
                           key={evt.id}
@@ -339,13 +350,18 @@ export default function WeekCalendar({
                     <div
                       key={`${day.iso}-${slot}`}
                       className={`scheduler-slot${dragOverSlot === `${dayIdx}-${slotIdx}` ? " drag-over" : ""}${day.iso === todayISO ? " today-col-outline" : ""}${day.iso === todayISO && slotIdx === SLOT_COUNT - 1 ? " today-col-outline-end" : ""}`}
+                      onClick={() => {
+                        if (slotEvents.length === 0) {
+                          onEmptySlotClick?.(day.iso, slot);
+                        }
+                      }}
                       onDragOver={(e) => { e.preventDefault(); setDragOverSlot(`${dayIdx}-${slotIdx}`); }}
                       onDragLeave={() => setDragOverSlot(null)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDragOverSlot(null);
-                        const draggedEventId = e.dataTransfer.getData("text/scheduler-event-id");
-                        if (draggedEventId) {
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragOverSlot(null);
+                          const draggedEventId = e.dataTransfer.getData("text/scheduler-event-id");
+                          if (draggedEventId) {
                           onEventReschedule(draggedEventId, day.iso, slot);
                           return;
                         }
@@ -353,6 +369,7 @@ export default function WeekCalendar({
                       }}
                     >
                       {slotEvents.map((evt) => {
+                        const isImported = isImportedCalendarEvent(evt);
                         const taskCategory = String(evt.eventCategory || "").toLowerCase();
                         const isTask = evt.eventType === "custom" && taskCategory.startsWith("task");
                         const isDoneTask = taskCategory === "task_done" || /^\s*done\b/i.test(String(evt.title || ""));
@@ -361,14 +378,14 @@ export default function WeekCalendar({
                           String(evt.subject || "").toLowerCase() === "personal";
                         const isConflict = conflictIds.has(evt.id);
                         const isHighTask = isTask && String(evt.title || "").toLowerCase().startsWith("high priority:");
-                        const color = isTask ? (isHighTask ? "#ef4444" : "#4169e1") : isPersonal ? "#9ca3af" : subjectColor(evt.subject);
+                        const color = isImported ? "#2563eb" : isTask ? (isHighTask ? "#ef4444" : "#4169e1") : isPersonal ? "#9ca3af" : subjectColor(evt.subject);
                         const spanSlots = durationToSlots(evt.startTime, evt.endTime);
 
                         return (
                           <div
                             key={evt.id}
                             className={`scheduler-event${isDoneTask ? " is-done-task" : ""}`}
-                            draggable
+                            draggable={!isImported}
                             style={{
                               height: `calc(${spanSlots * 34}px - 2px)`,
                               background: `color-mix(in srgb, ${color} 20%, var(--surface))`,
@@ -378,6 +395,10 @@ export default function WeekCalendar({
                             }}
                             title={`${evt.title} · ${evt.startTime}–${evt.endTime}`}
                             onDragStart={(e) => {
+                              if (isImported) {
+                                e.preventDefault();
+                                return;
+                              }
                               if ((e.target as HTMLElement).closest(".scheduler-event-delete")) {
                                 e.preventDefault();
                                 return;
@@ -397,14 +418,16 @@ export default function WeekCalendar({
                             <span className="scheduler-event-time" style={{ textDecoration: isDoneTask ? "line-through" : undefined }}>
                               {evt.startTime}–{evt.endTime}
                             </span>
-                            <button
-                              className="scheduler-event-delete"
-                              onClick={(e) => { e.stopPropagation(); onEventDelete(evt.id); }}
-                              aria-label={`Remove ${evt.title}`}
-                              title="Remove"
-                            >
-                              ×
-                            </button>
+                            {!isImported ? (
+                              <button
+                                className="scheduler-event-delete"
+                                onClick={(e) => { e.stopPropagation(); onEventDelete(evt.id); }}
+                                aria-label={`Remove ${evt.title}`}
+                                title="Remove"
+                              >
+                                ×
+                              </button>
+                            ) : null}
                           </div>
                         );
                       })}

@@ -1,5 +1,7 @@
+import { getGoogleSyncStatus, syncScheduleEventToGoogle } from "@/lib/google-sync";
 import { NextResponse } from "next/server";
 import { getCurrentUserSession } from "@/lib/user-session";
+import { getOutlookSyncStatus, syncScheduleEventToOutlook } from "@/lib/outlook-sync";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
 export async function GET(req: Request) {
@@ -121,5 +123,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Schedule store unavailable" }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true, event: data });
+  const syncWarnings: string[] = [];
+  try {
+    const outlookStatus = await getOutlookSyncStatus(session.userId);
+    if (outlookStatus.connected) {
+      await syncScheduleEventToOutlook(session.userId, data);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not sync this event to Outlook"));
+  }
+
+  try {
+    const googleStatus = await getGoogleSyncStatus(session.userId);
+    if (googleStatus.connected) {
+      await syncScheduleEventToGoogle(session.userId, data);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not sync this event to Google Calendar"));
+  }
+
+  const { data: refreshed } = await supabase
+    .from("lesson_schedule")
+    .select("*")
+    .eq("id", data.id)
+    .eq("user_id", session.userId)
+    .single();
+
+  return NextResponse.json({
+    ok: true,
+    event: refreshed || data,
+    syncWarning: syncWarnings.length > 0 ? syncWarnings.join(" ") : undefined,
+  });
 }

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getGoogleSyncStatus, syncScheduleEventToGoogle } from "@/lib/google-sync";
+import { getOutlookSyncStatus, syncScheduleEventToOutlook } from "@/lib/outlook-sync";
 import { getCurrentUserSession } from "@/lib/user-session";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
@@ -338,9 +340,31 @@ export async function POST(req: Request) {
     .select("*")
     .single();
 
+  const syncWarnings: string[] = [];
+  if (eventRow?.id) {
+    try {
+      const outlookStatus = await getOutlookSyncStatus(session.userId);
+      if (outlookStatus.connected) {
+        await syncScheduleEventToOutlook(session.userId, eventRow);
+      }
+    } catch (syncError) {
+      syncWarnings.push(String((syncError as Error)?.message || "Could not sync this task to Outlook"));
+    }
+
+    try {
+      const googleStatus = await getGoogleSyncStatus(session.userId);
+      if (googleStatus.connected) {
+        await syncScheduleEventToGoogle(session.userId, eventRow);
+      }
+    } catch (syncError) {
+      syncWarnings.push(String((syncError as Error)?.message || "Could not sync this task to Google Calendar"));
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     task: mapTask(updatedTask || taskRow),
     scheduleEvent: eventRow,
+    syncWarning: syncWarnings.length > 0 ? syncWarnings.join(" ") : undefined,
   });
 }

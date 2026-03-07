@@ -12,6 +12,19 @@ function isPersonalEvent(eventType?: string, eventCategory?: string, subject?: s
   );
 }
 
+function isImportedCalendarEvent(eventType?: string, eventCategory?: string) {
+  const category = String(eventCategory || "").toLowerCase();
+  return eventType === "custom" && (category === "outlook_import" || category === "google_import");
+}
+
+function importedProvider(eventType?: string, eventCategory?: string) {
+  const category = String(eventCategory || "").toLowerCase();
+  if (eventType !== "custom") return "";
+  if (category === "outlook_import") return "outlook";
+  if (category === "google_import") return "google";
+  return "";
+}
+
 function subjectKey(subject: string) {
   const s = normaliseSubject(subject);
   if (s.includes("math")) return "maths";
@@ -44,6 +57,8 @@ export function ScheduleEventIcon({
   style,
 }: ScheduleIconProps) {
   const personal = isPersonalEvent(eventType, eventCategory || undefined, subject);
+  const imported = isImportedCalendarEvent(eventType, eventCategory || undefined);
+  const provider = importedProvider(eventType, eventCategory || undefined);
   const key = subjectKey(subject);
 
   const iconStyle: CSSProperties = {
@@ -52,7 +67,14 @@ export function ScheduleEventIcon({
     justifyContent: "center",
     width: size,
     height: size,
-    color: personal ? "#3b82f6" : "currentColor",
+    color:
+      provider === "google"
+        ? "#ea4335"
+        : provider === "outlook"
+          ? "#2563eb"
+          : personal
+            ? "#3b82f6"
+            : "currentColor",
     ...style,
   };
 
@@ -69,7 +91,22 @@ export function ScheduleEventIcon({
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {personal ? (
+        {provider === "outlook" ? (
+          <>
+            <path d="M14 4h6v16h-6" />
+            <path d="M14 7h6" />
+            <path d="M10 8 4 9v6l6 1" />
+            <path d="M10 6v12" />
+            <path d="m7.2 10.4-1.8 2.6 1.8 2.6" />
+            <path d="m8.8 10.4 1.8 2.6-1.8 2.6" />
+          </>
+        ) : provider === "google" ? (
+          <>
+            <path d="M21.35 11.1h-9.18v2.96h5.27c-.23 1.52-1.82 4.45-5.27 4.45-3.17 0-5.75-2.63-5.75-5.87s2.58-5.87 5.75-5.87c1.8 0 3.01.77 3.7 1.43" />
+            <path d="M17.44 6.2 20.4 3.4" />
+            <path d="M20.4 6.2V3.4h-2.8" />
+          </>
+        ) : personal ? (
           <>
             <path d="M20 21a8 8 0 0 0-16 0" />
             <circle cx="12" cy="7" r="4" />

@@ -74,14 +74,14 @@ export default async function LoginPage({ searchParams }) {
 
         <div className="auth-brand-body">
           <h2 className="auth-brand-headline">
-            The AI platform built for <strong>modern educators</strong>
+            The week planner that puts your life first and your teaching in order.
           </h2>
 
           <ul className="auth-brand-features">
             {[
-              "Save hours on lesson planning",
-              "AI tailored to your curriculum",
-              "Trusted by teachers",
+              "Build your planning around your own time with an AI designed to protect your week.",
+              "Curriculum-aligned planning tailored to your class’s individual needs.",
+              "Trusted by teachers and shaped by real classroom practice.",
             ].map((f) => (
               <li key={f} className="auth-brand-feature">
                 <span className="auth-brand-feature-dot">

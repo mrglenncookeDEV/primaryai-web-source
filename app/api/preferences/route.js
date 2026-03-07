@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
-const VALID_THEMES   = new Set(["dark", "light"]);
-const VALID_PALETTES = new Set(["duck-egg", "sage", "lavender", "rose", "slate", "sand"]);
+const VALID_THEMES   = new Set(["dark", "light", "solid"]);
+const VALID_PALETTES = new Set(["duck-egg", "sage", "lavender", "rose", "slate", "sand", "black", "white", "royal", "emerald", "burnt-orange"]);
 
 export async function GET() {
   const session = await getAuthSession();

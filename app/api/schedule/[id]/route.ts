@@ -1,4 +1,6 @@
+import { deleteScheduleEventFromGoogle, getGoogleSyncStatus, syncScheduleEventToGoogle } from "@/lib/google-sync";
 import { NextResponse } from "next/server";
+import { deleteScheduleEventFromOutlook, getOutlookSyncStatus, syncScheduleEventToOutlook } from "@/lib/outlook-sync";
 import { getCurrentUserSession } from "@/lib/user-session";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
@@ -24,6 +26,17 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Schedule store unavailable" }, { status: 503 });
   }
 
+  const { data: current } = await supabase
+    .from("lesson_schedule")
+    .select("external_source,outlook_event_id,google_event_id")
+    .eq("id", id)
+    .eq("user_id", session.userId)
+    .maybeSingle();
+
+  if (current?.external_source) {
+    return NextResponse.json({ error: "Imported calendar events are read-only" }, { status: 403 });
+  }
+
   const { error } = await supabase
     .from("lesson_schedule")
     .delete()
@@ -34,7 +47,26 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Schedule store unavailable" }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true });
+  const syncWarnings: string[] = [];
+  try {
+    const outlookStatus = await getOutlookSyncStatus(session.userId);
+    if (outlookStatus.connected && current?.outlook_event_id) {
+      await deleteScheduleEventFromOutlook(session.userId, current.outlook_event_id);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not remove this event from Outlook"));
+  }
+
+  try {
+    const googleStatus = await getGoogleSyncStatus(session.userId);
+    if (googleStatus.connected && current?.google_event_id) {
+      await deleteScheduleEventFromGoogle(session.userId, current.google_event_id);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not remove this event from Google Calendar"));
+  }
+
+  return NextResponse.json({ ok: true, syncWarning: syncWarnings.length > 0 ? syncWarnings.join(" ") : undefined });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -72,10 +104,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { data: beforeEvent } = await supabase
     .from("lesson_schedule")
-    .select("id,title,scheduled_date,start_time,event_type,event_category")
+    .select("id,title,subject,year_group,scheduled_date,start_time,end_time,notes,event_type,event_category,external_source,outlook_event_id,google_event_id")
     .eq("id", id)
     .eq("user_id", session.userId)
     .maybeSingle();
+
+  if (beforeEvent?.external_source) {
+    return NextResponse.json({ error: "Imported calendar events are read-only" }, { status: 403 });
+  }
 
   const { data, error } = await supabase
     .from("lesson_schedule")
@@ -154,5 +190,35 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
-  return NextResponse.json({ ok: true, event: data });
+  const syncWarnings: string[] = [];
+  try {
+    const outlookStatus = await getOutlookSyncStatus(session.userId);
+    if (outlookStatus.connected) {
+      await syncScheduleEventToOutlook(session.userId, data);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not sync this event to Outlook"));
+  }
+
+  try {
+    const googleStatus = await getGoogleSyncStatus(session.userId);
+    if (googleStatus.connected) {
+      await syncScheduleEventToGoogle(session.userId, data);
+    }
+  } catch (syncError) {
+    syncWarnings.push(String((syncError as Error)?.message || "Could not sync this event to Google Calendar"));
+  }
+
+  const { data: refreshed } = await supabase
+    .from("lesson_schedule")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", session.userId)
+    .single();
+
+  return NextResponse.json({
+    ok: true,
+    event: refreshed || data,
+    syncWarning: syncWarnings.length > 0 ? syncWarnings.join(" ") : undefined,
+  });
 }

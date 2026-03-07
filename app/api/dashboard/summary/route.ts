@@ -12,6 +12,12 @@ function getMondayISO(d = new Date()) {
   return mon.toISOString().split("T")[0];
 }
 
+function addDaysISO(iso: string, days: number) {
+  const start = new Date(iso);
+  start.setDate(start.getDate() + days);
+  return start.toISOString().split("T")[0];
+}
+
 export async function GET() {
   const session = await getCurrentUserSession();
   if (!session?.userId) {
@@ -28,8 +34,10 @@ export async function GET() {
   const end = new Date(start);
   end.setDate(end.getDate() + 7);
   const weekEnd = end.toISOString().split("T")[0];
+  const todayIso = new Date().toISOString().split("T")[0];
+  const upcomingEnd = addDaysISO(todayIso, 30);
 
-  const [libraryResult, scheduleResult, profileResult, tasksResult] = await Promise.allSettled([
+  const [libraryResult, scheduleResult, upcomingResult, profileResult, tasksResult] = await Promise.allSettled([
     supabase
       .from("lesson_packs")
       .select("id,title,year_group,subject,topic,created_at")
@@ -42,6 +50,14 @@ export async function GET() {
       .eq("user_id", session.userId)
       .gte("scheduled_date", weekStart)
       .lt("scheduled_date", weekEnd)
+      .order("scheduled_date", { ascending: true })
+      .order("start_time", { ascending: true }),
+    supabase
+      .from("lesson_schedule")
+      .select("id,lesson_pack_id,title,subject,year_group,scheduled_date,start_time,end_time,notes,event_type,event_category")
+      .eq("user_id", session.userId)
+      .gte("scheduled_date", todayIso)
+      .lte("scheduled_date", upcomingEnd)
       .order("scheduled_date", { ascending: true })
       .order("start_time", { ascending: true }),
     supabase
@@ -77,6 +93,8 @@ export async function GET() {
     libraryResult.status === "fulfilled" && !libraryResult.value.error ? (libraryResult.value.data ?? []) : [];
   const scheduleEvents =
     scheduleResult.status === "fulfilled" && !scheduleResult.value.error ? (scheduleResult.value.data ?? []) : [];
+  const upNextEvents =
+    upcomingResult.status === "fulfilled" && !upcomingResult.value.error ? (upcomingResult.value.data ?? []) : [];
   let profileSetup =
     profileResult.status === "fulfilled" && !profileResult.value.error && profileResult.value.data
       ? {
@@ -109,6 +127,7 @@ export async function GET() {
       email: session.email ?? "",
       libraryItems,
       scheduleEvents,
+      upNextEvents,
       profileSetup,
       tasks,
     },

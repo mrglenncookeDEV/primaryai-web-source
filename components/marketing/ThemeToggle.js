@@ -3,12 +3,17 @@
 import { useState, useEffect, useRef } from "react";
 
 const PALETTES = [
-  { id: "duck-egg", label: "Duck egg",   swatch: "#78d8cf" },
-  { id: "sage",     label: "Sage green", swatch: "#7ab87a" },
-  { id: "lavender", label: "Lavender",   swatch: "#9b8ae0" },
-  { id: "rose",     label: "Dusty rose", swatch: "#d47a96" },
-  { id: "slate",    label: "Slate blue", swatch: "#6b91c0" },
-  { id: "sand",     label: "Warm sand",  swatch: "#d4a870" },
+  { id: "duck-egg",     label: "Duck egg",     swatch: "#78d8cf" },
+  { id: "sage",         label: "Sage green",   swatch: "#7ab87a" },
+  { id: "lavender",     label: "Lavender",     swatch: "#9b8ae0" },
+  { id: "rose",         label: "Dusty rose",   swatch: "#d47a96" },
+  { id: "slate",        label: "Slate blue",   swatch: "#6b91c0" },
+  { id: "sand",         label: "Warm sand",    swatch: "#d4a870" },
+  { id: "black",        label: "Black",        swatch: "#2a2a2a" },
+  { id: "white",        label: "White",        swatch: "#e0e0e0" },
+  { id: "royal",        label: "Royal blue",   swatch: "#2952cc" },
+  { id: "emerald",      label: "Emerald",      swatch: "#2ecc71" },
+  { id: "burnt-orange", label: "Burnt orange", swatch: "#cc5500" },
 ];
 
 function applyPrefs(theme, palette) {
@@ -72,7 +77,8 @@ export default function ThemeToggle({ userId }) {
   }, [open]);
 
   const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
+    const order = ["light", "dark", "solid"];
+    const next = order[(order.indexOf(theme) + 1) % order.length];
     setTheme(next);
     applyPrefs(next, palette);
     if (userId) savePrefs({ theme: next });
@@ -154,32 +160,28 @@ export default function ThemeToggle({ userId }) {
 
       <div className="theme-divider" aria-hidden="true" />
 
-      {/* Dark / light toggle */}
+      {/* Light / dark / solid toggle */}
       <button
         className="theme-toggle"
         onClick={toggleTheme}
-        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-        title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        aria-label={`Theme: ${theme} — click to cycle`}
+        title={`Theme: ${theme} — click to cycle`}
       >
         {theme === "dark" ? (
+          /* Sun — switch to solid */
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.75" />
-            <path
-              d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-            />
+            <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+          </svg>
+        ) : theme === "solid" ? (
+          /* Filled swatch — switch to light */
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2l2.09 6.42H21l-5.47 3.97 2.09 6.44L12 14.86l-5.62 4.07 2.09-6.44L3 8.42h6.91Z" />
           </svg>
         ) : (
+          /* Moon — switch to dark */
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
       </button>
