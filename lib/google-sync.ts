@@ -247,6 +247,8 @@ export async function storeGoogleConnection(args: {
 export async function syncGoogleCalendar(userId: string) {
   const { supabase, accessToken } = await ensureValidAccessToken(userId);
   const { from, to } = syncRange();
+  const fromDate = toIsoDate(from);
+  const toDate = toIsoDate(to);
   const events = await fetchGoogleCalendarEvents({
     accessToken,
     startIso: toIsoDateTime(from),
@@ -286,8 +288,35 @@ export async function syncGoogleCalendar(userId: string) {
     });
   }
 
-  if (rows.length > 0) {
-    const externalIds = rows.map((row) => String(row.external_event_id || "")).filter(Boolean);
+  const { data: mirroredRows, error: mirroredLookupError } = await supabase
+    .from("lesson_schedule")
+    .select("google_event_id")
+    .eq("user_id", userId)
+    .is("external_source", null)
+    .gte("scheduled_date", fromDate)
+    .lte("scheduled_date", toDate)
+    .not("google_event_id", "is", null);
+
+  if (mirroredLookupError) {
+    const missingColumns = ["google_event_id"].some((column) =>
+      String(mirroredLookupError.message || "").toLowerCase().includes(column),
+    );
+    throw new Error(
+      missingColumns
+        ? "Google write-back is not ready yet. Run migration 023_google_calendar_sync.sql first."
+        : "Could not look up scheduler Google write-back events",
+    );
+  }
+
+  const mirroredIds = new Set(
+    (mirroredRows || [])
+      .map((row) => String(row.google_event_id || "").trim())
+      .filter(Boolean),
+  );
+  const importableRows = rows.filter((row) => !mirroredIds.has(String(row.external_event_id || "").trim()));
+
+  if (importableRows.length > 0) {
+    const externalIds = importableRows.map((row) => String(row.external_event_id || "")).filter(Boolean);
     const { data: existingRows, error: lookupError } = await supabase
       .from("lesson_schedule")
       .select("id, external_event_id")
@@ -310,8 +339,8 @@ export async function syncGoogleCalendar(userId: string) {
       (existingRows || []).map((row) => [String(row.external_event_id || ""), String(row.id)]),
     );
 
-    const inserts = rows.filter((row) => !existingByExternalId.has(String(row.external_event_id || "")));
-    const updates = rows.filter((row) => existingByExternalId.has(String(row.external_event_id || "")));
+    const inserts = importableRows.filter((row) => !existingByExternalId.has(String(row.external_event_id || "")));
+    const updates = importableRows.filter((row) => existingByExternalId.has(String(row.external_event_id || "")));
 
     if (inserts.length > 0) {
       const { error: insertError } = await supabase.from("lesson_schedule").insert(inserts);
@@ -348,13 +377,16 @@ export async function syncGoogleCalendar(userId: string) {
     .select("id, external_event_id")
     .eq("user_id", userId)
     .eq("external_source", "google")
-    .gte("scheduled_date", toIsoDate(from))
-    .lte("scheduled_date", toIsoDate(to));
+    .gte("scheduled_date", fromDate)
+    .lte("scheduled_date", toDate);
 
   if (existingError) throw new Error("Could not load existing Google events");
 
   const staleIds = (existingImported || [])
-    .filter((row) => !seenIds.has(String(row.external_event_id || "")))
+    .filter((row) => {
+      const externalEventId = String(row.external_event_id || "").trim();
+      return mirroredIds.has(externalEventId) || !seenIds.has(externalEventId);
+    })
     .map((row) => String(row.id))
     .filter(Boolean);
 

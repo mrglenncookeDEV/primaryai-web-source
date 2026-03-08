@@ -228,6 +228,8 @@ export async function disconnectOutlookCalendar(userId: string) {
 export async function syncOutlookCalendar(userId: string) {
   const { supabase, accessToken } = await ensureValidAccessToken(userId);
   const { from, to } = syncRange();
+  const fromDate = toIsoDate(from);
+  const toDate = toIsoDate(to);
   const events = await fetchMicrosoftCalendarView({
     accessToken,
     startIso: toIsoDateTime(from),
@@ -270,8 +272,35 @@ export async function syncOutlookCalendar(userId: string) {
     });
   }
 
-  if (upserts.length > 0) {
-    const externalIds = upserts.map((row) => String(row.external_event_id || "")).filter(Boolean);
+  const { data: mirroredRows, error: mirroredLookupError } = await supabase
+    .from("lesson_schedule")
+    .select("outlook_event_id")
+    .eq("user_id", userId)
+    .is("external_source", null)
+    .gte("scheduled_date", fromDate)
+    .lte("scheduled_date", toDate)
+    .not("outlook_event_id", "is", null);
+
+  if (mirroredLookupError) {
+    const missingColumns = ["outlook_event_id"].some((column) =>
+      String(mirroredLookupError.message || "").toLowerCase().includes(column),
+    );
+    throw new Error(
+      missingColumns
+        ? "Outlook write-back is not ready yet. Run migration 022_outlook_schedule_writeback.sql first."
+        : "Could not look up scheduler Outlook write-back events",
+    );
+  }
+
+  const mirroredIds = new Set(
+    (mirroredRows || [])
+      .map((row) => String(row.outlook_event_id || "").trim())
+      .filter(Boolean),
+  );
+  const importableUpserts = upserts.filter((row) => !mirroredIds.has(String(row.external_event_id || "").trim()));
+
+  if (importableUpserts.length > 0) {
+    const externalIds = importableUpserts.map((row) => String(row.external_event_id || "")).filter(Boolean);
     const { data: existingRows, error: existingLookupError } = await supabase
       .from("lesson_schedule")
       .select("id, external_event_id")
@@ -294,8 +323,8 @@ export async function syncOutlookCalendar(userId: string) {
       (existingRows || []).map((row) => [String(row.external_event_id || ""), String(row.id)]),
     );
 
-    const inserts = upserts.filter((row) => !existingByExternalId.has(String(row.external_event_id || "")));
-    const updates = upserts.filter((row) => existingByExternalId.has(String(row.external_event_id || "")));
+    const inserts = importableUpserts.filter((row) => !existingByExternalId.has(String(row.external_event_id || "")));
+    const updates = importableUpserts.filter((row) => existingByExternalId.has(String(row.external_event_id || "")));
 
     if (inserts.length > 0) {
       const { error: insertError } = await supabase.from("lesson_schedule").insert(inserts);
@@ -344,15 +373,18 @@ export async function syncOutlookCalendar(userId: string) {
     .select("id, external_event_id")
     .eq("user_id", userId)
     .eq("external_source", "outlook")
-    .gte("scheduled_date", toIsoDate(from))
-    .lte("scheduled_date", toIsoDate(to));
+    .gte("scheduled_date", fromDate)
+    .lte("scheduled_date", toDate);
 
   if (existingError) {
     throw new Error("Could not load existing Outlook events");
   }
 
   const staleIds = (existingImported || [])
-    .filter((row) => !seenIds.has(String(row.external_event_id || "")))
+    .filter((row) => {
+      const externalEventId = String(row.external_event_id || "").trim();
+      return mirroredIds.has(externalEventId) || !seenIds.has(externalEventId);
+    })
     .map((row) => String(row.id))
     .filter(Boolean);
 

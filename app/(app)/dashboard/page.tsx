@@ -6,6 +6,7 @@ import Link from "next/link";
 import { subjectColor } from "@/lib/subjectColor";
 import { ScheduleEventIcon } from "@/lib/schedule-event-icon";
 import { TermCountdownRing } from "@/components/dashboard/TermCountdownRing";
+import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 
 const SchedulerDrawer = dynamic(() => import("@/components/dashboard/SchedulerDrawer"), {
@@ -1648,6 +1649,7 @@ export default function DashboardPage() {
             Search
             <kbd style={{ fontSize: "0.64rem", padding: "0.1rem 0.35rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--btn-bg)", lineHeight: 1 }}>⌘K</kbd>
           </button>
+          <DashboardClock />
         </div>
         <div className="dashboard-greeting-actions" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.2rem" }}>
           <div style={{ paddingLeft: "60px", minWidth: 0 }}>

@@ -18,6 +18,8 @@
     "@auth/prisma-adapter": "^2.7.4",
     "@prisma/client": "^6.4.1",
     "@supabase/supabase-js": "^2.49.1",
+    "@types/canvas-confetti": "^1.9.0",
+    "canvas-confetti": "^1.9.4",
     "jsoon": "^0.1.0",
     "next": "^15.2.0",
     "next-auth": "^5.0.0-beta.25",
