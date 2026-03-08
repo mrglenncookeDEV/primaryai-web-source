@@ -12,6 +12,10 @@ const SchedulerDrawer = dynamic(() => import("@/components/dashboard/SchedulerDr
   ssr: false,
 });
 
+const AiSchedulePanel = dynamic(() => import("@/components/dashboard/AiSchedulePanel"), {
+  ssr: false,
+});
+
 type LibraryItem = {
   id: string;
   title: string;
@@ -152,14 +156,6 @@ function scheduleEventAccentColor(event: Pick<ScheduleEvent, "event_type" | "eve
 function isTaskScheduleEvent(event: Pick<ScheduleEvent, "event_type" | "event_category">) {
   const category = String(event.event_category || "").toLowerCase();
   return event.event_type === "custom" && category.startsWith("task");
-}
-
-function isLessonSubjectActivityEvent(event: Pick<ScheduleEvent, "event_type" | "event_category" | "subject">) {
-  if (event.event_type !== "lesson_pack") return false;
-  if (isImportedCalendarScheduleEvent(event)) return false;
-  if (isPersonalScheduleEvent(event)) return false;
-  if (isTaskScheduleEvent(event)) return false;
-  return true;
 }
 
 function formatShortUkDate(iso: string) {
@@ -555,349 +551,6 @@ function LibraryOverview({ items, loading }: { items: LibraryItem[]; loading: bo
   );
 }
 
-function ActivityBySubjectCard({
-  scheduleEvents,
-  loading,
-  weekStart,
-}: {
-  scheduleEvents: ScheduleEvent[];
-  loading: boolean;
-  weekStart: Date;
-}) {
-  const lessonSubjectEvents = useMemo(
-    () => scheduleEvents.filter((event) => isLessonSubjectActivityEvent(event)),
-    [scheduleEvents],
-  );
-  const weekDays = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  const weekIsoSet = new Set(weekDays.map((day) => day.toISOString().split("T")[0]));
-  const daySubjectCounts = weekDays.map((day) => {
-    const iso = day.toISOString().split("T")[0];
-    const bySubject = lessonSubjectEvents.reduce((acc, evt) => {
-      if (String(evt.scheduled_date || "") !== iso) return acc;
-      const subject = String(evt.subject || "Other");
-      acc[subject] = (acc[subject] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    const totalForDay = Object.values(bySubject).reduce((sum, value) => sum + value, 0);
-    return { iso, bySubject, totalForDay };
-  });
-  const weeklySubjectCounts = lessonSubjectEvents.reduce((acc, evt) => {
-    const iso = String(evt.scheduled_date || "");
-    if (!weekIsoSet.has(iso)) return acc;
-    const subject = String(evt.subject || "Other");
-    acc[subject] = (acc[subject] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  const topSubjects = Object.entries(weeklySubjectCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([subject]) => subject);
-  const dailyStacks = daySubjectCounts.map((day) => {
-    let otherCount = 0;
-    const segments = topSubjects.reduce((acc, subject) => {
-      const count = day.bySubject[subject] || 0;
-      if (count > 0) acc.push({ subject, count, color: subjectColor(subject) });
-      return acc;
-    }, [] as Array<{ subject: string; count: number; color: string }>);
-
-    Object.entries(day.bySubject).forEach(([subject, count]) => {
-      if (!topSubjects.includes(subject)) otherCount += count;
-    });
-
-    if (otherCount > 0) {
-      segments.push({ subject: "Other", count: otherCount, color: "#94a3b8" });
-    }
-
-    return {
-      iso: day.iso,
-      total: day.totalForDay,
-      segments,
-    };
-  });
-  const dailyCounts = dailyStacks.map((day) => day.total);
-  const maxDaily = Math.max(...dailyCounts, 1);
-  const thisWeek = dailyCounts.reduce((a, b) => a + b, 0);
-  const dayLabels = weekDays.map((d) => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"][d.getDay()]);
-  const todayIso = toISODate(new Date());
-  const stackLegend = [
-    ...topSubjects.map((subject) => ({ subject, color: subjectColor(subject), count: weeklySubjectCounts[subject] || 0 })),
-    ...(Object.keys(weeklySubjectCounts).some((subject) => !topSubjects.includes(subject))
-      ? [{ subject: "Other", color: "#94a3b8", count: Object.entries(weeklySubjectCounts).reduce((sum, [subject, count]) => topSubjects.includes(subject) ? sum : sum + count, 0) }]
-      : []),
-  ].filter((item) => item.count > 0);
-
-  return (
-    <div className="dashboard-hero-stat" style={{
-      borderRadius: "16px",
-      border: "1px solid var(--border-card)",
-      background: "var(--surface)",
-      padding: "1.2rem 1.2rem 1rem",
-      position: "relative" as const,
-      overflow: "hidden",
-      height: "100%",
-      boxSizing: "border-box" as const,
-      display: "flex",
-      flexDirection: "column" as const,
-    }}>
-      <div style={{ position: "absolute" as const, top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, #0ea5e9 0%, #14b8a6 60%, transparent 100%)" }} />
-
-      <p style={{ margin: "0 0 0.1rem", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--muted)" }}>Activity by Subject</p>
-
-      {loading ? (
-        <div style={{ flex: 1 }}>
-          <div style={{ height: "2rem", borderRadius: "6px", background: "var(--border)", animation: "pulse 1.5s ease-in-out infinite", width: "50%", marginBottom: "0.5rem" }} />
-        </div>
-      ) : (
-        <>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", margin: "0.3rem 0 auto" }}>
-            <span style={{ fontSize: "2.4rem", fontWeight: 300, letterSpacing: "-0.04em", color: "var(--text)", lineHeight: 1 }}>{thisWeek}</span>
-            <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 500 }}>this week</span>
-          </div>
-
-          <div style={{ marginTop: "auto", paddingTop: "1rem" }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "56px" }}>
-              {dailyStacks.map((day, i) => {
-                const isToday = day.iso === todayIso;
-                const heightPct = day.total > 0 ? Math.max(18, (day.total / maxDaily) * 100) : 10;
-                return (
-                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column" as const, alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
-                    <div style={{
-                      width: "100%",
-                      height: `${heightPct}%`,
-                      borderRadius: "4px 4px 2px 2px",
-                      background: day.total > 0 ? "transparent" : "var(--border)",
-                      border: day.total > 0 ? "1px solid color-mix(in srgb, var(--border-card) 75%, transparent)" : "none",
-                      transition: "height 500ms cubic-bezier(0.4,0,0.2,1) 200ms",
-                      position: "relative" as const,
-                      overflow: "hidden",
-                      display: "flex",
-                      flexDirection: "column-reverse",
-                    }}>
-                      {day.segments.map((segment, segmentIndex) => (
-                        <span
-                          key={`${segment.subject}-${segmentIndex}`}
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            height: `${(segment.count / day.total) * 100}%`,
-                            background: segment.color,
-                            opacity: isToday ? 1 : 0.9,
-                          }}
-                          title={`${segment.subject}: ${segment.count}`}
-                        />
-                      ))}
-                      {day.total > 0 && (
-                        <span style={{
-                          position: "absolute" as const,
-                          bottom: "calc(100% + 2px)",
-                          left: "50%",
-                          transform: "translateX(-50%)",
-                          fontSize: "0.55rem",
-                          fontWeight: 700,
-                          color: isToday ? "var(--accent)" : "var(--muted)",
-                          whiteSpace: "nowrap" as const,
-                        }}>{day.total}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ display: "flex", gap: "4px", marginTop: "5px" }}>
-              {dayLabels.map((label, i) => (
-                <div key={i} style={{
-                  flex: 1, textAlign: "center" as const,
-                  fontSize: "0.58rem",
-                  color: dailyStacks[i]?.iso === todayIso ? "var(--accent)" : "var(--muted)",
-                  fontWeight: dailyStacks[i]?.iso === todayIso ? 700 : 400,
-                }}>{label}</div>
-              ))}
-            </div>
-            {stackLegend.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem 0.7rem", marginTop: "0.55rem" }}>
-                {stackLegend.map((item) => (
-                  <span key={item.subject} style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontSize: "0.62rem", color: "var(--muted)" }}>
-                    <span style={{ width: "8px", height: "8px", borderRadius: "999px", background: item.color, display: "inline-block" }} />
-                    {item.subject}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function formatUpNextTileDate(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  const todayIso = toISODate(new Date());
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (iso === todayIso) return "Today";
-  if (iso === toISODate(tomorrow)) return "Tomorrow";
-  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-}
-
-function UpNextCarouselSection({
-  heading,
-  events,
-  loading,
-  index,
-  onPrevious,
-  onNext,
-  emptyText,
-  loadingText,
-}: {
-  heading: string;
-  events: ScheduleEvent[];
-  loading: boolean;
-  index: number;
-  onPrevious: () => void;
-  onNext: () => void;
-  emptyText: string;
-  loadingText: string;
-}) {
-  const event = events[index] ?? null;
-
-  const accent = event ? scheduleEventAccentColor(event) : undefined;
-
-  return (
-    <div className="dashboard-upnext-section">
-      <div className="dashboard-upnext-section-head">
-        <span className="dashboard-upnext-section-label">{heading}</span>
-        {!loading && events.length > 1 && (
-          <div className="dashboard-upnext-arrows">
-            <button
-              type="button"
-              className="dashboard-upnext-arrow"
-              aria-label={`Previous ${heading.toLowerCase()}`}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onPrevious(); }}
-              disabled={index === 0}
-            >‹</button>
-            <span className="dashboard-upnext-position">{index + 1} / {events.length}</span>
-            <button
-              type="button"
-              className="dashboard-upnext-arrow"
-              aria-label={`Next ${heading.toLowerCase()}`}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNext(); }}
-              disabled={index >= events.length - 1}
-            >›</button>
-          </div>
-        )}
-      </div>
-      {!loading && event ? (
-        <div
-          key={event.id}
-          className="dashboard-upnext-card"
-          role="button"
-          tabIndex={0}
-          style={{
-            background: `color-mix(in srgb, ${accent} 9%, var(--field-bg))`,
-            borderLeft: `3px solid ${accent}`,
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            window.dispatchEvent(new CustomEvent("pa:schedule-open-event", { detail: event }));
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              window.dispatchEvent(new CustomEvent("pa:schedule-open-event", { detail: event }));
-            }
-          }}
-        >
-          <p className="dashboard-upnext-when" style={{ color: accent }}>
-            {formatUpNextTileDate(event.scheduled_date)}
-            {event.start_time && (
-              <span className="dashboard-upnext-when-time">
-                {String(event.start_time).slice(0, 5)}–{String(event.end_time || "").slice(0, 5)}
-              </span>
-            )}
-          </p>
-          <p className="dashboard-upnext-title">
-            <ScheduleEventIcon
-              subject={event.subject}
-              eventType={event.event_type}
-              eventCategory={event.event_category}
-              size={13}
-            />
-            <span>{event.title}</span>
-          </p>
-        </div>
-      ) : !loading ? (
-        <span className="dashboard-hero-sub">{emptyText}</span>
-      ) : (
-        <span className="dashboard-hero-sub">{loadingText}</span>
-      )}
-    </div>
-  );
-}
-
-function CombinedUpNextHeroTile({
-  personalEvents,
-  schedulerEvents,
-  loading,
-  personalIndex,
-  schedulerIndex,
-  onPersonalPrevious,
-  onPersonalNext,
-  onSchedulerPrevious,
-  onSchedulerNext,
-}: {
-  personalEvents: ScheduleEvent[];
-  schedulerEvents: ScheduleEvent[];
-  loading: boolean;
-  personalIndex: number;
-  schedulerIndex: number;
-  onPersonalPrevious: () => void;
-  onPersonalNext: () => void;
-  onSchedulerPrevious: () => void;
-  onSchedulerNext: () => void;
-}) {
-  return (
-    <div className="dashboard-hero-stat dashboard-hero-stat-combined-upnext">
-      <div className="dashboard-upnext-tile-header">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: "var(--accent)", opacity: 0.85, flexShrink: 0 }}>
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
-        <span className="dashboard-hero-label" style={{ margin: 0 }}>Up Next</span>
-      </div>
-      <div className="dashboard-combined-upnext-body">
-        <UpNextCarouselSection
-          heading="Personal"
-          events={personalEvents}
-          loading={loading}
-          index={personalIndex}
-          onPrevious={onPersonalPrevious}
-          onNext={onPersonalNext}
-          emptyText="no upcoming personal events"
-          loadingText="loading personal events…"
-        />
-        <UpNextCarouselSection
-          heading="Scheduler"
-          events={schedulerEvents}
-          loading={loading}
-          index={schedulerIndex}
-          onPrevious={onSchedulerPrevious}
-          onNext={onSchedulerNext}
-          emptyText="no upcoming events"
-          loadingText="loading next event…"
-        />
-      </div>
-    </div>
-  );
-}
-
 // ── Quick action card ─────────────────────────────────────────────────────────
 
 function ActionCard({ href, icon, title, desc, accent = false }: {
@@ -1256,7 +909,6 @@ function PersonalTasksCard({
 export default function DashboardPage() {
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [scheduleEvents, setScheduleEvents] = useState<ScheduleEvent[]>([]);
-  const [upNextScheduleEvents, setUpNextScheduleEvents] = useState<ScheduleEvent[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [weekStart, setWeekStart] = useState<Date>(() => getMondayDate(new Date()));
   const [email, setEmail] = useState("");
@@ -1273,8 +925,6 @@ export default function DashboardPage() {
     { id: "tasks", label: "Fetching tasks", status: "pending" },
   ]);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
-  const [personalUpNextIndex, setPersonalUpNextIndex] = useState(0);
-  const [upNextIndex, setUpNextIndex] = useState(0);
   const [schedulerViewMode, setSchedulerViewMode] = useState<"week" | "day" | "month" | "term">("week");
 
   const updateBootStep = useCallback((id: DashboardBootStep["id"], status: DashboardBootStep["status"]) => {
@@ -1316,7 +966,6 @@ export default function DashboardPage() {
           updateBootStep("lessons", "done");
           updateBootStep("schedule", "active");
           setScheduleEvents(Array.isArray(data?.scheduleEvents) ? data.scheduleEvents : []);
-          setUpNextScheduleEvents(Array.isArray(data?.upNextEvents) ? data.upNextEvents : []);
           setEmail(String(data?.email ?? ""));
           setDisplayName(data?.profileSetup?.displayName ?? "");
           setAvatarUrl(data?.profileSetup?.avatarUrl ?? "");
@@ -1366,25 +1015,14 @@ export default function DashboardPage() {
     const currentWeekIso = getMondayISO();
     if (scheduleRefreshKey === 0 && selectedWeekIso === currentWeekIso) return;
     const controller = new AbortController();
-    const todayIso = toISODate(new Date());
-    const upNextRangeEnd = new Date();
-    upNextRangeEnd.setDate(upNextRangeEnd.getDate() + 30);
-    const upNextRangeEndIso = toISODate(upNextRangeEnd);
     const timer = window.setTimeout(() => {
       void (async () => {
         setScheduleLoading(true);
         try {
-          const [weekRes, upNextRes] = await Promise.all([
-            fetch(`/api/schedule?weekStart=${selectedWeekIso}`, { signal: controller.signal, cache: "no-store" }),
-            fetch(`/api/schedule?from=${todayIso}&to=${upNextRangeEndIso}`, { signal: controller.signal, cache: "no-store" }),
-          ]);
+          const weekRes = await fetch(`/api/schedule?weekStart=${selectedWeekIso}`, { signal: controller.signal, cache: "no-store" });
           const weekData = await weekRes.json().catch(() => ({}));
-          const upNextData = await upNextRes.json().catch(() => ({}));
           if (weekRes.ok) {
             setScheduleEvents(Array.isArray(weekData?.events) ? weekData.events : []);
-          }
-          if (upNextRes.ok) {
-            setUpNextScheduleEvents(Array.isArray(upNextData?.events) ? upNextData.events : []);
           }
         } finally {
           if (!controller.signal.aborted) {
@@ -1443,49 +1081,6 @@ export default function DashboardPage() {
     </span>
   );
 
-  // Hero strip stats
-  const upNextEvents = useMemo(() => {
-    const now = new Date();
-    const nowDate = toISODate(now);
-    const nowTime = now.toTimeString().slice(0, 5);
-    return upNextScheduleEvents
-      .filter((event) => {
-        const eventDate = String(event.scheduled_date || "");
-        const eventTime = String(event.start_time || "").slice(0, 5);
-        return eventDate > nowDate || (eventDate === nowDate && eventTime >= nowTime);
-      })
-      .sort((a, b) =>
-        a.scheduled_date !== b.scheduled_date
-          ? a.scheduled_date.localeCompare(b.scheduled_date)
-          : a.start_time.localeCompare(b.start_time),
-      )
-      .slice(0, 8);
-  }, [upNextScheduleEvents]);
-  const personalUpNextEvents = useMemo(
-    () => upNextEvents.filter((event) => isPersonalScheduleEvent(event)),
-    [upNextEvents],
-  );
-  const schedulerUpNextEvents = useMemo(
-    () => upNextEvents.filter((event) => !isPersonalScheduleEvent(event)),
-    [upNextEvents],
-  );
-
-  useEffect(() => {
-    if (schedulerUpNextEvents.length === 0) {
-      setUpNextIndex(0);
-      return;
-    }
-    setUpNextIndex((current) => Math.min(current, schedulerUpNextEvents.length - 1));
-  }, [schedulerUpNextEvents]);
-
-  useEffect(() => {
-    if (personalUpNextEvents.length === 0) {
-      setPersonalUpNextIndex(0);
-      return;
-    }
-    setPersonalUpNextIndex((current) => Math.min(current, personalUpNextEvents.length - 1));
-  }, [personalUpNextEvents]);
-
   const termCountdown = useMemo(() => {
     if (!activeTerm?.termStartDate || !activeTerm?.termEndDate) {
       return { hasTerm: false, progress: 0, totalDays: 0, elapsedDays: 0 };
@@ -1502,97 +1097,6 @@ export default function DashboardPage() {
     const progress = Math.min(1, Math.max(0, elapsedDays / totalDays));
     return { hasTerm: true, progress, totalDays, elapsedDays };
   }, [activeTerm]);
-
-  // Insight card computation
-  const insightData = useMemo(() => {
-    if (items.length === 0) return null;
-    const counts: Record<string, number> = {};
-    for (const item of items) {
-      counts[item.subject] = (counts[item.subject] || 0) + 1;
-    }
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const topEntry = sorted[0];
-    const covered = new Set(Object.keys(counts));
-    const ALL_SUBJECTS = ["Maths", "English", "Science", "History", "Geography", "Computing", "Music", "Art", "PE", "PSHE", "RE"];
-    const missing = ALL_SUBJECTS.filter((s) => !covered.has(s));
-    const topPct = topEntry ? Math.round((topEntry[1] / items.length) * 100) : 0;
-    const toMinutes = (time: string) => {
-      const [h, m] = String(time || "").split(":").map(Number);
-      return (h || 0) * 60 + (m || 0);
-    };
-    const monday = getMondayDate(new Date());
-    const friday = new Date(monday);
-    friday.setDate(friday.getDate() + 4);
-    const weekEvents = scheduleEvents.filter((event) => {
-      const [year, month, day] = String(event.scheduled_date || "").split("-").map(Number);
-      if (!year || !month || !day) return false;
-      const eventDate = new Date(year, month - 1, day);
-      eventDate.setHours(0, 0, 0, 0);
-      return eventDate >= monday && eventDate <= friday;
-    });
-    const scheduledHourEvents = weekEvents.filter(
-      (event) =>
-        !isImportedCalendarScheduleEvent(event) &&
-        !isTaskScheduleEvent(event) &&
-        !isPersonalScheduleEvent(event),
-    );
-    const clashEligibleEvents = scheduledHourEvents.filter(
-      (event) => !isImportedCalendarScheduleEvent(event) && !isTaskScheduleEvent(event),
-    );
-    const eventsByDay = new Map<string, ScheduleEvent[]>();
-    let totalScheduledMinutes = 0;
-    let clashCount = 0;
-
-    for (const event of scheduledHourEvents) {
-      const dayEvents = eventsByDay.get(event.scheduled_date) ?? [];
-      dayEvents.push(event);
-      eventsByDay.set(event.scheduled_date, dayEvents);
-      totalScheduledMinutes += Math.max(0, toMinutes(event.end_time) - toMinutes(event.start_time));
-    }
-
-    const clashEventsByDay = new Map<string, ScheduleEvent[]>();
-    for (const event of clashEligibleEvents) {
-      const dayEvents = clashEventsByDay.get(event.scheduled_date) ?? [];
-      dayEvents.push(event);
-      clashEventsByDay.set(event.scheduled_date, dayEvents);
-    }
-
-    for (const [, dayEvents] of clashEventsByDay) {
-      const sortedEvents = [...dayEvents].sort((a, b) => a.start_time.localeCompare(b.start_time));
-      let activeEnd = -1;
-      let clashWindowOpen = false;
-      for (const event of sortedEvents) {
-        const eventStart = toMinutes(event.start_time);
-        const eventEnd = toMinutes(event.end_time);
-        if (activeEnd >= 0 && eventStart < activeEnd) {
-          if (!clashWindowOpen) {
-            clashCount += 1;
-            clashWindowOpen = true;
-          }
-          activeEnd = Math.max(activeEnd, eventEnd);
-        } else {
-          activeEnd = eventEnd;
-          clashWindowOpen = false;
-        }
-      }
-    }
-
-    const weekdaysInView = 5;
-    const scheduledDayCount = eventsByDay.size;
-    const freeDayCount = Math.max(0, weekdaysInView - scheduledDayCount);
-    const totalHours = Math.round((totalScheduledMinutes / 60) * 10) / 10;
-
-    return {
-      topSubject: topEntry?.[0],
-      topPct,
-      missing,
-      coveredCount: covered.size,
-      scheduledDayCount,
-      freeDayCount,
-      totalHours,
-      clashCount,
-    };
-  }, [items, scheduleEvents]);
 
   if (initialBootLoading) {
     return <DashboardBootSplash steps={bootSteps} />;
@@ -1659,44 +1163,8 @@ export default function DashboardPage() {
             <div aria-hidden="true" />
           </div>
           <div className="dashboard-hero dashboard-hero-side">
-            <CombinedUpNextHeroTile
-              personalEvents={personalUpNextEvents}
-              schedulerEvents={schedulerUpNextEvents}
-              loading={scheduleLoading}
-              personalIndex={personalUpNextIndex}
-              schedulerIndex={upNextIndex}
-              onPersonalPrevious={() => setPersonalUpNextIndex((current) => Math.max(0, current - 1))}
-              onPersonalNext={() => setPersonalUpNextIndex((current) => Math.min(personalUpNextEvents.length - 1, current + 1))}
-              onSchedulerPrevious={() => setUpNextIndex((current) => Math.max(0, current - 1))}
-              onSchedulerNext={() => setUpNextIndex((current) => Math.min(schedulerUpNextEvents.length - 1, current + 1))}
-            />
-            <ActivityBySubjectCard
-              scheduleEvents={scheduleEvents}
-              loading={scheduleLoading}
-              weekStart={weekStart}
-            />
-            <div className="dashboard-hero-stat dashboard-hero-stat-insight">
-              <div className="dashboard-hero-badge-wrap dashboard-hero-badge-wrap-plain">
-                <svg className="dashboard-hero-stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" fill="currentColor" opacity="0.22" />
-                  <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z" />
-                  <path d="M6 14l.7 1.6L8.3 16l-1.6.7L6 18.3l-.7-1.6L3.7 16l1.6-.7L6 14z" />
-                </svg>
-                <span className="dashboard-hero-label" style={{ margin: 0 }}>Insight</span>
-              </div>
-              <span className="dashboard-hero-insight-text">
-                {loading || !insightData
-                  ? "No insight yet."
-                  : insightData.clashCount > 0
-                    ? `You have ${insightData.clashCount} ${insightData.clashCount === 1 ? "clashing appointment" : "clashing appointments"} this week across ${insightData.scheduledDayCount} scheduled ${insightData.scheduledDayCount === 1 ? "day" : "days"}. Diary space is tight, so it would be worth resolving overlaps before adding more.`
-                    : insightData.freeDayCount >= 2
-                      ? `Your diary still has ${insightData.freeDayCount} relatively open ${insightData.freeDayCount === 1 ? "day" : "days"} this week, with around ${insightData.totalHours} scheduled ${insightData.totalHours === 1 ? "hour" : "hours"} in place. ${insightData.missing.length > 0 ? `You could use that space to strengthen ${insightData.missing.slice(0, 2).join(" or ")} coverage.` : `Coverage is broad, with ${insightData.topSubject} currently leading at ${insightData.topPct}% of your packs.`}`
-                      : insightData.missing.length > 0
-                        ? `This is a busy week with ${insightData.totalHours} scheduled hours across ${insightData.scheduledDayCount} days. Your strongest library coverage is ${insightData.topSubject}, but ${insightData.missing.slice(0, 2).join(" and ")} still look like good opportunities for the next packs you generate.`
-                        : `This week looks well used with ${insightData.totalHours} scheduled hours across ${insightData.scheduledDayCount} days and no current clashes. Your library coverage is broad, with ${insightData.topSubject} currently strongest at ${insightData.topPct}% of saved packs.`}
-              </span>
-            </div>
           </div>
+          <AiSchedulePanel onScheduleChange={handleScheduleMutation} />
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
           <PersonalTasksCard
             tasks={tasks}

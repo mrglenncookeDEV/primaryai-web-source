@@ -7,8 +7,12 @@ export class CloudflareWorkerProvider implements EngineProvider {
     return Boolean(process.env.CF_API_TOKEN && process.env.CF_ACCOUNT_ID);
   }
 
-  async generate(prompt: string) {
+  async generate(prompt: string, systemPrompt?: string) {
     const model = process.env.CF_MODEL ?? "@cf/meta/llama-3.1-8b-instruct";
+    const messages = [
+      ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+      { role: "user", content: prompt },
+    ];
     const res = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
       {
@@ -18,7 +22,7 @@ export class CloudflareWorkerProvider implements EngineProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: [{ role: "user", content: prompt }],
+          messages,
           max_tokens: 2500,
           temperature: 0.2,
         }),

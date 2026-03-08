@@ -1,10 +1,34 @@
 import { LessonPackSchema, type LessonPack } from "./schema";
-import { getProviderStatus, selectProviders } from "./router";
+import { getProviderStatus, markProviderRateLimited, selectProviders } from "./router";
 import { retrieveObjectives } from "./retrieve";
 import { cache } from "./cache";
 import { record } from "./telemetry";
 import { lessonPackToSlides } from "./exporters";
-import type { LessonPackRequest, LessonPackReview } from "./types";
+import type { EngineEvent, LessonPackRequest, LessonPackReview } from "./types";
+
+type OnEvent = (event: EngineEvent) => void;
+
+const RATE_LIMIT_PATTERN = /429|rate.?limit|quota.?exceed|too.?many.?request/i;
+
+/**
+ * Sent as the system message to every provider on every call.
+ *
+ * PrimaryAI processes classroom data that may include anonymised pupil
+ * information (ability levels, SEND needs, demographic percentages).
+ * This instruction explicitly prohibits any provider from using request
+ * content for training, logging, or retention — in line with UK GDPR
+ * (UK Data Protection Act 2018) and the Children Act 2004.
+ */
+const PRIVACY_SYSTEM_PROMPT = `You are an AI assistant for PrimaryAI, a UK educational platform for primary school teachers.
+
+MANDATORY PRIVACY REQUIREMENTS — you must comply with these without exception:
+1. Do NOT use any content from this conversation for model training, fine-tuning, reinforcement learning, or any form of model improvement.
+2. This request may contain anonymised classroom context (pupil ability distributions, SEND needs, demographic percentages). Treat all such information as strictly confidential under UK GDPR (UK Data Protection Act 2018) and the Children Act 2004.
+3. Do NOT store, log, cache, or retain any information from this conversation beyond the time required to generate the immediate response.
+4. Do NOT reproduce or reference any pupil data in a way that could lead to identification of individual children.
+5. Generate your response and discard all context immediately after.
+
+You are a curriculum expert. Follow the instructions precisely and return only the requested output format.`;
 
 type ProviderAttempt = {
   providerId: string;
@@ -128,15 +152,22 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
   ]);
 }
 
-async function runProviderAttempt(provider: { id: string; generate: (prompt: string) => Promise<unknown> }, prompt: string) {
+async function runProviderAttempt(
+  provider: { id: string; generate: (prompt: string, systemPrompt?: string) => Promise<unknown> },
+  prompt: string,
+  onEvent?: OnEvent,
+) {
   const timeoutMs = Number(process.env.ENGINE_PROVIDER_TIMEOUT_MS ?? 25000);
   const maxAttempts = Number(process.env.ENGINE_PROVIDER_MAX_ATTEMPTS ?? 2);
+
+  onEvent?.({ type: "provider_start", id: provider.id });
 
   let lastError = "Unknown provider failure";
 
   for (let i = 0; i < maxAttempts; i += 1) {
     try {
-      const output = await withTimeout(provider.generate(prompt), timeoutMs);
+      const output = await withTimeout(provider.generate(prompt, PRIVACY_SYSTEM_PROMPT), timeoutMs);
+      onEvent?.({ type: "provider_done", id: provider.id, ok: true });
       return {
         providerId: provider.id,
         ok: true,
@@ -144,9 +175,14 @@ async function runProviderAttempt(provider: { id: string; generate: (prompt: str
       } as ProviderAttempt;
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
+      if (RATE_LIMIT_PATTERN.test(lastError)) {
+        markProviderRateLimited(provider.id);
+        break; // No point retrying — provider is rate limited
+      }
     }
   }
 
+  onEvent?.({ type: "provider_done", id: provider.id, ok: false, error: lastError });
   return {
     providerId: provider.id,
     ok: false,
@@ -154,7 +190,7 @@ async function runProviderAttempt(provider: { id: string; generate: (prompt: str
   } as ProviderAttempt;
 }
 
-async function runProviders(prompt: string): Promise<ProviderAttempt[]> {
+async function runProviders(prompt: string, onEvent?: OnEvent): Promise<ProviderAttempt[]> {
   const providers = selectProviders();
   if (providers.length === 0) {
     const statuses = getProviderStatus();
@@ -163,7 +199,7 @@ async function runProviders(prompt: string): Promise<ProviderAttempt[]> {
     );
   }
 
-  return Promise.all(providers.map((provider) => runProviderAttempt(provider, prompt)));
+  return Promise.all(providers.map((provider) => runProviderAttempt(provider, prompt, onEvent)));
 }
 
 function scoreLessonPack(pack: LessonPack, objectives: string[]) {
@@ -339,8 +375,61 @@ function ensureUsefulContent(pack: LessonPack, req: LessonPackRequest, objective
   });
 }
 
-async function generateBestLessonPack(prompt: string, objectives: string[]) {
-  const attempts = await runProviders(prompt);
+function differentiationDepthScore(pack: LessonPack) {
+  return (
+    Number(pack.activities.support.length > 40) +
+    Number(pack.activities.expected.length > 40) +
+    Number(pack.activities.greater_depth.length > 40)
+  );
+}
+
+function assessmentCompletenessScore(pack: LessonPack) {
+  return (
+    pack.mini_assessment.questions.filter((q) => q.length > 10).length +
+    pack.mini_assessment.answers.filter((a) => a.length > 10).length
+  );
+}
+
+function ensembleCandidates(
+  candidates: Array<{ providerId: string; pack: LessonPack; score: number }>,
+  objectives: string[]
+): { providerId: string; pack: LessonPack } {
+  if (candidates.length === 1) return candidates[0];
+
+  // Base: overall highest scorer provides everything
+  const base = candidates[0];
+
+  // Pick the candidate with best objective coverage for learning_objectives
+  const bestObjectives = [...candidates].sort(
+    (a, b) => objectiveCoverageCount(b.pack, objectives) - objectiveCoverageCount(a.pack, objectives)
+  )[0];
+
+  // Pick the candidate with highest differentiation depth for activities
+  const bestActivities = [...candidates].sort(
+    (a, b) => differentiationDepthScore(b.pack) - differentiationDepthScore(a.pack)
+  )[0];
+
+  // Pick the candidate with most complete mini_assessment
+  const bestAssessment = [...candidates].sort(
+    (a, b) => assessmentCompletenessScore(b.pack) - assessmentCompletenessScore(a.pack)
+  )[0];
+
+  const providerIds = candidates.map((c) => c.providerId);
+  const ensembleId = providerIds.length > 1 ? `ensemble(${providerIds.join("+")})` : base.providerId;
+
+  return {
+    providerId: ensembleId,
+    pack: LessonPackSchema.parse({
+      ...base.pack,
+      learning_objectives: bestObjectives.pack.learning_objectives,
+      activities: bestActivities.pack.activities,
+      mini_assessment: bestAssessment.pack.mini_assessment,
+    }),
+  };
+}
+
+async function generateBestLessonPack(prompt: string, objectives: string[], onEvent?: OnEvent) {
+  const attempts = await runProviders(prompt, onEvent);
 
   const validCandidates: Array<{ providerId: string; pack: LessonPack; score: number }> = [];
   const errors: string[] = [];
@@ -377,11 +466,10 @@ async function generateBestLessonPack(prompt: string, objectives: string[]) {
   }
 
   validCandidates.sort((a, b) => b.score - a.score);
-  return {
-    providerId: validCandidates[0].providerId,
-    lessonPack: validCandidates[0].pack,
-    attempts,
-  };
+
+  const { providerId, pack: lessonPack } = ensembleCandidates(validCandidates, objectives);
+  onEvent?.({ type: "ensemble", providerIds: validCandidates.map((c) => c.providerId) });
+  return { providerId, lessonPack, attempts };
 }
 
 function selectSectionsToRegenerate(improvements: string[]) {
@@ -428,8 +516,10 @@ function mergeRegeneratedSections(base: LessonPack, patch: Record<string, unknow
 async function runQualityPass(
   draft: LessonPack,
   req: LessonPackRequest,
-  objectives: string[]
+  objectives: string[],
+  onEvent?: OnEvent,
 ): Promise<LessonPack> {
+  onEvent?.({ type: "pass", name: "quality" });
   const reviewPrompt = `
 You are a senior UK primary curriculum advisor reviewing a lesson pack for classroom quality.
 Return ONLY valid JSON: { "approved": boolean, "improvements": string[] }
@@ -456,7 +546,7 @@ ${JSON.stringify(draft, null, 2)}
   `;
 
   try {
-    const reviewAttempts = await runProviders(reviewPrompt);
+    const reviewAttempts = await runProviders(reviewPrompt, onEvent);
     let review: LessonPackReview | null = null;
 
     for (const attempt of reviewAttempts) {
@@ -487,7 +577,7 @@ Lesson Pack:
 ${JSON.stringify(draft, null, 2)}
   `;
 
-    const regenAttempts = await runProviders(regeneratePrompt);
+    const regenAttempts = await runProviders(regeneratePrompt, onEvent);
     for (const attempt of regenAttempts) {
       if (!attempt.ok || !attempt.raw) continue;
       try {
@@ -507,8 +597,10 @@ ${JSON.stringify(draft, null, 2)}
 async function runAlignmentPass(
   draft: LessonPack,
   req: LessonPackRequest,
-  objectives: string[]
+  objectives: string[],
+  onEvent?: OnEvent,
 ): Promise<LessonPack> {
+  onEvent?.({ type: "pass", name: "alignment" });
   if (objectives.length === 0) return draft;
 
   const minAlignmentRatio = Number(process.env.ENGINE_MIN_ALIGNMENT_RATIO ?? 0.6);
@@ -536,7 +628,7 @@ Lesson Pack:
 ${JSON.stringify(draft, null, 2)}
   `;
 
-  const attempts = await runProviders(alignmentPrompt);
+  const attempts = await runProviders(alignmentPrompt, onEvent);
   for (const attempt of attempts) {
     if (!attempt.ok || !attempt.raw) continue;
 
@@ -565,7 +657,10 @@ export function getLessonPackCacheKey(req: LessonPackRequest) {
   return `v3:${JSON.stringify(req)}`;
 }
 
-export async function generateLessonPackWithMeta(req: LessonPackRequest): Promise<{
+export async function generateLessonPackWithMeta(
+  req: LessonPackRequest,
+  onEvent?: OnEvent,
+): Promise<{
   pack: LessonPack;
   providerId: string;
   cacheHit: boolean;
@@ -711,9 +806,10 @@ ${JSON.stringify(LESSON_PACK_OUTPUT_TEMPLATE, null, 2)}
     });
   }
 
-  const generated = await generateBestLessonPack(prompt, objectives);
-  const reviewed = await runQualityPass(generated.lessonPack, req, objectives);
-  const aligned = await runAlignmentPass(reviewed, req, objectives);
+  const generated = await generateBestLessonPack(prompt, objectives, onEvent);
+  const reviewed = await runQualityPass(generated.lessonPack, req, objectives, onEvent);
+  const aligned = await runAlignmentPass(reviewed, req, objectives, onEvent);
+  onEvent?.({ type: "pass", name: "finalize" });
   const useful = ensureUsefulContent(aligned, req, objectives);
   const finalized = attachProgrammaticSlides(useful);
 

@@ -164,6 +164,8 @@ export default function SchedulerDrawer({
   const [editEventId, setEditEventId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [saving, setSaving] = useState(false);
+  const [generatingPack, setGeneratingPack] = useState(false);
+  const [generatePackError, setGeneratePackError] = useState("");
   const [syncingOutlook, setSyncingOutlook] = useState(false);
   const [backfillingOutlook, setBackfillingOutlook] = useState(false);
   const [disconnectingOutlook, setDisconnectingOutlook] = useState(false);
@@ -885,6 +887,28 @@ export default function SchedulerDrawer({
     });
   }
 
+  async function handleGeneratePack(eventId: string) {
+    setGeneratingPack(true);
+    setGeneratePackError("");
+    try {
+      const res = await fetch(`/api/schedule/${eventId}/generate-pack`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not generate lesson pack");
+      // Update the event in local state with the new lesson pack id
+      if (data.packId) {
+        setEvents((prev) => prev.map((e) => e.id === eventId ? { ...e, lessonPackId: data.packId } : e));
+        if (selectedEvent?.id === eventId) {
+          setSelectedEvent((prev) => prev ? { ...prev, lessonPackId: data.packId } : prev);
+        }
+        onScheduleChange?.();
+      }
+    } catch (err) {
+      setGeneratePackError(err instanceof Error ? err.message : "Could not generate lesson pack");
+    } finally {
+      setGeneratingPack(false);
+    }
+  }
+
   if (!embedded && !mounted) return null;
 
   const schedulerBody = (
@@ -1193,11 +1217,24 @@ export default function SchedulerDrawer({
                   </p>
                 ) : null}
               </div>
+              {generatePackError ? (
+                <p style={{ margin: "0.5rem 0 0", fontSize: "0.8rem", color: "#ef4444" }}>{generatePackError}</p>
+              ) : null}
               <div className="scheduler-modal-actions">
                 <div style={{ display: "flex", gap: "0.55rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
                   {!isImportedCalendarEvent(selectedEvent) ? (
                     <button className="scheduler-modal-cancel" onClick={() => openEditForEvent(selectedEvent)}>
                       Edit event
+                    </button>
+                  ) : null}
+                  {!selectedEvent.lessonPackId && selectedEvent.eventType !== "custom" ? (
+                    <button
+                      className="scheduler-modal-cancel"
+                      onClick={() => void handleGeneratePack(selectedEvent.id)}
+                      disabled={generatingPack}
+                      style={{ opacity: generatingPack ? 0.6 : 1 }}
+                    >
+                      {generatingPack ? "Generating pack…" : "✨ Generate lesson pack"}
                     </button>
                   ) : null}
                   {selectedEvent.lessonPackId ? (

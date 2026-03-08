@@ -1,22 +1,22 @@
 import type { EngineProvider } from "../types";
 
-export class GroqProvider implements EngineProvider {
-  id = "groq";
+export class MistralProvider implements EngineProvider {
+  id = "mistral";
 
   isAvailable() {
-    return Boolean(process.env.GROQ_API_KEY);
+    return Boolean(process.env.MISTRAL_API_KEY);
   }
 
   async generate(prompt: string, systemPrompt?: string) {
-    const model = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+    const model = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
     const messages = [
       ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
       { role: "user", content: prompt },
     ];
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -28,7 +28,7 @@ export class GroqProvider implements EngineProvider {
     });
 
     if (!res.ok) {
-      throw new Error(`Groq request failed: ${res.status}`);
+      throw new Error(`Mistral request failed: ${res.status}`);
     }
 
     const data = await res.json();

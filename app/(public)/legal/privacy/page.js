@@ -7,7 +7,7 @@ export default function PrivacyPage() {
       <div className="card" style={{ maxWidth: 860, margin: "1.25rem auto 0" }}>
         <h1 style={{ margin: "0 0 0.5rem", fontSize: "2rem", letterSpacing: "-0.04em" }}>Privacy Policy</h1>
         <p className="muted" style={{ marginTop: 0 }}>
-          Last updated: 7 March 2026
+          Last updated: 8 March 2026
         </p>
 
         <div style={{ display: "grid", gap: "1rem", lineHeight: 1.65 }}>
@@ -50,63 +50,90 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>4. Calendar integrations</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>4. AI engine and third-party AI providers</h2>
+            <p style={{ margin: "0 0 0.75rem" }}>
+              PrimaryAI uses a multi-provider AI engine to generate lesson content. When you request a lesson pack, your inputs — including year group, subject, topic, and anonymised class profile settings — are sent to one or more of the following AI providers:
+            </p>
+            <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.2rem" }}>
+              <li><strong>Groq</strong> (groq.com) — Llama 3.3 70B</li>
+              <li><strong>Google Gemini</strong> (ai.google.dev) — Gemini 2.0 Flash</li>
+              <li><strong>Cerebras</strong> (cerebras.ai) — Llama 3.3 70B</li>
+              <li><strong>Mistral AI</strong> (mistral.ai) — Mistral Small</li>
+              <li><strong>OpenRouter</strong> (openrouter.ai) — Llama 3.3 70B (free tier routing)</li>
+              <li><strong>Cohere</strong> (cohere.com) — Command R Plus</li>
+            </ul>
+            <p style={{ margin: "0 0 0.75rem" }}>
+              <strong>No AI provider trains on your data.</strong> Every request sent to every provider includes a mandatory system-level instruction that explicitly prohibits the use of your content for model training, fine-tuning, reinforcement learning, or any form of model improvement. Providers are contractually selected on the basis that their API terms prohibit training on user inputs without explicit opt-in consent.
+            </p>
+            <p style={{ margin: "0 0 0.75rem" }}>
+              <strong>No pupil personal data is sent to AI providers.</strong> Class context passed to the AI engine is limited to anonymised, statistical settings you configure (such as ability level percentages, SEND focus, and EAL proportions). No pupil names, dates of birth, assessment records, or any other data capable of identifying individual children are included in AI requests.
+            </p>
+            <p style={{ margin: "0 0 0.75rem" }}>
+              <strong>Requests are not retained by providers.</strong> Each AI provider receives the minimum information needed to generate the immediate response. Providers are instructed to discard all context after responding. We do not share your account details, contact information, or any other personal data with AI providers.
+            </p>
+            <p style={{ margin: 0 }}>
+              These measures are applied in line with UK GDPR (UK Data Protection Act 2018) and the Children Act 2004. If you have concerns about AI data handling, please contact us using the details on the Contact page.
+            </p>
+          </section>
+
+          <section>
+            <h2 style={{ marginBottom: "0.35rem" }}>5. Calendar integrations</h2>
             <p style={{ margin: 0 }}>
               If you connect Google Calendar or Microsoft Outlook, PrimaryAI may access calendar information you authorise in order to import events, show availability, and write back scheduler events where you enable that functionality. We only use that access to provide the calendar features you request.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>5. Legal basis</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>6. Legal basis</h2>
             <p style={{ margin: 0 }}>
               Where UK GDPR applies, we generally process personal data because it is necessary to provide the service you request, to pursue legitimate interests in improving and securing the platform, or because you have chosen to submit information such as survey responses or calendar connections.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>6. Sharing</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>7. Sharing</h2>
             <p style={{ margin: 0 }}>
-              We do not sell your personal data. We may share data with service providers who help us operate the platform, such as hosting, authentication, database, analytics, payment, email, AI and calendar integration providers, where needed to deliver the service.
+              We do not sell your personal data. We may share data with service providers who help us operate the platform, such as hosting, authentication, database, analytics, payment, email, AI and calendar integration providers, where needed to deliver the service. AI providers receive only the minimum anonymised content necessary to generate lesson outputs, as described in section 4.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>7. Retention</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>8. Retention</h2>
             <p style={{ margin: 0 }}>
               We keep personal data for as long as reasonably necessary to provide the service, maintain records, resolve disputes, comply with legal obligations, and improve the platform. If you ask us to delete your data, we will process that request subject to legal and operational requirements.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>8. Your rights</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>9. Your rights</h2>
             <p style={{ margin: 0 }}>
               You may have rights to access, correct, delete, restrict or object to certain processing of your personal data, and to request a copy of the data you have provided. To exercise those rights, contact us using the details on the Contact page.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>9. Security</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>10. Security</h2>
             <p style={{ margin: 0 }}>
-              We take reasonable technical and organisational steps to protect personal data, but no internet-based service can guarantee absolute security.
+              We take reasonable technical and organisational steps to protect personal data, including encrypted transmission of all AI requests, access controls on stored data, and provider selection based on data-handling standards. No internet-based service can guarantee absolute security.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>10. Children</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>11. Children</h2>
             <p style={{ margin: 0 }}>
-              PrimaryAI is intended for adult users such as teachers, school staff and education professionals. Users should not upload unnecessary pupil personal data into the platform.
+              PrimaryAI is intended for adult users such as teachers, school staff and education professionals. The AI engine is designed to operate without receiving any personal data relating to individual pupils. Users should not upload unnecessary pupil personal data into the platform. Any anonymised class context entered into lesson planning settings should not include information that could identify individual children.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>11. Changes</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>12. Changes</h2>
             <p style={{ margin: 0 }}>
               We may update this policy from time to time. Material changes will be reflected on this page with an updated revision date.
             </p>
           </section>
 
           <section>
-            <h2 style={{ marginBottom: "0.35rem" }}>12. Contact</h2>
+            <h2 style={{ marginBottom: "0.35rem" }}>13. Contact</h2>
             <p style={{ margin: 0 }}>
               For privacy questions or requests, please use the contact details provided on the Contact page.
             </p>

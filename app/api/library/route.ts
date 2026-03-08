@@ -18,6 +18,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const view = searchParams.get("view") === "summary" ? "summary" : "full";
   const limit = parseLimit(searchParams.get("limit"), 100);
+  const folderId = searchParams.get("folder_id");
 
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
@@ -25,15 +26,23 @@ export async function GET(req: Request) {
   }
 
   const selectCols = view === "summary"
-    ? "id,title,year_group,subject,topic,created_at,updated_at"
+    ? "id,title,year_group,subject,topic,folder_id,created_at,updated_at"
     : "*";
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("lesson_packs")
     .select(selectCols)
     .eq("user_id", session.userId)
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (folderId === "none") {
+    query = query.is("folder_id", null);
+  } else if (folderId) {
+    query = query.eq("folder_id", folderId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: "Library store unavailable" }, { status: 503 });

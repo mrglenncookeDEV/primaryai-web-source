@@ -7,7 +7,7 @@ export class GeminiProvider implements EngineProvider {
     return Boolean(process.env.GEMINI_API_KEY);
   }
 
-  async generate(prompt: string) {
+  async generate(prompt: string, systemPrompt?: string) {
     const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -15,6 +15,7 @@ export class GeminiProvider implements EngineProvider {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.45,

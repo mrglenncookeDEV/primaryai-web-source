@@ -7,15 +7,17 @@ export class HuggingfaceProvider implements EngineProvider {
     return Boolean(process.env.HUGGINGFACE_API_KEY && process.env.HUGGINGFACE_MODEL);
   }
 
-  async generate(prompt: string) {
+  async generate(prompt: string, systemPrompt?: string) {
     const model = process.env.HUGGINGFACE_MODEL;
+    // HuggingFace Inference API varies by model; prepend system prompt as a header block
+    const fullPrompt = systemPrompt ? `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\n${prompt}` : prompt;
     const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ inputs: prompt }),
+      body: JSON.stringify({ inputs: fullPrompt }),
     });
 
     if (!res.ok) {

@@ -490,9 +490,15 @@ export default function WeekCalendar({
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "3px",
                           }}
                         >
-                          {evt.title}
+                          {isImported && (
+                            <ScheduleEventIcon subject={evt.subject} eventType={evt.eventType} eventCategory={evt.eventCategory} size={10} style={{ flexShrink: 0 }} />
+                          )}
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{evt.title}</span>
                         </button>
                       );
                     })}
@@ -726,6 +732,9 @@ export default function WeekCalendar({
                               <ScheduleEventIcon subject={evt.subject} eventType={evt.eventType} eventCategory={evt.eventCategory} size={11} />
                             </span>
                             <span className="scheduler-event-title-row">
+                              {isImported && (
+                                <ScheduleEventIcon subject={evt.subject} eventType={evt.eventType} eventCategory={evt.eventCategory} size={11} style={{ marginRight: 3, flexShrink: 0 }} />
+                              )}
                               <span className="scheduler-event-title" style={{ textDecoration: isDoneTask ? "line-through" : undefined }}>{evt.title}</span>
                             </span>
                             <span className="scheduler-event-time" style={{ textDecoration: isDoneTask ? "line-through" : undefined }}>

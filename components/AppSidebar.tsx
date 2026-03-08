@@ -40,6 +40,16 @@ const NAV = [
     ),
   },
   {
+    href: "/ai-planner",
+    label: "AI Planner",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"/>
+        <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/>
+      </svg>
+    ),
+  },
+  {
     href: "/settings",
     label: "Settings",
     icon: (
@@ -70,6 +80,8 @@ export default function AppSidebar() {
   const path = usePathname();
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [initials, setInitials] = useState<string>("");
+  const accountItem = NAV.find((item) => item.href === "/account") ?? null;
+  const primaryNavItems = NAV.filter((item) => item.href !== "/account");
 
   useEffect(() => {
     fetch("/api/profile/setup")
@@ -95,7 +107,7 @@ export default function AppSidebar() {
 
       <div className="app-sidebar-divider" style={{ margin: "0.35rem 0" }} />
 
-      {NAV.map(({ href, label, icon }) => {
+      {primaryNavItems.map(({ href, label, icon }) => {
         const active = path === href || (href !== "/dashboard" && path.startsWith(href));
         return (
           <Link
@@ -127,6 +139,28 @@ export default function AppSidebar() {
 
       <div className="app-sidebar-spacer" />
       <div className="app-sidebar-divider" />
+
+      {accountItem ? (
+        <Link
+          href={accountItem.href}
+          className={`app-sidebar-link${path === accountItem.href || path.startsWith(`${accountItem.href}/`) ? " active" : ""}`}
+          aria-label={accountItem.label}
+          aria-current={path === accountItem.href || path.startsWith(`${accountItem.href}/`) ? "page" : undefined}
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="app-sidebar-nav-avatar" />
+          ) : (
+            <div className="app-sidebar-avatar app-sidebar-avatar-initials app-sidebar-nav-avatar-fallback" aria-hidden="true">
+              {initials || (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21a8 8 0 1 0-16 0" /><circle cx="12" cy="7" r="4" />
+                </svg>
+              )}
+            </div>
+          )}
+          <span className="app-sidebar-tooltip">{accountItem.label}</span>
+        </Link>
+      ) : null}
 
       <form action="/api/auth/logout" method="post" style={{ display: "contents" }}>
         <button

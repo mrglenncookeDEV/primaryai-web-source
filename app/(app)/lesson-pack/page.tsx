@@ -4,6 +4,24 @@ import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState }
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+const PROVIDER_LABELS: Record<string, string> = {
+  cerebras: "Cerebras",
+  groq: "Groq",
+  gemini: "Gemini",
+  mistral: "Mistral",
+  openrouter: "OpenRouter",
+  cohere: "Cohere",
+  "cloudflare-worker": "Cloudflare AI",
+  huggingface: "HuggingFace",
+};
+
+type ProviderStatus = "pending" | "searching" | "done" | "failed";
+type EngineStatus = {
+  providers: Record<string, ProviderStatus>;
+  pass: string | null;
+  ensembled: boolean;
+};
+
 type LessonPack = {
   year_group: string;
   subject: string;
@@ -26,8 +44,7 @@ type ExportResponse = { ok: boolean; format: string; data: unknown } | { error: 
 
 const YEAR_GROUPS = ["Reception", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
 const MIN_CLASS_NOTES_CHARS = 200;
-const MAX_CONTEXT_CHARS = 8000;
-const CONTEXT_FILE_ACCEPT = ".txt,.md,.csv,.json,.tsv,.log,.rtf";
+const CONTEXT_FILE_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.txt,.md,.csv,.json,.tsv,.log,.rtf,.ods";
 
 const SUBJECT_GROUPS = [
   { label: "Core Subjects", subjects: ["Maths", "English", "Science"] },
@@ -204,9 +221,12 @@ export default function LessonPackPage() {
   const [classNotesLength, setClassNotesLength] = useState(0);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
   const [contextFileName, setContextFileName] = useState("");
   const [contextNotes, setContextNotes] = useState("");
   const [contextError, setContextError] = useState("");
+  const [contextParsing, setContextParsing] = useState(false);
+  const [contextChars, setContextChars] = useState(0);
   const [settingsChecklist, setSettingsChecklist] = useState({
     ealPercent: false,
     pupilPremiumPercent: false,
@@ -314,32 +334,41 @@ export default function LessonPackPage() {
   async function handleContextFileUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     setContextError("");
+    setContextNotes("");
+    setContextChars(0);
     if (!file) {
       setContextFileName("");
-      setContextNotes("");
       return;
     }
 
+    setContextFileName(file.name);
+    setContextParsing(true);
+
     try {
-      const raw = await file.text();
-      const trimmed = raw.trim();
-      if (!trimmed) {
-        setContextFileName(file.name);
-        setContextNotes("");
-        setContextError("That file appears to be empty.");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/lesson-pack/parse-context", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setContextError(data?.error ?? "Could not read that file.");
         return;
       }
 
-      const clipped = trimmed.slice(0, MAX_CONTEXT_CHARS);
-      setContextFileName(file.name);
-      setContextNotes(clipped);
-      if (trimmed.length > MAX_CONTEXT_CHARS) {
-        setContextError(`Only the first ${MAX_CONTEXT_CHARS} characters were used.`);
+      setContextNotes(data.text);
+      setContextChars(data.chars);
+      if (data.truncated) {
+        setContextError(`Document is large — first 12,000 characters used (${data.chars.toLocaleString()} total).`);
       }
     } catch {
-      setContextFileName(file.name);
-      setContextNotes("");
-      setContextError("Could not read that file. Use a text-based file such as TXT, CSV, JSON or Markdown.");
+      setContextError("Upload failed. Check your connection and try again.");
+    } finally {
+      setContextParsing(false);
     }
   }
 
@@ -354,8 +383,10 @@ export default function LessonPackPage() {
     setExportResult(null);
     setSaveState("idle");
     setSaveMsg("");
+    setEngineStatus({ providers: {}, pass: null, ensembled: false });
+
     try {
-      const res = await fetch("/api/lesson-pack", {
+      const res = await fetch("/api/lesson-pack/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -364,7 +395,52 @@ export default function LessonPackPage() {
           forceSave: forceSaveFromScheduler,
         }),
       });
-      setResult(await res.json());
+
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({ error: "Generation failed" }));
+        setResult(data);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === "provider_start") {
+              setEngineStatus((prev) => prev ? {
+                ...prev,
+                providers: { ...prev.providers, [event.id]: "searching" },
+              } : prev);
+            } else if (event.type === "provider_done") {
+              setEngineStatus((prev) => prev ? {
+                ...prev,
+                providers: { ...prev.providers, [event.id]: event.ok ? "done" : "failed" },
+              } : prev);
+            } else if (event.type === "ensemble") {
+              setEngineStatus((prev) => prev ? { ...prev, ensembled: true } : prev);
+            } else if (event.type === "pass") {
+              setEngineStatus((prev) => prev ? { ...prev, pass: event.name } : prev);
+            } else if (event.type === "pack") {
+              setResult(event.pack as LessonPackResponse);
+            } else if (event.type === "error") {
+              setResult({ error: event.message });
+            }
+          } catch {
+            // Malformed SSE line — skip
+          }
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -424,8 +500,10 @@ export default function LessonPackPage() {
     setExportResult(null);
     setSaveState("idle");
     setSaveMsg("");
+    setEngineStatus({ providers: {}, pass: null, ensembled: false });
+
     try {
-      const res = await fetch("/api/lesson-pack", {
+      const res = await fetch("/api/lesson-pack/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -435,8 +513,53 @@ export default function LessonPackPage() {
           forceSave: forceSaveFromScheduler,
         }),
       });
-      setResult(await res.json());
-      setFeedback("");
+
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({ error: "Regeneration failed" }));
+        setResult(data);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === "provider_start") {
+              setEngineStatus((prev) => prev ? {
+                ...prev,
+                providers: { ...prev.providers, [event.id]: "searching" },
+              } : prev);
+            } else if (event.type === "provider_done") {
+              setEngineStatus((prev) => prev ? {
+                ...prev,
+                providers: { ...prev.providers, [event.id]: event.ok ? "done" : "failed" },
+              } : prev);
+            } else if (event.type === "ensemble") {
+              setEngineStatus((prev) => prev ? { ...prev, ensembled: true } : prev);
+            } else if (event.type === "pass") {
+              setEngineStatus((prev) => prev ? { ...prev, pass: event.name } : prev);
+            } else if (event.type === "pack") {
+              setResult(event.pack as LessonPackResponse);
+              setFeedback("");
+            } else if (event.type === "error") {
+              setResult({ error: event.message });
+            }
+          } catch {
+            // Malformed SSE line — skip
+          }
+        }
+      }
     } finally {
       setRegenLoading(false);
     }
@@ -570,18 +693,23 @@ export default function LessonPackPage() {
                 id="lesson-pack-context-upload"
                 onChange={handleContextFileUpload}
               />
-              <label htmlFor="lesson-pack-context-upload" className="landing-thoughts-btn file-upload-cta">
-                Choose Context File
+              <label htmlFor="lesson-pack-context-upload" className="landing-thoughts-btn file-upload-cta" style={{ opacity: contextParsing ? 0.6 : 1 }}>
+                {contextParsing ? "Reading document…" : "Choose Context File"}
               </label>
               <p style={{ margin: "0.5rem 0 0", fontSize: "0.78rem", color: "var(--muted)" }}>
-                Supported: TXT, MD, CSV, JSON, TSV, LOG, RTF. Useful for targets, SEN notes, and attainment context.
+                PDF, Word (.docx), Excel (.xlsx), CSV, TXT, Markdown and more. Upload targets, SEN notes, curriculum plans, or any school document.
               </p>
-              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "var(--muted)" }}>
-                {contextFileName ? `${contextFileName} loaded` : "No context file selected"}
-                {contextNotes ? ` • ${contextNotes.length} characters ready` : ""}
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: contextNotes ? "#4ade80" : "var(--muted)" }}>
+                {contextParsing
+                  ? `Reading ${contextFileName}…`
+                  : contextNotes
+                    ? `${contextFileName} · ${contextChars > 0 ? contextChars.toLocaleString() : contextNotes.length.toLocaleString()} characters extracted`
+                    : contextFileName
+                      ? contextFileName
+                      : "No document selected"}
               </p>
               {contextError ? (
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#fc8181" }}>{contextError}</p>
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: contextError.includes("large") ? "var(--muted)" : "#fc8181" }}>{contextError}</p>
               ) : null}
             </div>
 
@@ -651,20 +779,101 @@ export default function LessonPackPage() {
         </div>
       )}
 
-      {/* ── Loading ── */}
-      {loading && (
-        <div style={{ textAlign: "center", padding: "4rem 1rem", color: "var(--muted)" }}>
-          <div style={{
-            width: "44px",
-            height: "44px",
-            border: "3px solid var(--border)",
-            borderTopColor: "var(--accent)",
-            borderRadius: "50%",
-            animation: "spin 0.75s linear infinite",
-            margin: "0 auto 1.2rem",
-          }} />
-          <p style={{ margin: "0 0 0.3rem", fontSize: "0.95rem", color: "var(--text)", fontWeight: 500 }}>Crafting your lesson resources…</p>
-          <p style={{ margin: 0, fontSize: "0.82rem", opacity: 0.55 }}>This usually takes 10–20 seconds</p>
+      {/* ── Engine Status Panel ── */}
+      {(loading || regenLoading) && engineStatus && (
+        <div style={{
+          marginBottom: "1.5rem",
+          borderRadius: "16px",
+          border: "1px solid var(--border-card)",
+          background: "var(--surface)",
+          padding: "1.25rem 1.4rem",
+          overflow: "hidden",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", marginBottom: "1rem" }}>
+            <div style={{
+              width: "10px",
+              height: "10px",
+              borderRadius: "50%",
+              border: "2px solid var(--accent)",
+              borderTopColor: "transparent",
+              animation: "spin 0.65s linear infinite",
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em" }}>
+              {engineStatus.pass === "quality" ? "Running quality check…"
+                : engineStatus.pass === "alignment" ? "Checking curriculum alignment…"
+                : engineStatus.pass === "finalize" ? "Finalising lesson pack…"
+                : engineStatus.ensembled ? "Combining best results…"
+                : "Querying AI providers…"}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            {Object.entries(engineStatus.providers).map(([id, status]) => (
+              <div key={id} style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <span style={{
+                  flexShrink: 0,
+                  width: "18px",
+                  height: "18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.72rem",
+                }}>
+                  {status === "searching" ? (
+                    <span style={{
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      border: "1.5px solid var(--accent)",
+                      borderTopColor: "transparent",
+                      display: "inline-block",
+                      animation: "spin 0.65s linear infinite",
+                    }} />
+                  ) : status === "done" ? (
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="#4ade80"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z" /></svg>
+                  ) : status === "failed" ? (
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="#fc8181"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z" /></svg>
+                  ) : null}
+                </span>
+                <span style={{
+                  fontSize: "0.8rem",
+                  color: status === "done" ? "#4ade80" : status === "failed" ? "rgba(252,129,129,0.7)" : "var(--muted)",
+                  fontWeight: status === "searching" ? 500 : 400,
+                  transition: "color 200ms ease",
+                }}>
+                  {PROVIDER_LABELS[id] ?? id}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {engineStatus.pass && (
+            <div style={{
+              marginTop: "0.9rem",
+              paddingTop: "0.9rem",
+              borderTop: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}>
+              <span style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                border: "1.5px solid var(--accent)",
+                borderTopColor: "transparent",
+                display: "inline-block",
+                animation: "spin 0.65s linear infinite",
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                {engineStatus.pass === "quality" && "Quality check — reviewing for curriculum standards"}
+                {engineStatus.pass === "alignment" && "Alignment pass — checking National Curriculum coverage"}
+                {engineStatus.pass === "finalize" && "Finalising — applying UK spelling and filling any gaps"}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

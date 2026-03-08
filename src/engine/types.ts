@@ -1,8 +1,16 @@
 export interface EngineProvider {
   id: string;
   isAvailable(): boolean;
-  generate(prompt: string): Promise<unknown>;
+  generate(prompt: string, systemPrompt?: string): Promise<unknown>;
 }
+
+export type EngineEvent =
+  | { type: "provider_start"; id: string }
+  | { type: "provider_done"; id: string; ok: boolean; error?: string }
+  | { type: "ensemble"; providerIds: string[] }
+  | { type: "pass"; name: "quality" | "alignment" | "finalize" }
+  | { type: "complete"; providerId: string; cacheHit: boolean }
+  | { type: "error"; message: string };
 
 export interface LessonPackRequest {
   year_group: string;
