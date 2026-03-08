@@ -713,9 +713,9 @@ a {
 ═══════════════════════════════════════════ */
 
 .top-nav {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: flex-start;
   position: sticky;
   top: 0;
   width: auto;
@@ -742,6 +742,7 @@ a {
   color: var(--accent);
   flex-shrink: 0;
   transition: opacity 180ms ease;
+  justify-self: start;
 }
 
 .nav-logo-link:hover {
@@ -776,10 +777,17 @@ a {
   gap: 0.1rem;
   justify-content: center;
   white-space: nowrap;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
   min-width: max-content;
+  justify-self: center;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  justify-self: end;
 }
 
 .nav-link {
@@ -850,7 +858,7 @@ a {
   align-items: center;
   gap: 0.35rem;
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: 0;
   padding-left: 0.9rem;
   border-left: 1px solid rgb(var(--accent-rgb) / 0.09);
   min-width: 0;
@@ -4076,8 +4084,6 @@ html[data-theme="dark"] .libraryx-preview-paper {
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  min-height: 560px;
-  height: 100%;
 }
 
 .scheduler-drawer.open {
@@ -4122,6 +4128,7 @@ html[data-theme="dark"] .libraryx-preview-paper {
   color: var(--text);
   letter-spacing: -0.01em;
   margin: 0;
+  white-space: nowrap;
 }
 
 .scheduler-drawer-header-embedded .scheduler-drawer-title,
@@ -4167,24 +4174,212 @@ html[data-theme="dark"] .libraryx-preview-paper {
 
 .scheduler-drawer-inner {
   display: grid;
-  grid-template-columns: 272px 1fr;
+  grid-template-columns: minmax(236px, 252px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   flex: 1;
   min-height: 0;
-  height: 100%;
   overflow: hidden;
   position: relative;
 }
 
-/* ── Pack list (left panel) ── */
+.scheduler-drawer-inner-embedded {
+  flex: none;
+  align-items: start;
+}
 
-.scheduler-pack-panel {
+.scheduler-sidebar {
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border);
-  overflow: hidden;
-  background: rgb(var(--accent-rgb) / 0.02);
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgb(var(--accent-rgb) / 0.05) 0%, transparent 24%),
+    color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.scheduler-sidebar-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  padding: 0.65rem;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+
+.scheduler-sidebar-topline {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0 0.1rem;
+}
+
+.scheduler-sidebar-kicker {
+  font-size: 0.67rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.scheduler-sidebar-caption {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--muted) 88%, var(--text) 12%);
+}
+
+.scheduler-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.scheduler-quick-actions > * {
+  min-width: 0;
+}
+
+.scheduler-quick-actions > .scheduler-quick-action-lesson {
+  grid-column: 1 / -1;
+}
+
+.scheduler-quick-actions > .scheduler-custom-add-btn-lesson {
+  grid-column: 1 / -1;
+}
+
+.scheduler-quick-button {
+  width: 100% !important;
+  margin: 0 !important;
+  min-height: 38px;
+  padding: 0.6rem 0.72rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem;
+  white-space: nowrap;
+  border-radius: 10px !important;
+  border-width: 1px !important;
+  text-align: center !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  box-sizing: border-box;
+}
+
+.scheduler-quick-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.scheduler-quick-actions .scheduler-quick-button span:last-child {
+  display: inline-block;
+}
+
+.scheduler-sync-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+}
+
+.scheduler-sync-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 10px 26px rgb(15 23 42 / 0.04);
+}
+
+.scheduler-sync-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.scheduler-sync-tile-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.scheduler-sync-pill {
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  background: rgb(148 163 184 / 0.14);
+  color: var(--muted);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.scheduler-sync-pill.is-live {
+  background: rgb(16 185 129 / 0.14);
+  color: #047857;
+}
+
+.scheduler-sync-tile-copy {
+  margin: 0;
+  font-size: 0.67rem;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.scheduler-sync-actions-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.scheduler-sidebar-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.04);
+}
+
+.scheduler-sidebar-create-card {
+  flex-shrink: 0;
+  padding: 0.35rem 0 0.75rem;
+}
+
+.scheduler-sidebar-packs-card {
+  flex: 1;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgb(var(--accent-rgb) / 0.04) 0%, transparent 12%),
+    color-mix(in srgb, var(--surface) 96%, transparent);
+  min-height: 220px;
+}
+
+.scheduler-sidebar-card-title {
+  padding: 0.75rem 0.85rem 0.35rem;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Pack list (left panel) ── */
+
+.scheduler-pack-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .scheduler-custom-add-btn {
@@ -4192,49 +4387,57 @@ html[data-theme="dark"] .libraryx-preview-paper {
   margin: 0.6rem;
   margin-bottom: 0;
   box-sizing: border-box;
-  padding: 0.48rem 0.72rem;
-  border-radius: 9px;
-  border: 1px solid rgb(var(--accent-rgb) / 0.4);
-  background: rgb(var(--accent-rgb) / 0.14);
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--accent-rgb) / 0.32);
+  background: rgb(var(--accent-rgb) / 0.1);
   color: var(--text);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.18);
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
 }
 
 .scheduler-custom-add-btn:hover,
 .scheduler-custom-add-btn:focus-visible {
-  border-color: rgb(var(--accent-rgb) / 0.72);
-  background: rgb(var(--accent-rgb) / 0.22);
-  color: var(--text);
+  border-color: rgb(var(--accent-rgb) / 0.6);
+  background: rgb(var(--accent-rgb) / 0.18);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.scheduler-custom-add-btn:active {
+  transform: scale(0.98);
 }
 
 .scheduler-custom-add-btn-personal {
-  border-color: rgb(16 185 129 / 0.42);
-  background: rgb(16 185 129 / 0.14);
+  border-color: rgb(16 185 129 / 0.36);
+  background: rgb(16 185 129 / 0.11);
   color: #065f46;
 }
 
 .scheduler-custom-add-btn-personal:hover,
 .scheduler-custom-add-btn-personal:focus-visible {
-  border-color: rgb(16 185 129 / 0.72);
-  background: rgb(16 185 129 / 0.24);
+  border-color: rgb(16 185 129 / 0.6);
+  background: rgb(16 185 129 / 0.2);
   color: #064e3b;
 }
 
 .scheduler-custom-add-btn-lesson {
-  border-color: rgb(62 96 138 / 0.68);
-  background: #4f7198;
-  color: #f8fbff;
+  border-color: rgba(79, 113, 152, 0.7);
+  background: linear-gradient(135deg, #4f7198 0%, #3d6080 100%);
+  color: #f0f6ff;
+  box-shadow: 0 2px 8px rgba(63, 96, 138, 0.28), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .scheduler-custom-add-btn-lesson:hover,
 .scheduler-custom-add-btn-lesson:focus-visible {
-  border-color: rgb(62 96 138 / 0.9);
-  background: #456788;
+  background: linear-gradient(135deg, #5a7da6 0%, #456788 100%);
+  border-color: rgba(79, 113, 152, 0.9);
   color: #ffffff;
+  box-shadow: 0 3px 12px rgba(63, 96, 138, 0.38), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 .scheduler-custom-sync-btn {
@@ -4245,32 +4448,46 @@ html[data-theme="dark"] .libraryx-preview-paper {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.42rem;
-  padding: 0.46rem 0.7rem;
-  border-radius: 9px;
+  gap: 0.45rem;
+  padding: 0.48rem 0.9rem;
+  border-radius: 999px;
   border: 1px solid var(--border-card);
-  background: var(--field-bg);
+  background: var(--surface);
   color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+
+.scheduler-custom-sync-btn-tile {
+  width: 100%;
+  margin: 0;
+  min-width: 0;
 }
 
 .scheduler-custom-sync-btn svg {
   color: #3b82f6;
+  flex-shrink: 0;
 }
 
 .scheduler-custom-sync-btn:hover,
 .scheduler-custom-sync-btn:focus-visible {
   color: var(--text);
-  border-color: rgb(var(--accent-rgb) / 0.5);
-  background: rgb(var(--accent-rgb) / 0.08);
+  border-color: rgb(var(--accent-rgb) / 0.4);
+  background: rgb(var(--accent-rgb) / 0.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.scheduler-custom-sync-btn:active {
+  transform: scale(0.98);
 }
 
 .scheduler-custom-sync-btn:disabled {
-  opacity: 0.65;
+  opacity: 0.55;
   cursor: wait;
 }
 
@@ -4289,25 +4506,32 @@ html[data-theme="dark"] .libraryx-preview-paper {
 
 .scheduler-sync-secondary-btn {
   width: calc(100% - 1.2rem);
-  margin: -0.15rem 0.6rem 0;
+  margin: 0.2rem 0.6rem 0.6rem;
   box-sizing: border-box;
-  padding: 0.38rem 0.68rem;
-  border-radius: 9px;
-  border: 1px dashed rgb(var(--accent-rgb) / 0.34);
-  background: rgb(var(--accent-rgb) / 0.04);
+  padding: 0.38rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--accent-rgb) / 0.2);
+  background: transparent;
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.71rem;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  letter-spacing: 0.01em;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.scheduler-sync-secondary-btn-inline {
+  width: 100%;
+  margin: 0;
+  padding-inline: 0.55rem;
 }
 
 .scheduler-sync-secondary-btn:hover,
 .scheduler-sync-secondary-btn:focus-visible {
   color: var(--text);
-  border-color: rgb(var(--accent-rgb) / 0.58);
-  background: rgb(var(--accent-rgb) / 0.08);
+  border-color: rgb(var(--accent-rgb) / 0.45);
+  background: rgb(var(--accent-rgb) / 0.06);
 }
 
 .scheduler-sync-secondary-btn:disabled {
@@ -4316,7 +4540,7 @@ html[data-theme="dark"] .libraryx-preview-paper {
 }
 
 .scheduler-pack-filters {
-  padding: 0.75rem;
+  padding: 0 0.85rem 0.65rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -4360,7 +4584,7 @@ html[data-theme="dark"] .libraryx-preview-paper {
 .scheduler-pack-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 0.6rem;
+  padding: 0.65rem 0.85rem 0.85rem;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -4414,10 +4638,21 @@ html[data-theme="dark"] .libraryx-preview-paper {
 
 .scheduler-pack-unschedule-zone {
   margin: 0.1rem 0 0.25rem;
-  border: 1px dashed var(--border);
+  border: 1px solid transparent;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--field-bg) 82%, transparent);
-  color: var(--muted);
+  background: rgb(239 68 68 / 0.02);
+  background-image:
+    linear-gradient(rgb(239 68 68 / 0.02), rgb(239 68 68 / 0.02)),
+    repeating-linear-gradient(90deg, rgb(239 68 68 / 0.75) 0 10px, transparent 10px 18px),
+    repeating-linear-gradient(180deg, rgb(239 68 68 / 0.75) 0 10px, transparent 10px 18px),
+    repeating-linear-gradient(90deg, rgb(239 68 68 / 0.75) 0 10px, transparent 10px 18px),
+    repeating-linear-gradient(180deg, rgb(239 68 68 / 0.75) 0 10px, transparent 10px 18px);
+  background-origin: border-box;
+  background-clip: padding-box, border-box, border-box, border-box, border-box;
+  background-position: center, top, right, bottom, left;
+  background-repeat: no-repeat;
+  background-size: auto, 100% 1px, 1px 100%, 100% 1px, 1px 100%;
+  color: #b91c1c;
   font-size: 0.72rem;
   text-align: center;
   padding: 0.45rem 0.55rem;
@@ -4426,8 +4661,8 @@ html[data-theme="dark"] .libraryx-preview-paper {
 
 .scheduler-pack-unschedule-zone.drag-over {
   border-color: #ef4444;
-  background: rgb(239 68 68 / 0.12);
-  color: #fca5a5;
+  background: rgb(239 68 68 / 0.16);
+  color: #991b1b;
 }
 
 .scheduler-pack-card {
@@ -4509,7 +4744,10 @@ html[data-theme="dark"] .libraryx-preview-paper {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
-  height: 100%;
+  position: relative;
+  min-width: 0;
+  height: var(--scheduler-sidebar-height, 100%);
+  max-height: var(--scheduler-sidebar-height, 100%);
 }
 
 .scheduler-week-nav {
@@ -4522,10 +4760,10 @@ html[data-theme="dark"] .libraryx-preview-paper {
 }
 
 .scheduler-week-btn {
-  background: none;
+  background: var(--surface);
   border: 1px solid var(--border);
   color: var(--muted);
-  border-radius: 7px;
+  border-radius: 50%;
   width: 28px;
   height: 28px;
   display: flex;
@@ -4533,12 +4771,15 @@ html[data-theme="dark"] .libraryx-preview-paper {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 150ms ease, border-color 150ms ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
 
 .scheduler-week-btn:hover {
   color: var(--text);
-  border-color: rgb(var(--accent-rgb) / 0.35);
+  border-color: rgb(var(--accent-rgb) / 0.4);
+  background: rgb(var(--accent-rgb) / 0.07);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
 .scheduler-week-label {
@@ -4548,20 +4789,25 @@ html[data-theme="dark"] .libraryx-preview-paper {
 }
 
 .scheduler-today-btn {
-  padding: 0.3rem 0.75rem;
-  border-radius: 7px;
+  padding: 0.28rem 0.85rem;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  background: none;
+  background: var(--surface);
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.73rem;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
 
 .scheduler-today-btn:hover {
-  color: var(--text);
-  border-color: rgb(var(--accent-rgb) / 0.35);
+  color: var(--accent);
+  border-color: rgb(var(--accent-rgb) / 0.45);
+  background: rgb(var(--accent-rgb) / 0.07);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
 .scheduler-cal-scroll {
@@ -5219,10 +5465,36 @@ a.scheduler-modal-confirm {
     grid-template-rows: minmax(220px, auto) minmax(0, 1fr);
   }
 
-  .scheduler-pack-panel {
+  .scheduler-drawer-inner-embedded {
+    align-items: stretch;
+  }
+
+  .scheduler-sidebar {
     border-right: none;
     border-bottom: 1px solid var(--border);
     min-height: 0;
+  }
+
+  .scheduler-sidebar-pane {
+    padding: 0.65rem;
+    overflow: visible;
+  }
+
+  .scheduler-quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduler-sync-actions-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduler-pack-list {
+    min-height: 220px;
+  }
+
+  .scheduler-cal-panel {
+    height: auto;
+    max-height: none;
   }
 
   .scheduler-pack-scroll {
@@ -5259,13 +5531,9 @@ a.scheduler-modal-confirm {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-top-grid > :first-child {
-    order: 1;
-  }
-
-  .dashboard-top-grid > :last-child {
-    order: 2;
-  }
+  .dashboard-countdown-wrapper { order: 1; }
+  .dashboard-scheduler-wrapper { order: 2; }
+  .dashboard-hero-side-wrap     { order: 3; }
 
   .dashboard-main-grid {
     grid-template-columns: 1fr !important;
@@ -5635,6 +5903,23 @@ a.scheduler-modal-confirm {
   align-self: flex-start;
 }
 
+.app-sidebar-clock {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.2rem;
+  flex-shrink: 0;
+}
+
+.app-sidebar-clock .dashboard-clock {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(0,0,0,0.06);
+}
+
 .app-sidebar-link {
   position: relative;
   display: flex;
@@ -5709,6 +5994,44 @@ html[data-theme="solid"] .app-sidebar-tooltip {
   background: rgb(var(--accent-rgb) / 0.1);
   margin: 0.35rem 0;
   flex-shrink: 0;
+}
+
+.app-sidebar-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 0 0 2px #22c55e, 0 0 0 3px rgba(0,0,0,0.18);
+}
+
+.app-sidebar-avatar-initials {
+  background: var(--field-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.03em;
+}
+
+.app-sidebar-nav-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.7);
+}
+
+.app-sidebar-nav-avatar-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  box-shadow: none;
 }
 
 /* ═══════════════════════════════════════════
@@ -5955,11 +6278,34 @@ html[data-theme="light"] .cmdpal-box {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
   gap: 1.25rem;
-  align-items: stretch;
+  align-items: start;
+}
+
+.dashboard-countdown-wrapper {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.dashboard-scheduler-wrapper {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: flex-start;
+}
+
+.dashboard-hero-side-wrap {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .dashboard-top-grid.is-term-view {
   grid-template-columns: 1fr;
+}
+
+.dashboard-top-grid.is-term-view .dashboard-countdown-wrapper,
+.dashboard-top-grid.is-term-view .dashboard-scheduler-wrapper,
+.dashboard-top-grid.is-term-view .dashboard-hero-side-wrap {
+  grid-column: auto;
+  grid-row: auto;
 }
 
 .dashboard-hero-side-wrap {

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 const NAV = [
   {
@@ -50,12 +52,7 @@ const NAV = [
   {
     href: "/account",
     label: "Account",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21a8 8 0 1 0-16 0" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
+    icon: null,
   },
   {
     href: "/billing",
@@ -71,9 +68,33 @@ const NAV = [
 
 export default function AppSidebar() {
   const path = usePathname();
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [initials, setInitials] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/profile/setup")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.profileSetup) return;
+        const url = String(data.profileSetup.avatarUrl || "");
+        const name = String(data.profileSetup.displayName || "");
+        setAvatarUrl(url);
+        if (!url && name) {
+          const parts = name.trim().split(/\s+/);
+          setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <aside className="app-sidebar" aria-label="App navigation">
+      <div className="app-sidebar-clock" aria-hidden="true">
+        <DashboardClock />
+      </div>
+
+      <div className="app-sidebar-divider" style={{ margin: "0.35rem 0" }} />
+
       {NAV.map(({ href, label, icon }) => {
         const active = path === href || (href !== "/dashboard" && path.startsWith(href));
         return (
@@ -84,7 +105,21 @@ export default function AppSidebar() {
             aria-label={label}
             aria-current={active ? "page" : undefined}
           >
-            {icon}
+            {href === "/account" ? (
+              avatarUrl ? (
+                <img src={avatarUrl} alt="" className="app-sidebar-nav-avatar" />
+              ) : (
+                <div className="app-sidebar-avatar app-sidebar-avatar-initials app-sidebar-nav-avatar-fallback" aria-hidden="true">
+                  {initials || (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21a8 8 0 1 0-16 0" /><circle cx="12" cy="7" r="4" />
+                    </svg>
+                  )}
+                </div>
+              )
+            ) : (
+              icon
+            )}
             <span className="app-sidebar-tooltip">{label}</span>
           </Link>
         );

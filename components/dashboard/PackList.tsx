@@ -18,6 +18,7 @@ type Props = {
   onUnscheduleDrop: (eventId: string) => void;
   onDragStart: (pack: PackItem) => void;
   onDragEnd: () => void;
+  showUnscheduleZone?: boolean;
 };
 
 const GripIcon = () => (
@@ -31,7 +32,7 @@ const GripIcon = () => (
   </svg>
 );
 
-export default function PackList({ packs, scheduledPackIds = [], loading, onUnscheduleDrop, onDragStart, onDragEnd }: Props) {
+export default function PackList({ packs, scheduledPackIds = [], loading, onUnscheduleDrop, onDragStart, onDragEnd, showUnscheduleZone = true }: Props) {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
@@ -97,7 +98,7 @@ export default function PackList({ packs, scheduledPackIds = [], loading, onUnsc
   }
 
   return (
-    <div className="scheduler-pack-panel">
+    <div className="scheduler-pack-list">
       <div className="scheduler-pack-filters">
         <input
           className="scheduler-pack-search"
@@ -116,26 +117,28 @@ export default function PackList({ packs, scheduledPackIds = [], loading, onUnsc
         </select>
       </div>
 
-      <div
-        className={`scheduler-pack-unschedule-zone${unscheduleDragOver ? " drag-over" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setUnscheduleDragOver(true);
-          e.dataTransfer.dropEffect = "move";
-        }}
-        onDragLeave={() => setUnscheduleDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setUnscheduleDragOver(false);
-          const eventId =
-            e.dataTransfer.getData("text/scheduler-event-id") ||
-            e.dataTransfer.getData("text/plain").replace(/^scheduler-event:/, "");
-          if (!eventId) return;
-          onUnscheduleDrop(eventId);
-        }}
-      >
-        Drag a scheduled event here to unschedule it
-      </div>
+      {showUnscheduleZone ? (
+        <div
+          className={`scheduler-pack-unschedule-zone${unscheduleDragOver ? " drag-over" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setUnscheduleDragOver(true);
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDragLeave={() => setUnscheduleDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setUnscheduleDragOver(false);
+            const eventId =
+              e.dataTransfer.getData("text/scheduler-event-id") ||
+              e.dataTransfer.getData("text/plain").replace(/^scheduler-event:/, "");
+            if (!eventId) return;
+            onUnscheduleDrop(eventId);
+          }}
+        >
+          Drag a scheduled event here to unschedule it
+        </div>
+      ) : null}
 
       <div className="scheduler-pack-scroll">
         {loading && (

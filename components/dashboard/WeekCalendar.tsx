@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { subjectColor } from "@/lib/subjectColor";
 import { ScheduleEventIcon } from "@/lib/schedule-event-icon";
 
@@ -33,6 +33,7 @@ type Props = {
   viewMode: CalendarViewMode;
   cursorDate: Date;
   currentTerm?: CalendarTerm | null;
+  layoutVersion?: number | null;
   showWeekends?: boolean;
   showViewToggle?: boolean;
   onViewModeChange: (mode: CalendarViewMode) => void;
@@ -45,13 +46,11 @@ type Props = {
   onEventClick: (event: ScheduleEvent) => void;
 };
 
-const HOUR_START = 6;
-const SLOT_COUNT = 36;
+const HOUR_START = 0;
+const SLOT_COUNT = 48;
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DEFAULT_VISIBLE_START_HOUR = 6;
 const SLOT_HEIGHT_PX = 28;
-const CALENDAR_HEADER_HEIGHT_PX = 52;
-const ALL_DAY_ROW_HEIGHT_PX = 34;
 
 function buildSlots(): string[] {
   const slots: string[] = [];
@@ -160,6 +159,7 @@ export default function WeekCalendar({
   viewMode,
   cursorDate,
   currentTerm = null,
+  layoutVersion = null,
   showWeekends = false,
   showViewToggle = true,
   onViewModeChange,
@@ -174,22 +174,7 @@ export default function WeekCalendar({
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const startSlotMarkerRef = useRef<HTMLDivElement | null>(null);
-  const autoScrollKeyRef = useRef<string>("");
   const todayISO = toISO(new Date());
-
-  const scrollToDefaultHour = useMemo(
-    () => () => {
-      const container = scrollRef.current;
-      if (!container) return;
-      const defaultSlotIndex = Math.max(0, (DEFAULT_VISIBLE_START_HOUR - HOUR_START) * 2);
-      const targetScrollTop = Math.max(
-        0,
-        CALENDAR_HEADER_HEIGHT_PX + ALL_DAY_ROW_HEIGHT_PX + defaultSlotIndex * SLOT_HEIGHT_PX,
-      );
-      container.scrollTop = targetScrollTop;
-    },
-    [],
-  );
 
   const weekDays = useMemo(() => {
     if (viewMode === "day") {
@@ -376,54 +361,19 @@ export default function WeekCalendar({
     return formatWeekLabel(startOfWeekMonday(cursorDate), showWeekends);
   }, [currentTerm, cursorDate, showWeekends, viewMode]);
 
-  useLayoutEffect(() => {
-    if (viewMode === "month" || viewMode === "term") return;
-    const container = scrollRef.current;
-    const marker = startSlotMarkerRef.current;
-    if (!container) return;
-    if (!marker) return;
-    const scrollKey = `${viewMode}-${toISO(cursorDate)}-${showWeekends}-${events.length}`;
-    if (autoScrollKeyRef.current === scrollKey) return;
-    autoScrollKeyRef.current = scrollKey;
-    let rafId = 0;
-    let intervalId = 0;
-    let attempts = 0;
-    const applyScroll = () => {
-      scrollToDefaultHour();
-    };
-    rafId = window.requestAnimationFrame(() => {
-      applyScroll();
-    });
-    intervalId = window.setInterval(() => {
-      attempts += 1;
-      applyScroll();
-      const liveContainer = scrollRef.current;
-      const defaultSlotIndex = Math.max(0, (DEFAULT_VISIBLE_START_HOUR - HOUR_START) * 2);
-      const targetScrollTop = Math.max(
-        0,
-        CALENDAR_HEADER_HEIGHT_PX + ALL_DAY_ROW_HEIGHT_PX + defaultSlotIndex * SLOT_HEIGHT_PX,
-      );
-      if (!liveContainer || Math.abs(liveContainer.scrollTop - targetScrollTop) < 2 || attempts >= 8) {
-        window.clearInterval(intervalId);
-      }
-    }, 80);
-    return () => {
-      window.cancelAnimationFrame(rafId);
-      window.clearInterval(intervalId);
-    };
-  }, [cursorDate, events.length, scrollToDefaultHour, showWeekends, viewMode]);
-
   useEffect(() => {
     if (viewMode === "month" || viewMode === "term") return;
-    const timers = [0, 60, 180, 360, 720].map((delay) =>
-      window.setTimeout(() => {
-        scrollToDefaultHour();
-      }, delay),
-    );
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-    };
-  }, [cursorDate, events.length, scrollToDefaultHour, showWeekends, viewMode]);
+    const scroll = scrollRef.current;
+    const marker = startSlotMarkerRef.current;
+    if (!scroll || !marker) return;
+    const frame = window.requestAnimationFrame(() => {
+      const headerHeight = (scroll.querySelector(".scheduler-col-header") as HTMLElement | null)?.offsetHeight ?? 0;
+      const allDayHeight = (scroll.querySelector(".scheduler-all-day-label") as HTMLElement | null)?.offsetHeight ?? 0;
+      // Start the visible day at 06:00 while keeping earlier slots scrollable above.
+      scroll.scrollTop = Math.max(0, marker.offsetTop - headerHeight - allDayHeight);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [viewMode, cursorDate, showWeekends, layoutVersion]);
 
   const calendarGridStyle = useMemo(() => {
     if (viewMode === "day") {
@@ -440,7 +390,7 @@ export default function WeekCalendar({
   }, [viewMode, weekDays.length]);
 
   return (
-    <div className="scheduler-cal-panel" style={{ position: "relative" }}>
+    <div className="scheduler-cal-panel">
       <div className="scheduler-week-nav" style={{ flexWrap: "wrap", rowGap: "0.45rem" }}>
         <button className="scheduler-today-btn" onClick={onGoToday}>Today</button>
         <button className="scheduler-week-btn" onClick={() => onNavigate(-1)} aria-label="Previous">
@@ -648,7 +598,7 @@ export default function WeekCalendar({
           </div>
         )
       ) : (
-        <div ref={scrollRef} className="scheduler-cal-scroll">
+        <div ref={scrollRef} className="scheduler-cal-scroll" style={{ overflow: "auto" }}>
           <div className="scheduler-cal-grid" style={calendarGridStyle}>
             <div className="scheduler-col-header" style={{ borderRight: "1px solid var(--border)" }} />
 

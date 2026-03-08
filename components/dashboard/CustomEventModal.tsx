@@ -18,6 +18,8 @@ type Props = {
     endTime: string;
     notes: string;
     allDay: boolean;
+    repeat: "none" | "daily" | "weekly";
+    repeatUntil: string | null;
   }) => void;
   onCancel: () => void;
 };
@@ -59,6 +61,8 @@ export default function CustomEventModal({
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState("");
   const [allDay, setAllDay] = useState(false);
+  const [repeat, setRepeat] = useState<"none" | "daily" | "weekly">("none");
+  const [repeatUntil, setRepeatUntil] = useState("");
   const [error, setError] = useState("");
 
   function handleConfirm() {
@@ -74,6 +78,14 @@ export default function CustomEventModal({
       setError("End time must be after start time.");
       return;
     }
+    if (repeat !== "none" && !repeatUntil) {
+      setError("Please choose when the recurring event should end.");
+      return;
+    }
+    if (repeat !== "none" && repeatUntil < scheduledDate) {
+      setError("Repeat until must be on or after the first event date.");
+      return;
+    }
     setError("");
     onConfirm({
       title: title.trim(),
@@ -83,6 +95,8 @@ export default function CustomEventModal({
       endTime: allDay ? "23:59" : endTime,
       notes,
       allDay,
+      repeat,
+      repeatUntil: repeat === "none" ? null : repeatUntil,
     });
   }
 
@@ -164,6 +178,40 @@ export default function CustomEventModal({
             />
             All day
           </label>
+        </div>
+
+        <div className="scheduler-modal-fields">
+          <div className="scheduler-modal-field">
+            <label className="scheduler-modal-label">Repeat</label>
+            <select
+              className="scheduler-modal-input"
+              value={repeat}
+              onChange={(e) => {
+                const value = e.target.value as "none" | "daily" | "weekly";
+                setRepeat(value);
+                if (value === "none") setRepeatUntil("");
+                setError("");
+              }}
+            >
+              <option value="none">Does not repeat</option>
+              <option value="daily">Every day</option>
+              <option value="weekly">Every week</option>
+            </select>
+          </div>
+          <div className="scheduler-modal-field">
+            <label className="scheduler-modal-label">Repeat until</label>
+            <input
+              type="date"
+              className="scheduler-modal-input"
+              value={repeatUntil}
+              disabled={repeat === "none"}
+              min={scheduledDate}
+              onChange={(e) => {
+                setRepeatUntil(e.target.value);
+                setError("");
+              }}
+            />
+          </div>
         </div>
 
         {error && <p className="scheduler-modal-error">{error}</p>}

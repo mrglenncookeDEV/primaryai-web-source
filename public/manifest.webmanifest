@@ -1,0 +1,19 @@
+{
+  "name": "PrimaryAI Term Countdown",
+  "short_name": "Term Clock",
+  "description": "Live term countdown rings for primary school teachers",
+  "start_url": "/widget/countdown",
+  "scope": "/widget/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

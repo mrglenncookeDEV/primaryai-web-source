@@ -90,49 +90,51 @@ export default function NavLinks({ session }) {
         ))}
       </div>
 
-      {/* Desktop: auth cluster */}
-      <div className="nav-auth">
-        <div className="nav-status">
-          <span className={`nav-status-led ${resolvedSession ? "is-online" : "is-offline"}`} />
-          <span className="nav-status-email" title={email || statusText}>
-            {statusText}
-          </span>
+      <div className="nav-right">
+        {/* Desktop: auth cluster */}
+        <div className="nav-auth">
+          <div className="nav-status">
+            <span className={`nav-status-led ${resolvedSession ? "is-online" : "is-offline"}`} />
+            <span className="nav-status-email" title={email || statusText}>
+              {statusText}
+            </span>
+          </div>
+
+          {!resolvedSession ? (
+            <>
+              <Link href="/login" className="nav-btn-ghost">
+                Login
+              </Link>
+              <Link href="/signup" className="nav-btn-cta">
+                Get started
+              </Link>
+            </>
+          ) : (
+            <form action="/api/auth/logout" method="post" onSubmit={clearUserScopedBrowserState}>
+              <button type="submit" className="nav-btn-ghost">
+                Sign out
+              </button>
+            </form>
+          )}
         </div>
 
-        {!resolvedSession ? (
-          <>
-            <Link href="/login" className="nav-btn-ghost">
-              Login
-            </Link>
-            <Link href="/signup" className="nav-btn-cta">
-              Get started
-            </Link>
-          </>
-        ) : (
-          <form action="/api/auth/logout" method="post" onSubmit={clearUserScopedBrowserState}>
-            <button type="submit" className="nav-btn-ghost">
-              Sign out
-            </button>
-          </form>
-        )}
+        {/* Theme toggle — always visible */}
+        <ThemeToggle userId={resolvedSession?.userId ?? null} />
+
+        {/* Mobile: hamburger */}
+        <button
+          className={`nav-hamburger${isOpen ? " open" : ""}`}
+          onClick={() => setIsOpen((v) => !v)}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
+        >
+          <div className="nav-hamburger-bars">
+            <span />
+            <span />
+            <span />
+          </div>
+        </button>
       </div>
-
-      {/* Theme toggle — always visible */}
-      <ThemeToggle userId={resolvedSession?.userId ?? null} />
-
-      {/* Mobile: hamburger */}
-      <button
-        className={`nav-hamburger${isOpen ? " open" : ""}`}
-        onClick={() => setIsOpen((v) => !v)}
-        aria-label={isOpen ? "Close menu" : "Open menu"}
-        aria-expanded={isOpen}
-      >
-        <div className="nav-hamburger-bars">
-          <span />
-          <span />
-          <span />
-        </div>
-      </button>
 
       {/* Mobile: full-screen panel — portalled to body to escape nav's backdrop-filter stacking context */}
       {mounted && createPortal(

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
+import { type ChangeEvent, type ReactNode, useEffect, useId, useState } from "react";
 import { fileToOptimisedDataUrl } from "@/lib/client/avatar-upload";
 
 type Profile = {
@@ -104,6 +104,36 @@ function toISODate(date: Date) {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
+function SaveBar({ onSave, status, error }: { onSave: () => void; status: "idle"|"saving"|"saved"|"error"; error?: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "1.1rem", paddingTop: "0.85rem", borderTop: "1px solid var(--border)" }}>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={status === "saving"}
+        className="nav-btn-cta"
+        style={{ padding: "0.48rem 1.2rem", fontSize: "0.84rem", borderRadius: "9px", opacity: status === "saving" ? 0.7 : 1, gap: "0.45rem" }}
+      >
+        {status === "saving" ? (
+          <>
+            <span style={{ width: "11px", height: "11px", border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 0.65s linear infinite", flexShrink: 0 }} />
+            Saving…
+          </>
+        ) : "Save"}
+      </button>
+      {status === "saved" && (
+        <span style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", color: "#4ade80" }}>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z" /></svg>
+          Saved
+        </span>
+      )}
+      {status === "error" && (
+        <span style={{ fontSize: "0.82rem", color: "#fc8181" }}>{error || "Save failed"}</span>
+      )}
+    </div>
+  );
+}
+
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <h2 style={{
@@ -200,8 +230,11 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile>(INITIAL_PROFILE);
   const [terms, setTerms] = useState<TermEntry[]>([]);
   const [avatarFileName, setAvatarFileName] = useState("");
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+  type SectionKey = "profile" | "defaults" | "terms" | "tone" | "schoolType" | "approach" | "ability" | "classProfile" | "classNotes" | "prefs";
+  const SECTION_KEYS: SectionKey[] = ["profile","defaults","terms","tone","schoolType","approach","ability","classProfile","classNotes","prefs"];
+  const blankRecord = <T,>(v: T) => Object.fromEntries(SECTION_KEYS.map(k => [k, v])) as Record<SectionKey, T>;
+  const [sectionStatus, setSectionStatus] = useState(() => blankRecord<"idle"|"saving"|"saved"|"error">("idle"));
+  const [sectionErrors, setSectionErrors] = useState(() => blankRecord(""));
   const uploadInputId = useId();
 
   useEffect(() => {
@@ -263,8 +296,8 @@ export default function SettingsPage() {
       const value = await fileToOptimisedDataUrl(file, 320, 0.82);
       setProfile((prev) => ({ ...prev, avatarUrl: value }));
     } catch {
-      setErrorMsg("Could not process that image. Please try a different file.");
-      setStatus("error");
+      setSectionErrors(prev => ({ ...prev, profile: "Could not process that image. Please try a different file." }));
+      setSectionStatus(prev => ({ ...prev, profile: "error" }));
     }
   }
 
@@ -281,48 +314,29 @@ export default function SettingsPage() {
     setProfile((prev) => ({ ...prev, [key]: clamped }));
   }
 
-  async function onSave(e: FormEvent) {
-    e.preventDefault();
-    setStatus("saving");
-    setErrorMsg("");
-
-    const payload = {
-      ...profile,
-      ealPercent: toPayloadPercent(profile.ealPercent),
-      pupilPremiumPercent: toPayloadPercent(profile.pupilPremiumPercent),
-      aboveStandardPercent: toPayloadPercent(profile.aboveStandardPercent),
-      belowStandardPercent: toPayloadPercent(profile.belowStandardPercent),
-      hugelyAboveStandardPercent: toPayloadPercent(profile.hugelyAboveStandardPercent),
-      hugelyBelowStandardPercent: toPayloadPercent(profile.hugelyBelowStandardPercent),
-    };
-
-    const [res, setupRes, termsRes] = await Promise.all([
-      fetch("/api/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }),
-      fetch("/api/profile/setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: profile.displayName, avatarUrl: profile.avatarUrl }),
-      }),
-      fetch("/api/profile/terms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ terms }),
-      }),
-    ]);
-
-    if (res.ok && setupRes.ok && termsRes.ok) {
-      setStatus("saved");
-      setTimeout(() => setStatus("idle"), 3000);
-    } else {
-      const data = await (!res.ok ? res : !setupRes.ok ? setupRes : termsRes).json().catch(() => ({}));
-      setStatus("error");
-      setErrorMsg(data?.error ?? "Save failed. Please try again.");
+  async function saveSection(key: SectionKey, calls: Array<() => Promise<Response>>) {
+    setSectionStatus(prev => ({ ...prev, [key]: "saving" }));
+    setSectionErrors(prev => ({ ...prev, [key]: "" }));
+    try {
+      const results = await Promise.all(calls.map(fn => fn()));
+      const failed = results.find(r => !r.ok);
+      if (!failed) {
+        setSectionStatus(prev => ({ ...prev, [key]: "saved" }));
+        setTimeout(() => setSectionStatus(prev => prev[key] === "saved" ? { ...prev, [key]: "idle" } : prev), 3000);
+      } else {
+        const data = await failed.json().catch(() => ({}));
+        setSectionStatus(prev => ({ ...prev, [key]: "error" }));
+        setSectionErrors(prev => ({ ...prev, [key]: data?.error ?? "Save failed. Please try again." }));
+      }
+    } catch {
+      setSectionStatus(prev => ({ ...prev, [key]: "error" }));
+      setSectionErrors(prev => ({ ...prev, [key]: "Network error. Please try again." }));
     }
   }
+
+  const postProfile = () => fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...profile, ealPercent: toPayloadPercent(profile.ealPercent), pupilPremiumPercent: toPayloadPercent(profile.pupilPremiumPercent), aboveStandardPercent: toPayloadPercent(profile.aboveStandardPercent), belowStandardPercent: toPayloadPercent(profile.belowStandardPercent), hugelyAboveStandardPercent: toPayloadPercent(profile.hugelyAboveStandardPercent), hugelyBelowStandardPercent: toPayloadPercent(profile.hugelyBelowStandardPercent) }) });
+  const postSetup = () => fetch("/api/profile/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName: profile.displayName, avatarUrl: profile.avatarUrl }) });
+  const postTerms = () => fetch("/api/profile/terms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ terms }) });
 
   function termStatus(term: TermEntry) {
     if (!term.termStartDate || !term.termEndDate) return "Inactive";
@@ -350,7 +364,6 @@ export default function SettingsPage() {
     setTerms((prev) => prev.filter((term) => term.id !== id));
   }
 
-  const isSaving = status === "saving";
   const classNotesLength = profile.classNotes.trim().length;
   const classNotesRemaining = Math.max(0, MIN_CLASS_NOTES_CHARS - classNotesLength);
   const attainmentTotal =
@@ -376,7 +389,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <form style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
 
         {/* ── Profile ── */}
         <div className="card">
@@ -432,6 +445,7 @@ export default function SettingsPage() {
               />
             ) : null}
           </div>
+          <SaveBar onSave={() => saveSection("profile", [postSetup])} status={sectionStatus.profile} error={sectionErrors.profile} />
         </div>
 
         {/* ── Defaults ── */}
@@ -475,6 +489,7 @@ export default function SettingsPage() {
               </select>
             </div>
           </div>
+          <SaveBar onSave={() => saveSection("defaults", [postProfile])} status={sectionStatus.defaults} error={sectionErrors.defaults} />
         </div>
 
         <div className="card">
@@ -555,6 +570,7 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+          <SaveBar onSave={() => saveSection("terms", [postTerms])} status={sectionStatus.terms} error={sectionErrors.terms} />
         </div>
 
         {/* ── Teaching Tone ── */}
@@ -604,6 +620,7 @@ export default function SettingsPage() {
               );
             })}
           </div>
+          <SaveBar onSave={() => saveSection("tone", [postProfile])} status={sectionStatus.tone} error={sectionErrors.tone} />
         </div>
 
         {/* ── School Type ── */}
@@ -638,6 +655,7 @@ export default function SettingsPage() {
               );
             })}
           </div>
+          <SaveBar onSave={() => saveSection("schoolType", [postProfile])} status={sectionStatus.schoolType} error={sectionErrors.schoolType} />
         </div>
 
         {/* ── Teaching Approach ── */}
@@ -687,6 +705,7 @@ export default function SettingsPage() {
               );
             })}
           </div>
+          <SaveBar onSave={() => saveSection("approach", [postProfile])} status={sectionStatus.approach} error={sectionErrors.approach} />
         </div>
 
         {/* ── Ability Mix ── */}
@@ -736,6 +755,7 @@ export default function SettingsPage() {
               );
             })}
           </div>
+          <SaveBar onSave={() => saveSection("ability", [postProfile])} status={sectionStatus.ability} error={sectionErrors.ability} />
         </div>
 
         {/* ── About My Class ── */}
@@ -773,6 +793,7 @@ export default function SettingsPage() {
           <p style={{ margin: "0.6rem 0 0", fontSize: "0.78rem", color: attainmentTotal > 100 ? "#fc8181" : "var(--muted)" }}>
             Combined attainment bands (above/below/hugely above/hugely below): {attainmentTotal}% {attainmentTotal > 100 ? "— must be 100% or less" : ""}
           </p>
+          <SaveBar onSave={() => saveSection("classProfile", [postProfile])} status={sectionStatus.classProfile} error={sectionErrors.classProfile} />
         </div>
 
         {/* ── About My Class ── */}
@@ -812,6 +833,7 @@ export default function SettingsPage() {
             {classNotesLength} entered
             {classNotesRemaining > 0 ? ` (${classNotesRemaining} more needed)` : " (requirement met)"}
           </p>
+          <SaveBar onSave={() => saveSection("classNotes", [postProfile])} status={sectionStatus.classNotes} error={sectionErrors.classNotes} />
         </div>
 
         {/* ── Preferences ── */}
@@ -838,51 +860,7 @@ export default function SettingsPage() {
             label="Auto-save to library"
             desc="Automatically save each generated lesson pack to your library."
           />
-        </div>
-
-        {/* ── Save button ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="nav-btn-cta"
-            style={{
-              padding: "0.8rem 2rem",
-              fontSize: "0.9rem",
-              borderRadius: "12px",
-              opacity: isSaving ? 0.7 : 1,
-              gap: "0.55rem",
-            }}
-          >
-            {isSaving ? (
-              <>
-                <span style={{
-                  width: "13px",
-                  height: "13px",
-                  border: "2px solid currentColor",
-                  borderTopColor: "transparent",
-                  borderRadius: "50%",
-                  display: "inline-block",
-                  animation: "spin 0.65s linear infinite",
-                  flexShrink: 0,
-                }} />
-                Saving…
-              </>
-            ) : "Save Settings"}
-          </button>
-
-          {status === "saved" && (
-            <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "#4ade80" }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z" />
-              </svg>
-              Settings saved
-            </span>
-          )}
-
-          {status === "error" && (
-            <span style={{ fontSize: "0.85rem", color: "#fc8181" }}>{errorMsg}</span>
-          )}
+          <SaveBar onSave={() => saveSection("prefs", [postProfile])} status={sectionStatus.prefs} error={sectionErrors.prefs} />
         </div>
 
       </form>

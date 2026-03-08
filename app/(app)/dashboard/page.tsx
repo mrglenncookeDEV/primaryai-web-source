@@ -6,7 +6,6 @@ import Link from "next/link";
 import { subjectColor } from "@/lib/subjectColor";
 import { ScheduleEventIcon } from "@/lib/schedule-event-icon";
 import { TermCountdownRing } from "@/components/dashboard/TermCountdownRing";
-import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 
 const SchedulerDrawer = dynamic(() => import("@/components/dashboard/SchedulerDrawer"), {
@@ -194,13 +193,6 @@ function getMondayDate(d = new Date()) {
 
 function toISODate(date: Date) {
   return date.toISOString().split("T")[0];
-}
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
 }
 
 function relativeTime(iso: string) {
@@ -1409,16 +1401,47 @@ export default function DashboardPage() {
   }, [scheduleRefreshKey, weekStart]);
 
   const recent = items.slice(0, 5);
-  const emailPrefix = email.split("@")[0] ?? "";
-  const nameForInitials = displayName || emailPrefix || "PrimaryAI";
-  const greetingLine = displayName ? `${greeting()}, ${displayName}` : greeting();
-  const initials = nameForInitials
+  const accountName = String(displayName || email.split("@")[0] || "PrimaryAI").trim();
+  const accountInitials = accountName
     .replace(/[^a-zA-Z0-9]+/g, " ")
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "PA";
+  const accountIcon = avatarUrl ? (
+    <img
+      src={avatarUrl}
+      alt=""
+      style={{
+        width: 24,
+        height: 24,
+        borderRadius: 8,
+        objectFit: "cover",
+        display: "block",
+        boxShadow: "0 0 0 1px rgb(255 255 255 / 0.55)",
+      }}
+    />
+  ) : (
+    <span
+      aria-hidden="true"
+      style={{
+        width: 24,
+        height: 24,
+        borderRadius: 8,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "0.68rem",
+        fontWeight: 800,
+        letterSpacing: "0.03em",
+        background: "color-mix(in srgb, var(--accent) 16%, white)",
+        color: "var(--accent)",
+      }}
+    >
+      {accountInitials}
+    </span>
+  );
 
   // Hero strip stats
   const upNextEvents = useMemo(() => {
@@ -1577,99 +1600,41 @@ export default function DashboardPage() {
 
   return (
     <main className="page-wrap">
-      {/* Greeting header */}
-      <div style={{ padding: "0.2rem 0 0.35rem", marginBottom: "0.65rem" }}>
-        <div className="dashboard-greeting-row" style={{ display: "flex", alignItems: "center", gap: "0.7rem", margin: "0 0 0.2rem" }}>
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt="Profile"
-              style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "999px",
-                objectFit: "cover",
-                border: "1px solid #fff",
-                boxShadow: "0 0 0 3px #22c55e, 0 0 0 4px #000",
-                flexShrink: 0,
-              }}
-            />
-          ) : (
-            <div style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "999px",
-              border: "1px solid #fff",
-              boxShadow: "0 0 0 3px #22c55e, 0 0 0 4px #000",
-              background: "var(--field-bg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text)",
-              fontSize: "1.05rem",
-              fontWeight: 300,
-              letterSpacing: "0.05em",
-              flexShrink: 0,
-            }}>
-              {initials}
-            </div>
-          )}
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{
-              margin: 0,
-              fontSize: "clamp(1.45rem, 5vw, 2rem)",
-              fontWeight: 280,
-              letterSpacing: "-0.05em",
-              color: "var(--accent)",
-              lineHeight: 1,
-            }}>
-              {greetingLine}
-            </h1>
-            {activeTerm?.termName && activeTerm?.termStartDate && activeTerm?.termEndDate ? (
-              <p style={{ margin: "0.28rem 0 0", paddingLeft: "0.3rem", fontSize: "0.82rem", color: "var(--muted)", lineHeight: 1.45 }}>
-                Active term: {activeTerm.termName} · {formatShortUkDate(activeTerm.termStartDate)} to {formatShortUkDate(activeTerm.termEndDate)} · {Math.max(0, Number(activeTerm.daysRemaining || 0))} days remaining
-              </p>
+      <div className={`dashboard-top-grid${schedulerViewMode === "term" ? " is-term-view" : ""}`} style={{ marginBottom: "1.25rem" }}>
+        <div className="dashboard-countdown-wrapper">
+          <div className="dashboard-hero-stat term-countdown-stat">
+            {!loading && activeTerm?.termEndDate ? (
+              <TermCountdownRing
+                termName={activeTerm.termName || "Term"}
+                termStartDate={activeTerm.termStartDate}
+                termEndDate={activeTerm.termEndDate}
+              />
+            ) : !loading ? (
+              <div style={{ padding: "1.5rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem", justifyContent: "center", flex: 1 }}>
+                <span className="dashboard-hero-label">No active term set</span>
+                <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted)", lineHeight: 1.5 }}>
+                  Add your term dates in{" "}
+                  <Link href="/settings" style={{ color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
+                    Settings
+                  </Link>{" "}
+                  to see your countdown.
+                </p>
+              </div>
             ) : (
-              <p style={{ margin: "0.28rem 0 0", paddingLeft: "0.5rem", fontSize: "0.82rem", color: "var(--muted)", lineHeight: 1.45 }}>
-                <Link href="/settings" style={{ color: "inherit", textDecoration: "underline" }}>
-                  No active term set, please update in settings
-                </Link>
-              </p>
+              <span className="dashboard-hero-value">–</span>
             )}
           </div>
-          <button
-            type="button"
-            className="dashboard-cmdpal-btn dashboard-cmdpal-btn-header"
-            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "k", bubbles: true }))}
-            aria-label="Open command palette"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
-            Search
-            <kbd style={{ fontSize: "0.64rem", padding: "0.1rem 0.35rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--btn-bg)", lineHeight: 1 }}>⌘K</kbd>
-          </button>
-          <DashboardClock />
         </div>
-        <div className="dashboard-greeting-actions" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.2rem" }}>
-          <div style={{ paddingLeft: "60px", minWidth: 0 }}>
-            {(!displayName && email) ? (
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>
-                {email}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
 
-      <div className={`dashboard-top-grid${schedulerViewMode === "term" ? " is-term-view" : ""}`} style={{ marginBottom: "1.25rem" }}>
         <div
+          className="dashboard-scheduler-wrapper"
           style={{
             borderRadius: "16px",
             border: "1px solid var(--border-card)",
             background: "var(--surface)",
             padding: 0,
             overflow: "hidden",
+            alignSelf: "flex-start",
           }}
         >
           <SchedulerDrawer
@@ -1694,28 +1659,6 @@ export default function DashboardPage() {
             <div aria-hidden="true" />
           </div>
           <div className="dashboard-hero dashboard-hero-side">
-            <div className="dashboard-hero-stat term-countdown-stat">
-              {!loading && activeTerm?.termEndDate ? (
-                <TermCountdownRing
-                  termName={activeTerm.termName || "Term"}
-                  termStartDate={activeTerm.termStartDate}
-                  termEndDate={activeTerm.termEndDate}
-                />
-              ) : !loading ? (
-                <div style={{ padding: "1.5rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem", justifyContent: "center", flex: 1 }}>
-                  <span className="dashboard-hero-label">No active term set</span>
-                  <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted)", lineHeight: 1.5 }}>
-                    Add your term dates in{" "}
-                    <Link href="/settings" style={{ color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
-                      Settings
-                    </Link>{" "}
-                    to see your countdown.
-                  </p>
-                </div>
-              ) : (
-                <span className="dashboard-hero-value">–</span>
-              )}
-            </div>
             <CombinedUpNextHeroTile
               personalEvents={personalUpNextEvents}
               schedulerEvents={schedulerUpNextEvents}
@@ -1790,11 +1733,7 @@ export default function DashboardPage() {
               href="/account"
               title="Account"
               desc="Manage your profile and sign-in details"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21a8 8 0 1 0-16 0" /><circle cx="12" cy="7" r="4" />
-                </svg>
-              }
+              icon={accountIcon}
             />
 
             <ActionCard

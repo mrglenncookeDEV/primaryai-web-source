@@ -182,7 +182,7 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
     <>
     <div className="term-countdown-banner">
       <div>
-        <h2 className="term-countdown-banner-title">{termName}</h2>
+        <h2 className="term-countdown-banner-title">{termName} Term</h2>
       </div>
       <div className="term-countdown-banner-swatches">
         {[...RING_COLORS].reverse().map((color, i) => (
