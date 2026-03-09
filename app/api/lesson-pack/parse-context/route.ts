@@ -12,7 +12,8 @@ function truncate(text: string) {
 
 async function parsePdf(buffer: ArrayBuffer) {
   // Dynamic import avoids pdf-parse's test file read at module load time (Next.js incompatibility)
-  const pdfParse = (await import("pdf-parse")).default;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfParse = (await import("pdf-parse")).default as any;
   const result = await pdfParse(Buffer.from(buffer));
   return truncate(result.text);
 }
