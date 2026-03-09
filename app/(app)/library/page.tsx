@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { subjectColor } from "@/lib/subjectColor";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type Folder = { id: string; name: string; created_at: string };
 
@@ -48,7 +48,7 @@ type LessonPack = {
   slides: { title: string; bullets: string[]; speaker_notes?: string }[];
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -68,18 +68,150 @@ function parsePack(raw: string): LessonPack | null {
   } catch { return null; }
 }
 
-function fileIcon(mimeType: string | null, name: string): string {
+function fileTypeLabel(mimeType: string | null, name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (mimeType?.includes("pdf") || ext === "pdf") return "📄";
-  if (mimeType?.includes("word") || ext === "docx" || ext === "doc") return "📝";
-  if (mimeType?.includes("sheet") || ext === "xlsx" || ext === "xls" || ext === "csv") return "📊";
-  if (mimeType?.includes("image") || ["png","jpg","jpeg","gif","svg","webp"].includes(ext)) return "🖼";
-  if (mimeType?.includes("presentation") || ext === "pptx" || ext === "ppt") return "📊";
-  if (mimeType?.includes("text") || ["txt","md","json","tsv"].includes(ext)) return "📋";
-  return "📎";
+  if (mimeType?.includes("pdf") || ext === "pdf") return "PDF";
+  if (mimeType?.includes("word") || ext === "docx" || ext === "doc") return "Word";
+  if (mimeType?.includes("sheet") || ext === "xlsx" || ext === "xls") return "Excel";
+  if (mimeType?.includes("csv") || ext === "csv") return "CSV";
+  if (mimeType?.includes("image") || ["png","jpg","jpeg","gif","svg","webp"].includes(ext)) return "Image";
+  if (mimeType?.includes("presentation") || ext === "pptx" || ext === "ppt") return "PPTX";
+  if (mimeType?.includes("text") || ["txt","md"].includes(ext)) return "Text";
+  return "File";
 }
 
-// ── Export ─────────────────────────────────────────────────────────────────────
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+
+function IconFolder({ open, size = 15 }: { open?: boolean; size?: number }) {
+  return open ? (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      <path d="M2 10h20" />
+    </svg>
+  ) : (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconBook({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
+function IconFile({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
+}
+
+function IconDownload({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function IconTrash({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+function IconPencil({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function IconUpload({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+}
+
+function IconPlus({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function IconExternalLink({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function IconAll({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+function IconInbox({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 13 16 13 14 16 10 16 8 13 2 13" />
+      <path d="M5.45 5.11L2 13v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-7.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
+  );
+}
+
+function SortIndicator({ col, active, dir }: { col: string; active: string; dir: "asc" | "desc" }) {
+  if (col !== active) {
+    return (
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" style={{ opacity: 0.3 }}>
+        <path d="M5 1v8M2 4l3-3 3 3M2 6l3 3 3-3" />
+      </svg>
+    );
+  }
+  return dir === "asc" ? (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M2 6l3-4 3 4" />
+    </svg>
+  ) : (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M2 4l3 4 3-4" />
+    </svg>
+  );
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
 
 async function triggerExport(format: "lesson-pdf" | "slides-pptx" | "worksheet-doc", pack: LessonPack, slug: string) {
   const res = await fetch("/api/lesson-pack/export", {
@@ -100,54 +232,12 @@ async function triggerExport(format: "lesson-pdf" | "slides-pptx" | "worksheet-d
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="libraryx-preview-section">
-      <h3>{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-function BulletList({ items }: { items?: string[] }) {
-  if (!items || items.length === 0) return <p style={{ color: "var(--muted)", margin: 0 }}>None provided.</p>;
-  return <ul className="libraryx-list">{items.map((item, i) => <li key={i}>{item}</li>)}</ul>;
-}
-
-function ActivityCard({ label, content }: { label: string; content: string }) {
-  return (
-    <div style={{ border: "1px solid #dbe3ee", borderRadius: "10px", padding: "0.6rem 0.75rem", background: "rgb(255 255 255 / 0.75)" }}>
-      <p style={{ margin: "0 0 0.3rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#64748b" }}>{label}</p>
-      <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: 1.5, color: "#1e293b" }}>{content || "Not provided."}</p>
-    </div>
-  );
-}
-
-function ExportBar({ pack, slug }: { pack: LessonPack; slug: string }) {
-  const [exporting, setExporting] = useState<string | null>(null);
-  async function doExport(format: "lesson-pdf" | "slides-pptx" | "worksheet-doc") {
-    setExporting(format);
-    try { await triggerExport(format, pack, slug); } finally { setExporting(null); }
-  }
-  const btn: React.CSSProperties = {
-    padding: "0.4rem 0.85rem", borderRadius: "8px", border: "1px solid var(--border-card)",
-    background: "var(--surface)", color: "var(--muted)", fontSize: "0.78rem",
-    fontFamily: "inherit", cursor: "pointer",
-  };
-  return (
-    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.85rem", paddingTop: "0.85rem", borderTop: "1px solid #e2e8f0" }}>
-      <button style={btn} onClick={() => doExport("lesson-pdf")} disabled={!!exporting}>{exporting === "lesson-pdf" ? "Downloading…" : "🖨 Export PDF"}</button>
-      <button style={btn} onClick={() => doExport("slides-pptx")} disabled={!!exporting}>{exporting === "slides-pptx" ? "Downloading…" : "📊 Export PPTX"}</button>
-      <button style={btn} onClick={() => doExport("worksheet-doc")} disabled={!!exporting}>{exporting === "worksheet-doc" ? "Downloading…" : "📄 Export Worksheet"}</button>
-    </div>
-  );
-}
+// ── Preview: Lesson Pack ──────────────────────────────────────────────────────
 
 function PackPreview({ item }: { item: LessonPackItem }) {
   const [pack, setPack] = useState<LessonPack | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
 
   useEffect(() => {
     if (item.json) { setPack(parsePack(item.json)); return; }
@@ -161,90 +251,178 @@ function PackPreview({ item }: { item: LessonPackItem }) {
   const color = subjectColor(item.subject);
   const slug = `${item.subject}-${item.topic}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
-  if (loading) return <div style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Loading…</div>;
-  if (!pack) return <div style={{ padding: "2rem", color: "var(--muted)" }}>Preview unavailable.</div>;
+  async function doExport(format: "lesson-pdf" | "slides-pptx" | "worksheet-doc") {
+    if (!pack) return;
+    setExporting(format);
+    try { await triggerExport(format, pack, slug); } finally { setExporting(null); }
+  }
 
-  return (
-    <article className="libraryx-preview-paper">
-      <header className="libraryx-preview-header">
-        <span style={{
-          display: "inline-block", padding: "0.15rem 0.6rem", borderRadius: "999px",
-          fontSize: "0.7rem", fontWeight: 700, marginBottom: "0.35rem",
-          background: `color-mix(in srgb, ${color} 15%, transparent)`, color,
-          border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
-        }}>{pack.year_group} · {pack.subject}</span>
-        <h2 style={{ margin: "0 0 0.2rem", fontSize: "1.15rem" }}>{pack.topic}</h2>
-        <p className="libraryx-preview-meta">Saved {formatDate(item.created_at)}</p>
-        <ExportBar pack={pack} slug={slug} />
-      </header>
-      <Section title="Learning Objectives"><BulletList items={pack.learning_objectives} /></Section>
-      <Section title="Teacher Explanation"><p style={{ margin: 0, lineHeight: 1.6, fontSize: "0.88rem", color: "#1e293b" }}>{pack.teacher_explanation || "Not provided."}</p></Section>
-      <Section title="Pupil Explanation"><p style={{ margin: 0, lineHeight: 1.6, fontSize: "0.88rem", color: "#1e293b" }}>{pack.pupil_explanation || "Not provided."}</p></Section>
-      <Section title="Worked Example"><p style={{ margin: 0, lineHeight: 1.6, fontSize: "0.88rem", color: "#1e293b", whiteSpace: "pre-wrap" }}>{pack.worked_example || "Not provided."}</p></Section>
-      <Section title="Common Misconceptions"><BulletList items={pack.common_misconceptions} /></Section>
-      <Section title="Differentiated Activities">
-        <div className="libraryx-sequence-grid">
-          <ActivityCard label="Support" content={pack.activities?.support} />
-          <ActivityCard label="Expected" content={pack.activities?.expected} />
-          <ActivityCard label="Greater Depth" content={pack.activities?.greater_depth} />
-        </div>
-      </Section>
-      <Section title="SEND Adaptations"><BulletList items={pack.send_adaptations} /></Section>
-      <Section title="Review and Reflect"><p style={{ margin: 0, lineHeight: 1.6, fontSize: "0.88rem", color: "#1e293b" }}>{pack.plenary || "Not provided."}</p></Section>
-      <Section title="Mini Assessment">
-        {(pack.mini_assessment?.questions?.length ?? 0) > 0 ? (
-          <ol className="libraryx-assessment-list">
-            {pack.mini_assessment.questions.map((q, i) => (
-              <li key={i}>
-                <p style={{ margin: "0 0 0.15rem" }}>{q}</p>
-                <p className="libraryx-answer">Answer: {pack.mini_assessment.answers?.[i] || "Not provided."}</p>
-              </li>
-            ))}
-          </ol>
-        ) : <p style={{ color: "var(--muted)", margin: 0 }}>No assessment items provided.</p>}
-      </Section>
-    </article>
-  );
-}
-
-function DocPreview({ item, onDownload }: { item: DocumentItem; onDownload: () => void }) {
-  return (
-    <div className="libraryx-preview-paper" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      <div>
-        <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>{fileIcon(item.mime_type, item.name)}</div>
-        <h2 style={{ margin: "0 0 0.3rem", fontSize: "1.1rem", wordBreak: "break-word" }}>{item.name}</h2>
-        <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted)" }}>
-          {formatBytes(item.size_bytes)} · Uploaded {formatDate(item.created_at)}
-        </p>
+  if (loading) {
+    return (
+      <div className="lib-preview-loading">
+        <div className="lib-preview-spinner" />
+        <span>Loading…</span>
       </div>
-      <button
-        onClick={onDownload}
-        style={{
-          alignSelf: "flex-start", padding: "0.55rem 1.1rem", borderRadius: "10px",
-          border: "1.5px solid var(--border)", background: "var(--surface)",
-          color: "var(--text)", fontSize: "0.84rem", fontFamily: "inherit", cursor: "pointer",
-          fontWeight: 600,
-        }}
-      >
-        Download file
-      </button>
+    );
+  }
+
+  return (
+    <div className="lib-preview-body">
+      {/* Header */}
+      <div className="lib-preview-doc-head">
+        <span className="lib-preview-doc-badge" style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)`, borderColor: `color-mix(in srgb, ${color} 28%, transparent)` }}>
+          {item.subject} · {item.year_group}
+        </span>
+        <h2 className="lib-preview-doc-title">{pack?.topic ?? item.topic}</h2>
+        <p className="lib-preview-doc-meta">Saved {formatDate(item.created_at)}</p>
+      </div>
+
+      {/* Export actions */}
+      <div className="lib-preview-actions">
+        <button className="lib-preview-action-btn" onClick={() => doExport("lesson-pdf")} disabled={!pack || !!exporting}>
+          <IconDownload size={12} />
+          {exporting === "lesson-pdf" ? "Exporting…" : "PDF"}
+        </button>
+        <button className="lib-preview-action-btn" onClick={() => doExport("slides-pptx")} disabled={!pack || !!exporting}>
+          <IconDownload size={12} />
+          {exporting === "slides-pptx" ? "Exporting…" : "Slides"}
+        </button>
+        <button className="lib-preview-action-btn" onClick={() => doExport("worksheet-doc")} disabled={!pack || !!exporting}>
+          <IconDownload size={12} />
+          {exporting === "worksheet-doc" ? "Exporting…" : "Worksheet"}
+        </button>
+        <Link href={`/lesson-pack?id=${item.id}`} className="lib-preview-action-btn">
+          <IconExternalLink size={12} />
+          Open
+        </Link>
+      </div>
+
+      {!pack ? (
+        <p className="lib-preview-no-content">Preview unavailable.</p>
+      ) : (
+        <div className="lib-preview-sections">
+          <PreviewSection label="Learning Objectives">
+            <ul className="lib-preview-bullets">
+              {(pack.learning_objectives ?? []).map((obj, i) => <li key={i}>{obj}</li>)}
+            </ul>
+          </PreviewSection>
+
+          <PreviewSection label="Teacher Explanation">
+            <p className="lib-preview-prose">{pack.teacher_explanation || "Not provided."}</p>
+          </PreviewSection>
+
+          <PreviewSection label="Pupil Explanation">
+            <p className="lib-preview-prose">{pack.pupil_explanation || "Not provided."}</p>
+          </PreviewSection>
+
+          {pack.worked_example && (
+            <PreviewSection label="Worked Example">
+              <p className="lib-preview-prose" style={{ whiteSpace: "pre-wrap" }}>{pack.worked_example}</p>
+            </PreviewSection>
+          )}
+
+          {(pack.common_misconceptions?.length ?? 0) > 0 && (
+            <PreviewSection label="Common Misconceptions">
+              <ul className="lib-preview-bullets">
+                {pack.common_misconceptions.map((m, i) => <li key={i}>{m}</li>)}
+              </ul>
+            </PreviewSection>
+          )}
+
+          <PreviewSection label="Differentiated Activities">
+            <div className="lib-preview-diff-grid">
+              <DiffCard label="Support" content={pack.activities?.support} />
+              <DiffCard label="Expected" content={pack.activities?.expected} />
+              <DiffCard label="Greater Depth" content={pack.activities?.greater_depth} />
+            </div>
+          </PreviewSection>
+
+          {(pack.send_adaptations?.length ?? 0) > 0 && (
+            <PreviewSection label="SEND Adaptations">
+              <ul className="lib-preview-bullets">
+                {pack.send_adaptations.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </PreviewSection>
+          )}
+
+          <PreviewSection label="Plenary">
+            <p className="lib-preview-prose">{pack.plenary || "Not provided."}</p>
+          </PreviewSection>
+
+          {(pack.mini_assessment?.questions?.length ?? 0) > 0 && (
+            <PreviewSection label="Mini Assessment">
+              <ol className="lib-preview-assessment">
+                {pack.mini_assessment.questions.map((q, i) => (
+                  <li key={i}>
+                    <p className="lib-preview-prose">{q}</p>
+                    <p className="lib-preview-answer">Answer: {pack.mini_assessment.answers?.[i] || "—"}</p>
+                  </li>
+                ))}
+              </ol>
+            </PreviewSection>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Folder sidebar item ────────────────────────────────────────────────────────
+function PreviewSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="lib-preview-section">
+      <p className="lib-preview-section-label">{label}</p>
+      {children}
+    </div>
+  );
+}
 
-function FolderItem({
+function DiffCard({ label, content }: { label: string; content: string }) {
+  return (
+    <div className="lib-preview-diff-card">
+      <p className="lib-preview-diff-label">{label}</p>
+      <p className="lib-preview-prose">{content || "Not provided."}</p>
+    </div>
+  );
+}
+
+// ── Preview: Document ─────────────────────────────────────────────────────────
+
+function DocPreview({ item, onDownload }: { item: DocumentItem; onDownload: () => void }) {
+  const typeLabel = fileTypeLabel(item.mime_type, item.name);
+  return (
+    <div className="lib-preview-body">
+      <div className="lib-preview-doc-head">
+        <span className="lib-preview-doc-badge" style={{ color: "var(--muted)", background: "var(--field-bg)", borderColor: "var(--border)" }}>
+          {typeLabel}
+        </span>
+        <h2 className="lib-preview-doc-title" style={{ wordBreak: "break-word" }}>{item.name}</h2>
+        <p className="lib-preview-doc-meta">{formatBytes(item.size_bytes)} · Uploaded {formatDate(item.created_at)}</p>
+      </div>
+      <div className="lib-preview-actions">
+        <button className="lib-preview-action-btn is-primary" onClick={onDownload}>
+          <IconDownload size={12} />
+          Download file
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Folder tree item ──────────────────────────────────────────────────────────
+
+function FolderRow({
   folder,
+  count,
   isSelected,
   onSelect,
   onRename,
   onDelete,
 }: {
   folder: Folder;
+  count: number;
   isSelected: boolean;
   onSelect: () => void;
-  onRename: (newName: string) => void;
+  onRename: (n: string) => void;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -258,57 +436,76 @@ function FolderItem({
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  function commitEdit() {
+  function commit() {
     const trimmed = draft.trim();
     if (trimmed && trimmed !== folder.name) onRename(trimmed);
     setEditing(false);
   }
 
   return (
-    <div
-      onClick={onSelect}
-      className={`libraryx-folder-item${isSelected ? " is-selected" : ""}`}
-    >
-      <span style={{ flexShrink: 0, opacity: 0.8 }}>📁</span>
+    <div onClick={onSelect} className={`lib-tree-item${isSelected ? " is-active" : ""}`}>
+      <span className="lib-tree-icon" style={{ color: isSelected ? "var(--accent)" : "#f59e0b" }}>
+        <IconFolder open={isSelected} size={14} />
+      </span>
       {editing ? (
         <input
           ref={inputRef}
           value={draft}
+          className="lib-tree-rename-input"
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditing(false); }}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
           onClick={(e) => e.stopPropagation()}
-          style={{
-            flex: 1, border: "1px solid var(--accent)", borderRadius: "5px",
-            padding: "0.15rem 0.35rem", fontSize: "0.84rem", fontFamily: "inherit",
-            background: "var(--surface)", color: "var(--text)", outline: "none",
-          }}
         />
       ) : (
-        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{folder.name}</span>
+        <span className="lib-tree-label">{folder.name}</span>
       )}
       {!editing && (
-        <span style={{ display: "flex", gap: "0.15rem", flexShrink: 0 }}>
-          <button
-            title="Rename"
-            onClick={startEdit}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", fontSize: "0.72rem", color: "var(--muted)", lineHeight: 1 }}
-          >✏️</button>
-          <button
-            title="Delete folder"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", fontSize: "0.72rem", color: "var(--muted)", lineHeight: 1 }}
-          >🗑</button>
-        </span>
+        <>
+          <span className="lib-tree-count">{count}</span>
+          <span className="lib-tree-actions">
+            <button className="lib-tree-action-btn" title="Rename" onClick={startEdit}><IconPencil size={11} /></button>
+            <button className="lib-tree-action-btn is-danger" title="Delete" onClick={(e) => { e.stopPropagation(); onDelete(); }}><IconTrash size={11} /></button>
+          </span>
+        </>
       )}
     </div>
   );
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────────
+// ── Row actions (move folder dropdown) ───────────────────────────────────────
+
+function MoveSelect({
+  value,
+  folders,
+  disabled,
+  onChange,
+}: {
+  value: string | null;
+  folders: Folder[];
+  disabled: boolean;
+  onChange: (folderId: string | null) => void;
+}) {
+  return (
+    <select
+      className="lib-row-select"
+      value={value ?? ""}
+      disabled={disabled}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => { e.stopPropagation(); onChange(e.target.value || null); }}
+    >
+      <option value="">No folder</option>
+      {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+    </select>
+  );
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const UNFILED_ID = "__unfiled__";
 const ALL_ID = "__all__";
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -316,16 +513,17 @@ export default function LibraryPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string>(ALL_ID);
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
+  const [sortCol, setSortCol] = useState<"name" | "type" | "date">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [movingId, setMovingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const newFolderInputRef = useRef<HTMLInputElement>(null);
+  const newFolderRef = useRef<HTMLInputElement>(null);
 
-  // ── Data loading ────────────────────────────────────────────────────────────
-
+  // Data loading
   const loadFolders = useCallback(async () => {
     const res = await fetch("/api/library/folders");
     const data = await res.json();
@@ -350,24 +548,54 @@ export default function LibraryPage() {
     void loadDocuments();
   }, [loadFolders, loadPacks, loadDocuments]);
 
-  // ── Filtered items for current folder ──────────────────────────────────────
+  // Sort toggle
+  function toggleSort(col: "name" | "type" | "date") {
+    if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
 
+  // Filtered + sorted items
   const visiblePacks = useMemo(() => {
-    if (selectedFolderId === ALL_ID) return packs;
-    if (selectedFolderId === UNFILED_ID) return packs.filter((p) => !p.folder_id);
-    return packs.filter((p) => p.folder_id === selectedFolderId);
-  }, [packs, selectedFolderId]);
+    const base = selectedFolderId === ALL_ID ? packs
+      : selectedFolderId === UNFILED_ID ? packs.filter((p) => !p.folder_id)
+      : packs.filter((p) => p.folder_id === selectedFolderId);
+    return [...base].sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "name") cmp = a.title.localeCompare(b.title);
+      else if (sortCol === "type") cmp = a.subject.localeCompare(b.subject);
+      else cmp = a.created_at.localeCompare(b.created_at);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [packs, selectedFolderId, sortCol, sortDir]);
 
   const visibleDocs = useMemo(() => {
-    if (selectedFolderId === ALL_ID) return documents;
-    if (selectedFolderId === UNFILED_ID) return documents.filter((d) => !d.folder_id);
-    return documents.filter((d) => d.folder_id === selectedFolderId);
-  }, [documents, selectedFolderId]);
+    const base = selectedFolderId === ALL_ID ? documents
+      : selectedFolderId === UNFILED_ID ? documents.filter((d) => !d.folder_id)
+      : documents.filter((d) => d.folder_id === selectedFolderId);
+    return [...base].sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortCol === "type") cmp = (a.mime_type ?? "").localeCompare(b.mime_type ?? "");
+      else cmp = a.created_at.localeCompare(b.created_at);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [documents, selectedFolderId, sortCol, sortDir]);
 
-  const totalItems = visiblePacks.length + visibleDocs.length;
+  // Counts per folder (for badges)
+  const folderCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const f of folders) {
+      m[f.id] = packs.filter((p) => p.folder_id === f.id).length + documents.filter((d) => d.folder_id === f.id).length;
+    }
+    return m;
+  }, [folders, packs, documents]);
 
-  // ── Folder CRUD ─────────────────────────────────────────────────────────────
+  const unfiledCount = useMemo(() =>
+    packs.filter((p) => !p.folder_id).length + documents.filter((d) => !d.folder_id).length,
+    [packs, documents]
+  );
 
+  // Folder CRUD
   async function createFolder() {
     const name = newFolderName.trim();
     if (!name) return;
@@ -393,7 +621,7 @@ export default function LibraryPage() {
   }
 
   async function deleteFolder(id: string) {
-    if (!confirm("Delete this folder? Items inside will be moved to Unfiled.")) return;
+    if (!confirm("Delete this folder? Items will move to Unfiled.")) return;
     const res = await fetch(`/api/library/folders/${id}`, { method: "DELETE" });
     if (!res.ok) { setStatus("Could not delete folder"); return; }
     setFolders((prev) => prev.filter((f) => f.id !== id));
@@ -402,8 +630,7 @@ export default function LibraryPage() {
     if (selectedFolderId === id) setSelectedFolderId(ALL_ID);
   }
 
-  // ── Move to folder ──────────────────────────────────────────────────────────
-
+  // Move
   async function movePackToFolder(packId: string, folderId: string | null) {
     setMovingId(packId);
     await fetch(`/api/library/${packId}`, {
@@ -424,8 +651,7 @@ export default function LibraryPage() {
     setMovingId(null);
   }
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
-
+  // Delete
   async function deletePack(id: string) {
     if (!confirm("Delete this lesson pack? This cannot be undone.")) return;
     const res = await fetch(`/api/library/${id}`, { method: "DELETE" });
@@ -442,8 +668,7 @@ export default function LibraryPage() {
     if (selectedItem?.kind === "doc" && selectedItem.item.id === id) setSelectedItem(null);
   }
 
-  // ── Document upload ─────────────────────────────────────────────────────────
-
+  // Upload
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -454,7 +679,6 @@ export default function LibraryPage() {
       const form = new FormData();
       form.append("file", file);
       if (folderId) form.append("folder_id", folderId);
-
       const res = await fetch("/api/library/documents", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) {
@@ -466,8 +690,6 @@ export default function LibraryPage() {
     setUploading(false);
   }
 
-  // ── Download document ───────────────────────────────────────────────────────
-
   function downloadDoc(doc: DocumentItem) {
     const a = document.createElement("a");
     a.href = `/api/library/documents/${doc.id}`;
@@ -477,49 +699,25 @@ export default function LibraryPage() {
     document.body.removeChild(a);
   }
 
-  // ── Folder select options ───────────────────────────────────────────────────
-
-  const folderOptions = [
-    { value: "", label: "No folder (Unfiled)" },
-    ...folders.map((f) => ({ value: f.id, label: f.name })),
-  ];
-
-  // ── Render ──────────────────────────────────────────────────────────────────
-
-  const sidebarBtn: React.CSSProperties = {
-    display: "flex", alignItems: "center", gap: "0.4rem",
-    padding: "0.45rem 0.75rem", borderRadius: "8px", cursor: "pointer",
-    fontSize: "0.84rem", border: "none", fontFamily: "inherit", textAlign: "left", width: "100%",
-  };
+  const totalItems = visiblePacks.length + visibleDocs.length;
+  const folderName = selectedFolderId === ALL_ID ? "All Items" : selectedFolderId === UNFILED_ID ? "Unfiled" : (folders.find((f) => f.id === selectedFolderId)?.name ?? "Folder");
 
   return (
-    <main className="page-wrap libraryx-shell" style={{ maxWidth: "none" }}>
-      {/* Header */}
-      <div className="libraryx-topbar">
-        <div className="libraryx-hero-card">
-          <div className="libraryx-hero-copy">
-            <p className="libraryx-kicker">Lesson Library</p>
-            <h1 className="libraryx-title">Library</h1>
-            <p className="libraryx-subtitle">
-              A structured workspace for lesson packs, uploads, and reference material.
-            </p>
-          </div>
-          <div className="libraryx-stat-strip" aria-label="Library overview">
-            <div className="libraryx-stat-chip">
-              <span className="libraryx-stat-chip-label">Lesson packs</span>
-              <strong>{packs.length}</strong>
-            </div>
-            <div className="libraryx-stat-chip">
-              <span className="libraryx-stat-chip-label">Documents</span>
-              <strong>{documents.length}</strong>
-            </div>
-            <div className="libraryx-stat-chip">
-              <span className="libraryx-stat-chip-label">Folders</span>
-              <strong>{folders.length}</strong>
-            </div>
+    <div className="lib-shell">
+      {/* ── Top chrome ── */}
+      <div className="lib-chrome">
+        <div className="lib-chrome-left">
+          <h1 className="lib-chrome-title">Library</h1>
+          <div className="lib-chrome-stats">
+            <span className="lib-chrome-stat">{packs.length} lesson {packs.length === 1 ? "pack" : "packs"}</span>
+            <span className="lib-chrome-stat-divider">·</span>
+            <span className="lib-chrome-stat">{documents.length} {documents.length === 1 ? "document" : "documents"}</span>
+            <span className="lib-chrome-stat-divider">·</span>
+            <span className="lib-chrome-stat">{folders.length} {folders.length === 1 ? "folder" : "folders"}</span>
           </div>
         </div>
-        <div className="libraryx-toolbar">
+        <div className="lib-chrome-right">
+          {status && <span className="lib-chrome-error">{status}</span>}
           <input
             ref={fileInputRef}
             type="file"
@@ -527,64 +725,53 @@ export default function LibraryPage() {
             style={{ display: "none" }}
             onChange={(e) => void handleUpload(e.target.files)}
           />
-          <Link href="/lesson-pack" className="libraryx-toolbar-btn is-primary">
-            New Lesson Pack
-          </Link>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="libraryx-toolbar-btn"
-          >
-            {uploading ? "Uploading…" : "Upload document"}
+          <button className="lib-chrome-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <IconUpload size={13} />
+            {uploading ? "Uploading…" : "Upload"}
           </button>
+          <Link href="/lesson-pack" className="lib-chrome-btn is-primary">
+            <IconPlus size={13} />
+            New lesson pack
+          </Link>
         </div>
       </div>
 
-      {status && <p style={{ color: "#f87171", marginBottom: "1rem", fontSize: "0.85rem" }}>{status}</p>}
+      {/* ── Workspace ── */}
+      <div className="lib-workspace">
 
-      {/* Three-column layout */}
-      <div className="libraryx-workspace">
+        {/* Left: folder tree */}
+        <aside className="lib-sidebar">
+          <div className="lib-sidebar-section-head">Collections</div>
 
-        {/* ── Sidebar ── */}
-        <aside className="libraryx-sidebar">
-          <div className="libraryx-pane-head">
-            <div>
-              <p className="libraryx-pane-eyebrow">Collections</p>
-              <h2 className="libraryx-pane-title">Folders</h2>
-            </div>
-          </div>
           <button
-            style={{
-              ...sidebarBtn,
-              background: selectedFolderId === ALL_ID ? "color-mix(in srgb, var(--accent) 10%, transparent)" : "transparent",
-              color: selectedFolderId === ALL_ID ? "var(--accent)" : "var(--text)",
-              fontWeight: selectedFolderId === ALL_ID ? 600 : 400,
-            }}
+            className={`lib-tree-item${selectedFolderId === ALL_ID ? " is-active" : ""}`}
             onClick={() => setSelectedFolderId(ALL_ID)}
           >
-            <span>📚</span> All items
+            <span className="lib-tree-icon"><IconAll size={14} /></span>
+            <span className="lib-tree-label">All Items</span>
+            <span className="lib-tree-count">{packs.length + documents.length}</span>
           </button>
 
           <button
-            style={{
-              ...sidebarBtn,
-              background: selectedFolderId === UNFILED_ID ? "color-mix(in srgb, var(--accent) 10%, transparent)" : "transparent",
-              color: selectedFolderId === UNFILED_ID ? "var(--accent)" : "var(--text)",
-              fontWeight: selectedFolderId === UNFILED_ID ? 600 : 400,
-            }}
+            className={`lib-tree-item${selectedFolderId === UNFILED_ID ? " is-active" : ""}`}
             onClick={() => setSelectedFolderId(UNFILED_ID)}
           >
-            <span>📋</span> Unfiled
+            <span className="lib-tree-icon"><IconInbox size={14} /></span>
+            <span className="lib-tree-label">Unfiled</span>
+            <span className="lib-tree-count">{unfiledCount}</span>
           </button>
 
+          {folders.length > 0 && <div className="lib-sidebar-divider" />}
+
           {folders.length > 0 && (
-            <div style={{ height: "1px", background: "var(--border)", margin: "0.4rem 0.25rem" }} />
+            <div className="lib-sidebar-section-head" style={{ marginTop: 0 }}>Folders</div>
           )}
 
           {folders.map((f) => (
-            <FolderItem
+            <FolderRow
               key={f.id}
               folder={f}
+              count={folderCounts[f.id] ?? 0}
               isSelected={selectedFolderId === f.id}
               onSelect={() => setSelectedFolderId(f.id)}
               onRename={(name) => renameFolder(f.id, name)}
@@ -592,187 +779,158 @@ export default function LibraryPage() {
             />
           ))}
 
-          <div style={{ height: "1px", background: "var(--border)", margin: "0.4rem 0.25rem" }} />
+          <div className="lib-sidebar-divider" />
 
           {creatingFolder ? (
-            <div style={{ padding: "0.25rem 0.5rem", display: "flex", gap: "0.35rem" }}>
+            <div className="lib-new-folder-row">
               <input
-                ref={newFolderInputRef}
+                ref={newFolderRef}
                 value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void createFolder(); if (e.key === "Escape") setCreatingFolder(false); }}
+                className="lib-new-folder-input"
                 placeholder="Folder name"
                 autoFocus
-                style={{
-                  flex: 1, border: "1px solid var(--accent)", borderRadius: "5px",
-                  padding: "0.25rem 0.4rem", fontSize: "0.82rem", fontFamily: "inherit",
-                  background: "var(--surface)", color: "var(--text)", outline: "none", minWidth: 0,
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void createFolder();
+                  if (e.key === "Escape") setCreatingFolder(false);
                 }}
               />
-              <button
-                onClick={() => void createFolder()}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontSize: "0.8rem", fontFamily: "inherit", padding: "0 0.25rem" }}
-              >Add</button>
+              <button className="lib-new-folder-confirm" onClick={() => void createFolder()}>Add</button>
+              <button className="lib-new-folder-cancel" onClick={() => setCreatingFolder(false)}>×</button>
             </div>
           ) : (
-            <button
-              onClick={() => setCreatingFolder(true)}
-              style={{ ...sidebarBtn, color: "var(--muted)", background: "transparent" }}
-            >
-              <span>+</span> New folder
+            <button className="lib-tree-item lib-new-folder-btn" onClick={() => setCreatingFolder(true)}>
+              <span className="lib-tree-icon" style={{ opacity: 0.5 }}><IconPlus size={13} /></span>
+              <span className="lib-tree-label" style={{ color: "var(--muted)" }}>New folder</span>
             </button>
           )}
         </aside>
 
-        {/* ── Item list ── */}
-        <section className="libraryx-list-pane">
-          <div className="libraryx-pane-head">
-            <div>
-              <p className="libraryx-pane-eyebrow">Directory</p>
-              <h2 className="libraryx-pane-title">
-                {selectedFolderId === ALL_ID ? "All items" : selectedFolderId === UNFILED_ID ? "Unfiled" : (folders.find((f) => f.id === selectedFolderId)?.name || "Folder")}
-              </h2>
+        {/* Centre: file list */}
+        <main className="lib-list-pane">
+          <div className="lib-list-chrome">
+            <div className="lib-list-breadcrumb">
+              <span className="lib-list-folder-name">{folderName}</span>
+              <span className="lib-list-count">{totalItems} item{totalItems !== 1 ? "s" : ""}</span>
             </div>
-            <span className="libraryx-pane-count">{totalItems} item{totalItems !== 1 ? "s" : ""}</span>
           </div>
-          {totalItems === 0 && (
-            <div className="libraryx-empty-state">
-              <p style={{ margin: "0 0 1rem", color: "var(--muted)", fontSize: "0.88rem" }}>
-                {selectedFolderId === ALL_ID ? "Nothing saved yet." : "This folder is empty."}
-              </p>
-              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" }}>
-                <Link href="/lesson-pack" style={{
-                  padding: "0.45rem 1rem", borderRadius: "10px",
-                  background: "var(--accent)", color: "var(--accent-text)",
-                  textDecoration: "none", fontSize: "0.82rem", fontWeight: 600,
-                }}>Generate a lesson pack</Link>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    padding: "0.45rem 1rem", borderRadius: "10px",
-                    border: "1.5px solid var(--border)", background: "var(--surface)",
-                    color: "var(--text)", fontSize: "0.82rem", cursor: "pointer", fontFamily: "inherit", fontWeight: 500,
-                  }}
-                >Upload document</button>
+
+          {totalItems === 0 ? (
+            <div className="lib-empty">
+              <div className="lib-empty-icon"><IconFolder size={32} /></div>
+              <p className="lib-empty-title">{selectedFolderId === ALL_ID ? "Your library is empty" : "This folder is empty"}</p>
+              <p className="lib-empty-sub">Generate a lesson pack or upload a document to get started.</p>
+              <div className="lib-empty-actions">
+                <Link href="/lesson-pack" className="lib-chrome-btn is-primary"><IconPlus size={13} /> New lesson pack</Link>
+                <button className="lib-chrome-btn" onClick={() => fileInputRef.current?.click()}><IconUpload size={13} /> Upload file</button>
               </div>
             </div>
-          )}
-
-          {/* Lesson packs */}
-          {visiblePacks.length > 0 && (
-            <>
-              <p className="libraryx-section-label">
-                Lesson Packs ({visiblePacks.length})
-              </p>
-              {visiblePacks.map((pack) => {
-                const color = subjectColor(pack.subject);
-                const isSelected = selectedItem?.kind === "pack" && selectedItem.item.id === pack.id;
-                return (
-                  <div
-                    key={pack.id}
-                    onClick={() => setSelectedItem({ kind: "pack", item: pack })}
-                    className={`libraryx-record-card${isSelected ? " is-selected" : ""}`}
-                    style={{
-                      borderColor: isSelected ? color : undefined,
-                      background: isSelected ? `color-mix(in srgb, ${color} 6%, var(--surface))` : undefined,
-                      boxShadow: isSelected ? `inset 3px 0 0 ${color}` : undefined,
-                    }}
-                  >
-                    <div className="libraryx-record-head">
-                      <div>
-                        <p style={{ margin: "0 0 0.2rem", fontWeight: 600, fontSize: "0.88rem", color: "var(--text)" }}>{pack.title}</p>
-                        <div className="libraryx-record-meta">
-                          <span className="libraryx-record-tag" style={{ color, borderColor: `color-mix(in srgb, ${color} 35%, transparent)`, background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
-                            {pack.subject}
-                          </span>
-                          <span>{pack.year_group}</span>
-                          <span>{formatDate(pack.created_at)}</span>
+          ) : (
+            <table className="lib-table">
+              <thead>
+                <tr className="lib-table-head-row">
+                  <th className="lib-th lib-th-name">
+                    <button className="lib-sort-btn" onClick={() => toggleSort("name")}>
+                      Name <SortIndicator col="name" active={sortCol} dir={sortDir} />
+                    </button>
+                  </th>
+                  <th className="lib-th lib-th-type">
+                    <button className="lib-sort-btn" onClick={() => toggleSort("type")}>
+                      Type <SortIndicator col="type" active={sortCol} dir={sortDir} />
+                    </button>
+                  </th>
+                  <th className="lib-th lib-th-date">
+                    <button className="lib-sort-btn" onClick={() => toggleSort("date")}>
+                      Modified <SortIndicator col="date" active={sortCol} dir={sortDir} />
+                    </button>
+                  </th>
+                  <th className="lib-th lib-th-folder">Folder</th>
+                  <th className="lib-th lib-th-actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {visiblePacks.map((pack) => {
+                  const color = subjectColor(pack.subject);
+                  const isActive = selectedItem?.kind === "pack" && selectedItem.item.id === pack.id;
+                  return (
+                    <tr
+                      key={pack.id}
+                      className={`lib-row${isActive ? " is-active" : ""}`}
+                      onClick={() => setSelectedItem({ kind: "pack", item: pack })}
+                    >
+                      <td className="lib-td lib-td-name">
+                        <span className="lib-row-file-icon" style={{ color }}>
+                          <IconBook size={15} />
+                        </span>
+                        <span className="lib-row-name">{pack.title}</span>
+                        <span className="lib-row-meta">{pack.year_group}</span>
+                      </td>
+                      <td className="lib-td lib-td-type">
+                        <span className="lib-type-badge" style={{ color, background: `color-mix(in srgb, ${color} 10%, transparent)`, borderColor: `color-mix(in srgb, ${color} 25%, transparent)` }}>
+                          {pack.subject}
+                        </span>
+                      </td>
+                      <td className="lib-td lib-td-date">{formatDate(pack.created_at)}</td>
+                      <td className="lib-td lib-td-folder">
+                        <MoveSelect value={pack.folder_id} folders={folders} disabled={movingId === pack.id} onChange={(fid) => movePackToFolder(pack.id, fid)} />
+                      </td>
+                      <td className="lib-td lib-td-actions">
+                        <div className="lib-row-actions">
+                          <Link href={`/lesson-pack?id=${pack.id}`} className="lib-row-btn" title="Open" onClick={(e) => e.stopPropagation()}>
+                            <IconExternalLink size={13} />
+                          </Link>
+                          <button className="lib-row-btn is-danger" title="Delete" onClick={(e) => { e.stopPropagation(); void deletePack(pack.id); }}>
+                            <IconTrash size={13} />
+                          </button>
                         </div>
-                      </div>
-                    </div>
-                    <div className="libraryx-record-actions">
-                      <Link
-                        href={`/lesson-pack?id=${pack.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="libraryx-inline-btn"
-                      >Open in generator ↗</Link>
-                      <select
-                        value={pack.folder_id ?? ""}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => { e.stopPropagation(); void movePackToFolder(pack.id, e.target.value || null); }}
-                        disabled={movingId === pack.id}
-                        className="libraryx-inline-select"
-                      >
-                        {folderOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); void deletePack(pack.id); }}
-                        className="libraryx-inline-btn"
-                      >Delete</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
+                      </td>
+                    </tr>
+                  );
+                })}
 
-          {/* Documents */}
-          {visibleDocs.length > 0 && (
-            <>
-              <p className="libraryx-section-label" style={{ marginTop: visiblePacks.length > 0 ? "0.75rem" : 0 }}>
-                Documents ({visibleDocs.length})
-              </p>
-              {visibleDocs.map((doc) => {
-                const isSelected = selectedItem?.kind === "doc" && selectedItem.item.id === doc.id;
-                return (
-                  <div
-                    key={doc.id}
-                    onClick={() => setSelectedItem({ kind: "doc", item: doc })}
-                    className={`libraryx-record-card${isSelected ? " is-selected" : ""}`}
-                    style={{ display: "flex", alignItems: "flex-start", gap: "0.7rem" }}
-                  >
-                    <span style={{ fontSize: "1.1rem", flexShrink: 0, lineHeight: 1.2 }}>{fileIcon(doc.mime_type, doc.name)}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 0.18rem", fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</p>
-                      <div className="libraryx-record-meta">
-                        <span>{formatBytes(doc.size_bytes)}</span>
-                        <span>{formatDate(doc.created_at)}</span>
-                      </div>
-                      <div className="libraryx-record-actions" style={{ marginTop: "0.55rem" }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); downloadDoc(doc); }}
-                          className="libraryx-inline-btn"
-                        >Download</button>
-                        <select
-                          value={doc.folder_id ?? ""}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => { e.stopPropagation(); void moveDocToFolder(doc.id, e.target.value || null); }}
-                          disabled={movingId === doc.id}
-                          className="libraryx-inline-select"
-                        >
-                          {folderOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); void deleteDoc(doc.id); }}
-                          className="libraryx-inline-btn"
-                        >Delete</button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
+                {visibleDocs.map((doc) => {
+                  const typeLabel = fileTypeLabel(doc.mime_type, doc.name);
+                  const isActive = selectedItem?.kind === "doc" && selectedItem.item.id === doc.id;
+                  return (
+                    <tr
+                      key={doc.id}
+                      className={`lib-row${isActive ? " is-active" : ""}`}
+                      onClick={() => setSelectedItem({ kind: "doc", item: doc })}
+                    >
+                      <td className="lib-td lib-td-name">
+                        <span className="lib-row-file-icon" style={{ color: "var(--muted)" }}>
+                          <IconFile size={15} />
+                        </span>
+                        <span className="lib-row-name">{doc.name}</span>
+                        <span className="lib-row-meta">{formatBytes(doc.size_bytes)}</span>
+                      </td>
+                      <td className="lib-td lib-td-type">
+                        <span className="lib-type-badge">{typeLabel}</span>
+                      </td>
+                      <td className="lib-td lib-td-date">{formatDate(doc.created_at)}</td>
+                      <td className="lib-td lib-td-folder">
+                        <MoveSelect value={doc.folder_id} folders={folders} disabled={movingId === doc.id} onChange={(fid) => moveDocToFolder(doc.id, fid)} />
+                      </td>
+                      <td className="lib-td lib-td-actions">
+                        <div className="lib-row-actions">
+                          <button className="lib-row-btn" title="Download" onClick={(e) => { e.stopPropagation(); downloadDoc(doc); }}>
+                            <IconDownload size={13} />
+                          </button>
+                          <button className="lib-row-btn is-danger" title="Delete" onClick={(e) => { e.stopPropagation(); void deleteDoc(doc.id); }}>
+                            <IconTrash size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
-        </section>
+        </main>
 
-        {/* ── Preview panel ── */}
-        <section className="libraryx-preview-pane">
-          <div className="libraryx-pane-head">
-            <div>
-              <p className="libraryx-pane-eyebrow">Preview</p>
-              <h2 className="libraryx-pane-title">Inspector</h2>
-            </div>
-          </div>
+        {/* Right: preview rail */}
+        <aside className="lib-preview-rail">
           {selectedItem ? (
             selectedItem.kind === "pack" ? (
               <PackPreview item={selectedItem.item} />
@@ -780,13 +938,22 @@ export default function LibraryPage() {
               <DocPreview item={selectedItem.item} onDownload={() => downloadDoc(selectedItem.item)} />
             )
           ) : (
-            <div className="libraryx-empty-state" style={{ minHeight: "320px" }}>
-              Select an item to preview it here.
+            <div className="lib-preview-empty">
+              <div className="lib-preview-empty-icon">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+              </div>
+              <p className="lib-preview-empty-text">Select an item to preview</p>
             </div>
           )}
-        </section>
+        </aside>
 
       </div>
-    </main>
+    </div>
   );
 }

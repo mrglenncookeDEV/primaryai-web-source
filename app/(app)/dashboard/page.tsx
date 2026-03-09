@@ -167,6 +167,10 @@ function formatShortUkDate(iso: string) {
   });
 }
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 const DASHBOARD_CACHE_KEY = "pa_dashboard_summary_v2";
 
 function getMondayISO(d = new Date()) {
@@ -981,6 +985,10 @@ export default function DashboardPage() {
             updateBootStep("tasks", "done");
           }
         }
+      } catch (error) {
+        if (!isAbortError(error)) {
+          throw error;
+        }
       } finally {
         if (!controller.signal.aborted) {
           setScheduleLoading(false);
@@ -1023,6 +1031,10 @@ export default function DashboardPage() {
           const weekData = await weekRes.json().catch(() => ({}));
           if (weekRes.ok) {
             setScheduleEvents(Array.isArray(weekData?.events) ? weekData.events : []);
+          }
+        } catch (error) {
+          if (!isAbortError(error)) {
+            throw error;
           }
         } finally {
           if (!controller.signal.aborted) {

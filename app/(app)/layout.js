@@ -1,6 +1,7 @@
 import Nav from "@/components/marketing/Nav";
 import FooterLinks from "@/components/marketing/FooterLinks";
 import AppSidebar from "@/components/AppSidebar";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import CommandPalette from "@/components/CommandPalette";
 import { getAuthSession } from "@/lib/auth";
 
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }) {
           {children}
         </div>
       </div>
+      <MobileBottomNav />
       <FooterLinks />
     </>
   );
