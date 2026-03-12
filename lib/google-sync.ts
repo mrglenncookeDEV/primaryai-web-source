@@ -1,4 +1,5 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { formatSupabaseError, isMissingColumnError, isMissingRelationError } from "@/lib/supabase-errors";
 import {
   buildGoogleEventPayload,
   buildGoogleNotes,
@@ -47,11 +48,11 @@ async function getConnectionRow(userId: string) {
     .maybeSingle();
 
   if (error) {
-    const missingTable = String(error.message || "").toLowerCase().includes("google_calendar_connections");
+    const missingTable = isMissingRelationError(error, "google_calendar_connections");
     throw new Error(
       missingTable
         ? "Google sync is not ready yet. Run migration 023_google_calendar_sync.sql first."
-        : "Google sync store unavailable",
+        : formatSupabaseError(error, "Google sync store unavailable"),
     );
   }
   if (!data) throw new Error("Google Calendar is not connected");
@@ -129,13 +130,11 @@ async function listBackfillCandidates(userId: string) {
     .order("start_time", { ascending: true });
 
   if (error) {
-    const missingColumns = ["google_event_id"].some((column) =>
-      String(error.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(error, "google_event_id");
     throw new Error(
       missingColumns
         ? "Google write-back is not ready yet. Run migration 023_google_calendar_sync.sql first."
-        : "Could not load existing scheduler events for Google backfill",
+        : formatSupabaseError(error, "Could not load existing scheduler events for Google backfill"),
     );
   }
 
@@ -184,13 +183,11 @@ export async function disconnectGoogleCalendar(userId: string) {
     .eq("user_id", userId);
 
   if (clearWritebackError) {
-    const missingColumns = ["google_event_id", "google_last_synced_at"].some((column) =>
-      String(clearWritebackError.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(clearWritebackError, "google_event_id", "google_last_synced_at");
     throw new Error(
       missingColumns
         ? "Google write-back is not ready yet. Run migration 023_google_calendar_sync.sql first."
-        : "Could not clear Google sync state",
+        : formatSupabaseError(clearWritebackError, "Could not clear Google sync state"),
     );
   }
 
@@ -235,11 +232,11 @@ export async function storeGoogleConnection(args: {
   );
 
   if (error) {
-    const missingTable = String(error.message || "").toLowerCase().includes("google_calendar_connections");
+    const missingTable = isMissingRelationError(error, "google_calendar_connections");
     throw new Error(
       missingTable
         ? "Google sync is not ready yet. Run migration 023_google_calendar_sync.sql first."
-        : "Could not store Google Calendar connection",
+        : formatSupabaseError(error, "Could not store Google Calendar connection"),
     );
   }
 }
@@ -298,13 +295,11 @@ export async function syncGoogleCalendar(userId: string) {
     .not("google_event_id", "is", null);
 
   if (mirroredLookupError) {
-    const missingColumns = ["google_event_id"].some((column) =>
-      String(mirroredLookupError.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(mirroredLookupError, "google_event_id");
     throw new Error(
       missingColumns
         ? "Google write-back is not ready yet. Run migration 023_google_calendar_sync.sql first."
-        : "Could not look up scheduler Google write-back events",
+        : formatSupabaseError(mirroredLookupError, "Could not look up scheduler Google write-back events"),
     );
   }
 
@@ -325,13 +320,11 @@ export async function syncGoogleCalendar(userId: string) {
       .in("external_event_id", externalIds);
 
     if (lookupError) {
-      const missingColumns = ["external_source", "external_event_id"].some((column) =>
-        String(lookupError.message || "").toLowerCase().includes(column),
-      );
+      const missingColumns = isMissingColumnError(lookupError, "external_source", "external_event_id");
       throw new Error(
         missingColumns
-          ? "Google sync is not ready yet. Run migration 021_outlook_calendar_sync.sql first."
-          : "Could not look up existing Google events",
+          ? "Google sync base schema is not ready yet. Run migration 021_outlook_calendar_sync.sql first."
+          : formatSupabaseError(lookupError, "Could not look up existing Google events"),
       );
     }
 
@@ -453,13 +446,11 @@ export async function syncScheduleEventToGoogle(userId: string, event: WritableS
     .eq("user_id", userId);
 
   if (error) {
-    const missingColumns = ["google_event_id", "google_last_synced_at"].some((column) =>
-      String(error.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(error, "google_event_id", "google_last_synced_at");
     throw new Error(
       missingColumns
         ? "Google write-back is not ready yet. Run migration 023_google_calendar_sync.sql first."
-        : "Could not store Google write-back state",
+        : formatSupabaseError(error, "Could not store Google write-back state"),
     );
   }
   return { syncedAt, googleEventId: String(remote?.id || currentGoogleEventId) };

@@ -1,4 +1,5 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { formatSupabaseError, isMissingColumnError, isMissingRelationError } from "@/lib/supabase-errors";
 import {
   buildOutlookEventPayload,
   buildOutlookNotes,
@@ -45,11 +46,11 @@ async function getConnectionRow(userId: string) {
     .maybeSingle();
 
   if (error) {
-    const missingTable = String(error.message || "").toLowerCase().includes("outlook_calendar_connections");
+    const missingTable = isMissingRelationError(error, "outlook_calendar_connections");
     throw new Error(
       missingTable
         ? "Outlook sync is not ready yet. Run migration 021_outlook_calendar_sync.sql first."
-        : "Outlook sync store unavailable",
+        : formatSupabaseError(error, "Outlook sync store unavailable"),
     );
   }
 
@@ -144,13 +145,11 @@ async function listBackfillCandidates(userId: string) {
     .order("start_time", { ascending: true });
 
   if (error) {
-    const missingColumns = ["outlook_event_id"].some((column) =>
-      String(error.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(error, "outlook_event_id");
     throw new Error(
       missingColumns
         ? "Outlook write-back is not ready yet. Run migration 022_outlook_schedule_writeback.sql first."
-        : "Could not load existing scheduler events for Outlook backfill",
+        : formatSupabaseError(error, "Could not load existing scheduler events for Outlook backfill"),
     );
   }
 
@@ -203,13 +202,11 @@ export async function disconnectOutlookCalendar(userId: string) {
     .eq("user_id", userId);
 
   if (clearWritebackError) {
-    const missingColumns = ["outlook_event_id", "outlook_last_synced_at"].some((column) =>
-      String(clearWritebackError.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(clearWritebackError, "outlook_event_id", "outlook_last_synced_at");
     throw new Error(
       missingColumns
         ? "Outlook write-back is not ready yet. Run migration 022_outlook_schedule_writeback.sql first."
-        : "Could not clear Outlook sync state",
+        : formatSupabaseError(clearWritebackError, "Could not clear Outlook sync state"),
     );
   }
 
@@ -282,13 +279,11 @@ export async function syncOutlookCalendar(userId: string) {
     .not("outlook_event_id", "is", null);
 
   if (mirroredLookupError) {
-    const missingColumns = ["outlook_event_id"].some((column) =>
-      String(mirroredLookupError.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(mirroredLookupError, "outlook_event_id");
     throw new Error(
       missingColumns
         ? "Outlook write-back is not ready yet. Run migration 022_outlook_schedule_writeback.sql first."
-        : "Could not look up scheduler Outlook write-back events",
+        : formatSupabaseError(mirroredLookupError, "Could not look up scheduler Outlook write-back events"),
     );
   }
 
@@ -309,13 +304,11 @@ export async function syncOutlookCalendar(userId: string) {
       .in("external_event_id", externalIds);
 
     if (existingLookupError) {
-      const missingColumns = ["external_source", "external_event_id"].some((column) =>
-        String(existingLookupError.message || "").toLowerCase().includes(column),
-      );
+      const missingColumns = isMissingColumnError(existingLookupError, "external_source", "external_event_id");
       throw new Error(
         missingColumns
           ? "Outlook sync is not ready yet. Run migration 021_outlook_calendar_sync.sql first."
-          : "Could not look up existing Outlook events",
+          : formatSupabaseError(existingLookupError, "Could not look up existing Outlook events"),
       );
     }
 
@@ -329,13 +322,11 @@ export async function syncOutlookCalendar(userId: string) {
     if (inserts.length > 0) {
       const { error: insertError } = await supabase.from("lesson_schedule").insert(inserts);
       if (insertError) {
-        const missingColumns = ["external_source", "external_event_id"].some((column) =>
-          String(insertError.message || "").toLowerCase().includes(column),
-        );
+        const missingColumns = isMissingColumnError(insertError, "external_source", "external_event_id");
         throw new Error(
           missingColumns
             ? "Outlook sync is not ready yet. Run migration 021_outlook_calendar_sync.sql first."
-            : "Could not store imported Outlook events",
+            : formatSupabaseError(insertError, "Could not store imported Outlook events"),
         );
       }
     }
@@ -472,13 +463,11 @@ export async function syncScheduleEventToOutlook(userId: string, event: Writable
     .eq("user_id", userId);
 
   if (error) {
-    const missingColumns = ["outlook_event_id", "outlook_last_synced_at"].some((column) =>
-      String(error.message || "").toLowerCase().includes(column),
-    );
+    const missingColumns = isMissingColumnError(error, "outlook_event_id", "outlook_last_synced_at");
     throw new Error(
       missingColumns
         ? "Outlook write-back is not ready yet. Run migration 022_outlook_schedule_writeback.sql first."
-        : "Could not store Outlook write-back state",
+        : formatSupabaseError(error, "Could not store Outlook write-back state"),
     );
   }
 

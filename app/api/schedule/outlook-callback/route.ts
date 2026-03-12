@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserSession } from "@/lib/user-session";
 import { exchangeMicrosoftCode, fetchMicrosoftProfile, isOutlookConfigured } from "@/lib/outlook-calendar";
 import { backfillExistingScheduleEventsToOutlook, syncOutlookCalendar } from "@/lib/outlook-sync";
+import { formatSupabaseError, isMissingRelationError } from "@/lib/supabase-errors";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
 export async function GET(request: Request) {
@@ -69,11 +70,11 @@ export async function GET(request: Request) {
     );
 
     if (error) {
-      const missingTable = String(error.message || "").toLowerCase().includes("outlook_calendar_connections");
+      const missingTable = isMissingRelationError(error, "outlook_calendar_connections");
       throw new Error(
         missingTable
           ? "Outlook sync is not ready yet. Run migration 021_outlook_calendar_sync.sql first."
-          : "Could not store Outlook connection",
+          : formatSupabaseError(error, "Could not store Outlook connection"),
       );
     }
 

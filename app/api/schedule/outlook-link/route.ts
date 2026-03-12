@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserSession } from "@/lib/user-session";
+import { formatSupabaseError, isMissingRelationError } from "@/lib/supabase-errors";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
 function createToken() {
@@ -24,12 +25,12 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (readError) {
-    const missingTable = String(readError.message || "").toLowerCase().includes("calendar_sync_tokens");
+    const missingTable = isMissingRelationError(readError, "calendar_sync_tokens");
     return NextResponse.json(
       {
         error: missingTable
           ? "Outlook sync is not ready yet. Run migration 017_calendar_sync_tokens.sql first."
-          : "Sync store unavailable",
+          : formatSupabaseError(readError, "Sync store unavailable"),
       },
       { status: 503 },
     );
@@ -48,12 +49,12 @@ export async function GET(request: Request) {
         { onConflict: "user_id" },
       );
     if (writeError) {
-      const missingTable = String(writeError.message || "").toLowerCase().includes("calendar_sync_tokens");
+      const missingTable = isMissingRelationError(writeError, "calendar_sync_tokens");
       return NextResponse.json(
         {
           error: missingTable
             ? "Outlook sync is not ready yet. Run migration 017_calendar_sync_tokens.sql first."
-            : "Sync store unavailable",
+            : formatSupabaseError(writeError, "Sync store unavailable"),
         },
         { status: 503 },
       );
