@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 const NAV = [
@@ -80,6 +80,7 @@ export default function AppSidebar() {
   const path = usePathname() ?? "";
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [initials, setInitials] = useState<string>("");
+  const [signingOut, setSigningOut] = useState(false);
   const accountItem = NAV.find((item) => item.href === "/account") ?? null;
   const primaryNavItems = NAV.filter((item) => item.href !== "/account");
 
@@ -98,6 +99,26 @@ export default function AppSidebar() {
       })
       .catch(() => {});
   }, []);
+
+  async function handleLogout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSigningOut(true);
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+      window.location.assign(payload?.redirectTo || "/");
+    } catch {
+      setSigningOut(false);
+      window.location.assign("/");
+    }
+  }
 
   return (
     <aside className="app-sidebar" aria-label="App navigation">
@@ -162,19 +183,20 @@ export default function AppSidebar() {
         </Link>
       ) : null}
 
-      <form action="/api/auth/logout" method="post" style={{ display: "contents" }}>
+      <form action="/api/auth/logout" method="post" onSubmit={handleLogout} style={{ display: "contents" }}>
         <button
           type="submit"
           className="app-sidebar-link"
           aria-label="Sign out"
           title="Sign out"
+          disabled={signingOut}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-          <span className="app-sidebar-tooltip">Sign out</span>
+          <span className="app-sidebar-tooltip">{signingOut ? "Signing out..." : "Sign out"}</span>
         </button>
       </form>
     </aside>

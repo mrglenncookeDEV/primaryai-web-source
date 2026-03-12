@@ -29,6 +29,7 @@ export async function POST(request) {
 
   const displayName = String(body?.displayName || "").trim();
   const avatarUrl = String(body?.avatarUrl || "").trim();
+  const profileCompleted = typeof body?.profileCompleted === "boolean" ? body.profileCompleted : undefined;
   if (avatarUrl.length > 400_000) {
     return NextResponse.json(
       { error: "Profile image is too large. Please upload a smaller image." },
@@ -44,7 +45,10 @@ export async function POST(request) {
     const profileSetup = await saveProfileSetup(session.userId, {
       displayName: resolvedDisplayName,
       avatarUrl,
-    }, { accessToken: session.accessToken });
+    }, {
+      accessToken: session.accessToken,
+      profileCompleted,
+    });
     const response = NextResponse.json({ ok: true, profileSetup });
     response.cookies.set("pa_profile_complete", profileSetup.profileCompleted ? "1" : "0", {
       httpOnly: true,

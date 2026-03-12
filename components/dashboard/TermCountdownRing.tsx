@@ -328,6 +328,18 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
         </div>
       </div>
     </div>
+    <p style={{
+      margin: "0.35rem 0 0",
+      padding: "0 0.75rem 0.6rem",
+      fontSize: "0.72rem",
+      color: "var(--muted)",
+      textAlign: "center",
+      letterSpacing: "0.01em",
+    }}>
+      {termStart.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+      {" – "}
+      {termEnd.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+    </p>
       {toast && (
         <div className="term-countdown-toast" role="status">
           🎉 {toast}

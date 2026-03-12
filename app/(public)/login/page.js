@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LoginForm from "./LoginForm";
 
 const ERROR_MAP = {
   "Invalid OAuth state": "Your sign-in session expired — please try again",
@@ -155,43 +156,7 @@ export default async function LoginPage({ searchParams }) {
 
           <div className="auth-or">or</div>
 
-          <form action="/api/auth/login" method="post">
-            <input type="hidden" name="next" value={next} />
-
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="email">Email</label>
-              <input
-                className="auth-input"
-                id="email"
-                type="email"
-                name="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                required
-              />
-            </div>
-
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="password">Password</label>
-              <input
-                className="auth-input"
-                id="password"
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                required
-              />
-            </div>
-
-            <p className="auth-secondary-link" style={{ marginTop: "-0.2rem", marginBottom: "0.85rem" }}>
-              <Link href={`/forgot-password?next=${encodeURIComponent(next)}`}>Forgotten password?</Link>
-            </p>
-
-            <button className="auth-submit" type="submit">
-              Sign in
-            </button>
-          </form>
+          <LoginForm next={next} />
 
           <p className="auth-switch">
             No account yet?{" "}

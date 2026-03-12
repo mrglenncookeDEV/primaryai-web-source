@@ -208,6 +208,12 @@ function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+function openCommandPalette() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("pa:open-command-palette"));
+  }
+}
+
 // ── Schedule widget ───────────────────────────────────────────────────────────
 
 function ScheduleWidget({ onOpen, events, scheduleLoading }: { onOpen: () => void; events: ScheduleEvent[]; scheduleLoading: boolean }) {
@@ -1118,6 +1124,16 @@ export default function DashboardPage() {
     <main className="page-wrap">
       <div className={`dashboard-top-grid${schedulerViewMode === "term" ? " is-term-view" : ""}`} style={{ marginBottom: "1.25rem" }}>
         <div className="dashboard-countdown-wrapper">
+          <button type="button" className="dashboard-cmdpal-btn dashboard-cmdpal-btn-header dashboard-cmdpal-btn-countdown" onClick={openCommandPalette}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Search pages, lesson packs…</span>
+            </span>
+            <kbd className="cmdpal-kbd">⌘K</kbd>
+          </button>
           <div className="dashboard-hero-stat term-countdown-stat">
             {!loading && activeTerm?.termStartDate && activeTerm?.termEndDate ? (
               <TermCountdownRing
@@ -1159,6 +1175,7 @@ export default function DashboardPage() {
             onClose={() => {}}
             onScheduleChange={handleScheduleMutation}
             onViewModeStateChange={setSchedulerViewMode}
+            displayName={displayName || undefined}
             initialPacks={items.map((item) => ({
               id: item.id,
               title: item.title,
@@ -1171,9 +1188,6 @@ export default function DashboardPage() {
         </div>
 
         <div className={`dashboard-hero-side-wrap${schedulerViewMode === "term" ? " is-below-term" : ""}`}>
-          <div className="dashboard-header-actions">
-            <div aria-hidden="true" />
-          </div>
           <div className="dashboard-hero dashboard-hero-side">
           </div>
           <AiSchedulePanel onScheduleChange={handleScheduleMutation} />

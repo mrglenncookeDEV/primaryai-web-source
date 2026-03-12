@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SignupForm from "./SignupForm";
 
 function getMessage(searchParams) {
   if (searchParams?.error) return { text: decodeURIComponent(searchParams.error), isError: true };
@@ -136,39 +137,7 @@ export default async function SignupPage({ searchParams }) {
 
           <div className="auth-or">or</div>
 
-          <form action="/api/auth/signup" method="post">
-            <input type="hidden" name="next" value={next} />
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="email">Email</label>
-              <input
-                className="auth-input"
-                id="email"
-                type="email"
-                name="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                required
-              />
-            </div>
-
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="password">Password</label>
-              <input
-                className="auth-input"
-                id="password"
-                type="password"
-                name="password"
-                placeholder="Min. 8 characters"
-                autoComplete="new-password"
-                minLength={8}
-                required
-              />
-            </div>
-
-            <button className="auth-submit" type="submit">
-              Create account
-            </button>
-          </form>
+          <SignupForm next={next} />
 
           <p className="auth-switch">
             Already have an account?{" "}

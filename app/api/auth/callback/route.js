@@ -26,7 +26,7 @@ export async function GET(request) {
   const base = requestUrl.origin;
 
   if (!supabase) {
-    return NextResponse.redirect(new URL("/login?error=Supabase%20not%20configured", base));
+    return NextResponse.redirect(new URL("/login?error=Supabase%20not%20configured", base), { status: 303 });
   }
 
   const code = requestUrl.searchParams.get("code");
@@ -49,6 +49,7 @@ export async function GET(request) {
   if (error || !user) {
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent(error?.message || "Invalid auth callback")}`, base),
+      { status: 303 },
     );
   }
 
@@ -61,7 +62,7 @@ export async function GET(request) {
   }
 
   const finalPath = profileCompleted ? "/dashboard" : "/profile-setup?next=%2Fdashboard";
-  const response = NextResponse.redirect(new URL(finalPath, base));
+  const response = NextResponse.redirect(new URL(finalPath, base), { status: 303 });
   setSessionCookie(response, user);
   response.cookies.set("pa_profile_complete", profileCompleted ? "1" : "0", {
     httpOnly: true,

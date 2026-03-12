@@ -13,20 +13,20 @@ export async function POST(request) {
   if (!email || !password) {
     const errorUrl = new URL("/signup", redirectBase);
     errorUrl.searchParams.set("error", "Email and password are required");
-    return NextResponse.redirect(errorUrl);
+    return NextResponse.redirect(errorUrl, { status: 303 });
   }
 
   if (password.length < 8) {
     const errorUrl = new URL("/signup", redirectBase);
     errorUrl.searchParams.set("error", "Password must be at least 8 characters");
-    return NextResponse.redirect(errorUrl);
+    return NextResponse.redirect(errorUrl, { status: 303 });
   }
 
   const supabase = getSupabaseAnonClient();
   if (!supabase) {
     const errorUrl = new URL("/signup", redirectBase);
     errorUrl.searchParams.set("error", "Supabase is not configured");
-    return NextResponse.redirect(errorUrl);
+    return NextResponse.redirect(errorUrl, { status: 303 });
   }
 
   const { data, error } = await supabase.auth.signUp({
@@ -52,6 +52,7 @@ export async function POST(request) {
   if (userAlreadyExists) {
     return NextResponse.redirect(
       new URL("/login?error=An+account+with+that+email+already+exists", redirectBase),
+      { status: 303 },
     );
   }
 
@@ -70,6 +71,7 @@ export async function POST(request) {
         profileCompleted ? "/dashboard" : "/profile-setup?next=%2Fdashboard",
         redirectBase,
       ),
+      { status: 303 },
     );
     response.cookies.set(
       "pa_session",
@@ -110,7 +112,7 @@ export async function POST(request) {
     const finalPath = profileCompleted
       ? nextPath
       : `/profile-setup?next=${encodeURIComponent(nextPath)}`;
-    const response = NextResponse.redirect(new URL(finalPath, redirectBase));
+    const response = NextResponse.redirect(new URL(finalPath, redirectBase), { status: 303 });
     response.cookies.set(
       "pa_session",
       JSON.stringify({
@@ -136,5 +138,5 @@ export async function POST(request) {
     return response;
   }
 
-  return NextResponse.redirect(new URL("/login?registered=1&verify=1", redirectBase));
+  return NextResponse.redirect(new URL("/login?registered=1&verify=1", redirectBase), { status: 303 });
 }

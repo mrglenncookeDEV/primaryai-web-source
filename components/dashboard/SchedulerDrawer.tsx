@@ -28,6 +28,7 @@ type Props = {
     end_time: string;
     notes?: string | null;
   }>;
+  displayName?: string;
 };
 
 type UserTerm = {
@@ -109,6 +110,7 @@ export default function SchedulerDrawer({
   onViewModeStateChange,
   initialPacks = [],
   initialWeekEvents = [],
+  displayName,
 }: Props) {
   const mapApiEvent = useCallback(
     (e: {
@@ -504,6 +506,76 @@ export default function SchedulerDrawer({
 
   function handleGoToday() {
     setCursorDate(new Date());
+  }
+
+  function handlePrint() {
+    const range = getRangeForView(viewMode, cursorDate, showWeekends, currentTerm);
+    const rangeEvents = calendarEvents
+      .filter((e) => e.scheduledDate >= range.from && e.scheduledDate <= range.to && !e.allDay)
+      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate) || a.startTime.localeCompare(b.startTime));
+
+    // Group by date
+    const byDate = new Map<string, typeof rangeEvents>();
+    for (const e of rangeEvents) {
+      if (!byDate.has(e.scheduledDate)) byDate.set(e.scheduledDate, []);
+      byDate.get(e.scheduledDate)!.push(e);
+    }
+
+    const title = displayName ? `${displayName.split(" ")[0]}'s Timetable` : "My Timetable";
+    const rangeLabel =
+      range.from === range.to
+        ? prettyDate(range.from)
+        : `${prettyDate(range.from)} – ${prettyDate(range.to)}`;
+
+    const rows = Array.from(byDate.entries()).map(([date, evts]) => {
+      const dayLabel = prettyDate(date);
+      const items = evts.map((e) =>
+        `<tr>
+          <td class="time">${e.startTime}–${e.endTime}</td>
+          <td class="title">${e.title}</td>
+          <td class="meta">${[e.subject, e.yearGroup].filter(Boolean).join(" · ")}</td>
+          <td class="notes">${e.notes ? e.notes : ""}</td>
+        </tr>`
+      ).join("");
+      return `<tr class="day-header"><td colspan="4">${dayLabel}</td></tr>${items}`;
+    }).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>${title} – ${rangeLabel}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 11pt; color: #111; margin: 1.5cm; }
+    h1 { font-size: 16pt; margin: 0 0 0.2rem; }
+    p.range { font-size: 10pt; color: #555; margin: 0 0 1.2rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #1e293b; color: #fff; padding: 0.4rem 0.6rem; font-size: 9pt; text-align: left; }
+    td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    tr.day-header td { background: #f1f5f9; font-weight: 700; font-size: 10pt; padding: 0.5rem 0.6rem; border-top: 2px solid #cbd5e1; color: #334155; }
+    td.time { white-space: nowrap; color: #475569; font-size: 9.5pt; width: 10%; }
+    td.title { font-weight: 600; width: 40%; }
+    td.meta { color: #64748b; font-size: 9.5pt; width: 20%; }
+    td.notes { color: #64748b; font-size: 9pt; width: 30%; }
+    @media print { body { margin: 1cm; } }
+  </style>
+</head>
+<body>
+  <h1>${title}</h1>
+  <p class="range">${rangeLabel}</p>
+  ${rows ? `<table>
+    <thead><tr><th>Time</th><th>Lesson</th><th>Subject / Year</th><th>Notes</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>` : "<p>No lessons scheduled for this period.</p>"}
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
   }
 
   function handleDrop(date: string, slotTime: string) {
@@ -926,30 +998,33 @@ export default function SchedulerDrawer({
               <svg className="scheduler-drawer-title-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", marginRight: "0.45rem", verticalAlign: "-2px" }}>
                 <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18"/>
               </svg>
-              My Timetable
+              {displayName ? `${displayName.split(" ")[0]}'s Timetable` : "My Timetable"}
             </h2>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
-              {viewMode === "week" ? (
-                <label
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.4rem",
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    color: "rgba(255,255,255,0.95)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={showWeekends}
-                    onChange={(event) => setShowWeekends(event.target.checked)}
-                    style={{ accentColor: "var(--accent-2)" }}
-                  />
-                  <span>Show weekends</span>
-                </label>
-              ) : null}
+              <button
+                type="button"
+                onClick={handlePrint}
+                title="Print / Save as PDF"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  border: "1px solid var(--border)",
+                  borderRadius: "999px",
+                  background: "var(--surface)",
+                  color: "var(--muted)",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  padding: "0.28rem 0.7rem",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Print
+              </button>
               <div style={{ display: "inline-flex", border: "1px solid var(--border)", borderRadius: "999px", overflow: "hidden" }}>
                 {(["week", "day", "month", "term"] as CalendarViewMode[]).map((mode) => (
                   <button
@@ -974,6 +1049,28 @@ export default function SchedulerDrawer({
                   </button>
                 ))}
               </div>
+              {viewMode === "week" ? (
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    color: embedded ? "rgba(255,255,255,0.95)" : "var(--muted)",
+                    whiteSpace: "nowrap",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={showWeekends}
+                    onChange={(event) => setShowWeekends(event.target.checked)}
+                    style={{ accentColor: "var(--accent-2)" }}
+                  />
+                  <span>Show weekends</span>
+                </label>
+              ) : null}
             </div>
             {!embedded ? (
               <button className="scheduler-close-btn" onClick={onClose} aria-label="Close scheduler">

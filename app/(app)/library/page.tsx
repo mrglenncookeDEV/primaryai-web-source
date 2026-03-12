@@ -523,6 +523,7 @@ export default function LibraryPage() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [sortCol, setSortCol] = useState<"name" | "type" | "date">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -576,27 +577,43 @@ export default function LibraryPage() {
     const base = selectedFolderId === ALL_ID ? packs
       : selectedFolderId === UNFILED_ID ? packs.filter((p) => !p.folder_id)
       : packs.filter((p) => p.folder_id === selectedFolderId);
-    return [...base].sort((a, b) => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = query
+      ? base.filter((p) =>
+          [p.title, p.subject, p.topic, p.year_group]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(query))
+        )
+      : base;
+    return [...filtered].sort((a, b) => {
       let cmp = 0;
       if (sortCol === "name") cmp = a.title.localeCompare(b.title);
       else if (sortCol === "type") cmp = a.subject.localeCompare(b.subject);
       else cmp = a.created_at.localeCompare(b.created_at);
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [packs, selectedFolderId, sortCol, sortDir]);
+  }, [packs, searchQuery, selectedFolderId, sortCol, sortDir]);
 
   const visibleDocs = useMemo(() => {
     const base = selectedFolderId === ALL_ID ? documents
       : selectedFolderId === UNFILED_ID ? documents.filter((d) => !d.folder_id)
       : documents.filter((d) => d.folder_id === selectedFolderId);
-    return [...base].sort((a, b) => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = query
+      ? base.filter((d) =>
+          [d.name, d.mime_type]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(query))
+        )
+      : base;
+    return [...filtered].sort((a, b) => {
       let cmp = 0;
       if (sortCol === "name") cmp = a.name.localeCompare(b.name);
       else if (sortCol === "type") cmp = (a.mime_type ?? "").localeCompare(b.mime_type ?? "");
       else cmp = a.created_at.localeCompare(b.created_at);
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [documents, selectedFolderId, sortCol, sortDir]);
+  }, [documents, searchQuery, selectedFolderId, sortCol, sortDir]);
 
   // Counts per folder (for badges)
   const folderCounts = useMemo(() => {
@@ -738,6 +755,20 @@ export default function LibraryPage() {
         </div>
         <div className="lib-chrome-right">
           {status && <span className="lib-chrome-error">{status}</span>}
+          <div className="lib-chrome-tools">
+            <label className="lib-chrome-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search library…"
+                className="lib-chrome-search-input"
+              />
+            </label>
           <input
             ref={fileInputRef}
             type="file"
@@ -749,10 +780,11 @@ export default function LibraryPage() {
             <IconUpload size={13} />
             {uploading ? "Uploading…" : "Upload"}
           </button>
-          <Link href="/lesson-pack" className="lib-chrome-btn is-primary">
+          <Link href="/lesson-pack" className="lib-chrome-btn is-primary lib-chrome-btn-primary-top">
             <IconPlus size={13} />
             New lesson pack
           </Link>
+          </div>
         </div>
       </div>
 

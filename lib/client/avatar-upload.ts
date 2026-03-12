@@ -30,6 +30,28 @@ export async function fileToOptimisedDataUrl(file: File, maxSide = 320, quality 
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+export async function compressDataUrl(dataUrl: string, maxSide = 320, quality = 0.82): Promise<string> {
+  const image = await loadImage(dataUrl);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  if (!width || !height) return dataUrl;
+
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  const outWidth = Math.max(1, Math.round(width * scale));
+  const outHeight = Math.max(1, Math.round(height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = outWidth;
+  canvas.height = outHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, 0, 0, outWidth, outHeight);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

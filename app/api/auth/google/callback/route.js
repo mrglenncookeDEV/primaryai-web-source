@@ -42,6 +42,7 @@ export async function GET(request) {
   if (errorParam) {
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent("Google sign-in was cancelled")}`, base),
+      { status: 303 },
     );
   }
 
@@ -49,6 +50,7 @@ export async function GET(request) {
   if (!state || !cookieState || state !== cookieState) {
     const response = NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent("Your sign-in session expired — please try again")}`, base),
+      { status: 303 },
     );
     response.cookies.delete("oauth_state");
     response.cookies.delete("oauth_next");
@@ -58,12 +60,14 @@ export async function GET(request) {
   if (!code) {
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent("Google sign-in failed — no authorisation code received")}`, base),
+      { status: 303 },
     );
   }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent("Google sign-in is not configured on the server")}`, base),
+      { status: 303 },
     );
   }
 
@@ -89,12 +93,13 @@ export async function GET(request) {
         `/login?error=${encodeURIComponent(tokenData.error_description || "Failed to exchange Google auth code")}`,
         base,
       ),
+      { status: 303 },
     );
   }
 
   const supabase = getSupabaseAnonClient();
   if (!supabase) {
-    return NextResponse.redirect(new URL("/login?error=Auth+not+configured", base));
+    return NextResponse.redirect(new URL("/login?error=Auth+not+configured", base), { status: 303 });
   }
 
   const { data, error } = await supabase.auth.signInWithIdToken({
@@ -108,6 +113,7 @@ export async function GET(request) {
         `/login?error=${encodeURIComponent(error?.message || "Google sign-in failed")}`,
         base,
       ),
+      { status: 303 },
     );
   }
 
@@ -123,7 +129,7 @@ export async function GET(request) {
     ? postLoginPath
     : `/profile-setup?next=${encodeURIComponent(postLoginPath)}`;
 
-  const response = NextResponse.redirect(new URL(finalPath, base));
+  const response = NextResponse.redirect(new URL(finalPath, base), { status: 303 });
   setSessionCookie(response, data.user, isHttps);
   response.cookies.set("pa_profile_complete", profileCompleted ? "1" : "0", {
     httpOnly: true,

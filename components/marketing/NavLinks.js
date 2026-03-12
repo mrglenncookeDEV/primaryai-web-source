@@ -31,6 +31,7 @@ export default function NavLinks({ session }) {
   const [resolvedSession, setResolvedSession] = useState(session ?? null);
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -65,6 +66,27 @@ export default function NavLinks({ session }) {
   }, [isOpen]);
 
   const close = () => setIsOpen(false);
+
+  async function handleLogout(event) {
+    event.preventDefault();
+    setSigningOut(true);
+    clearUserScopedBrowserState();
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+      window.location.assign(payload?.redirectTo || "/");
+    } catch {
+      setSigningOut(false);
+      window.location.assign("/");
+    }
+  }
 
   const allLinks = PERSISTENT_LINKS.map((link) => ({
     ...link,
@@ -110,9 +132,9 @@ export default function NavLinks({ session }) {
               </Link>
             </>
           ) : (
-            <form action="/api/auth/logout" method="post" onSubmit={clearUserScopedBrowserState}>
-              <button type="submit" className="nav-btn-ghost">
-                Sign out
+            <form action="/api/auth/logout" method="post" onSubmit={handleLogout}>
+              <button type="submit" className="nav-btn-ghost" disabled={signingOut}>
+                {signingOut ? "Signing out..." : "Sign out"}
               </button>
             </form>
           )}
@@ -192,9 +214,9 @@ export default function NavLinks({ session }) {
                 </Link>
               </>
             ) : (
-              <form action="/api/auth/logout" method="post" onSubmit={clearUserScopedBrowserState}>
-                <button type="submit" className="mobile-nav-btn-ghost">
-                  Sign out
+              <form action="/api/auth/logout" method="post" onSubmit={handleLogout}>
+                <button type="submit" className="mobile-nav-btn-ghost" disabled={signingOut}>
+                  {signingOut ? "Signing out..." : "Sign out"}
                 </button>
               </form>
             )}

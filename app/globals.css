@@ -685,6 +685,17 @@ textarea::placeholder {
   opacity: 1;
 }
 
+/* iOS Safari auto-zooms focused form fields below 16px.
+   Enforce a mobile-only floor for text-entry controls without affecting
+   compact buttons, toggles, or labels. */
+@media (max-width: 900px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 html,
 body {
   margin: 0;
@@ -4168,8 +4179,43 @@ body:has(.lib-shell) .app-body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-shrink: 0;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.lib-chrome-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.lib-chrome-search {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: min(100%, 320px);
+  flex: 1 1 280px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--field-bg);
+  color: var(--muted);
+}
+
+.lib-chrome-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
 }
 
 .lib-chrome-error {
@@ -7088,19 +7134,19 @@ html[data-theme="solid"] .app-sidebar-tooltip {
 }
 
 .app-sidebar-nav-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   object-fit: cover;
   display: block;
   box-shadow: 0 0 0 1px rgb(255 255 255 / 0.7);
 }
 
 .app-sidebar-nav-avatar-fallback {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  font-size: 0.64rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 0.72rem;
   font-weight: 700;
   box-shadow: none;
 }
@@ -7355,6 +7401,9 @@ html[data-theme="light"] .cmdpal-box {
 .dashboard-countdown-wrapper {
   grid-column: 2;
   grid-row: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
 }
 
 .dashboard-scheduler-wrapper {
@@ -7395,6 +7444,22 @@ html[data-theme="light"] .cmdpal-box {
   min-width: 180px;
   justify-content: space-between;
   padding-inline: 0.9rem;
+}
+
+.dashboard-countdown-search-row {
+  grid-template-columns: 1fr;
+  width: 100%;
+  align-self: stretch;
+}
+
+.dashboard-cmdpal-btn-countdown {
+  width: 100%;
+  margin-left: 0;
+  min-width: 0;
+}
+
+.dashboard-countdown-wrapper > .dashboard-hero-stat.term-countdown-stat {
+  width: 100%;
 }
 
 .dashboard-header-generate-btn {
@@ -8428,6 +8493,11 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
 }
 
 @media (max-width: 600px) {
+  .lib-chrome-btn-primary-top {
+    width: 100%;
+    justify-content: center;
+  }
+
   .dashboard-top-grid {
     gap: 0.75rem;
   }

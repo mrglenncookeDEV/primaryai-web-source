@@ -1,7 +1,7 @@
 "use client";
 
 import { type ChangeEvent, type ReactNode, useEffect, useId, useState } from "react";
-import { fileToOptimisedDataUrl } from "@/lib/client/avatar-upload";
+import { compressDataUrl, fileToOptimisedDataUrl } from "@/lib/client/avatar-upload";
 
 type Profile = {
   displayName: string;
@@ -230,6 +230,8 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile>(INITIAL_PROFILE);
   const [terms, setTerms] = useState<TermEntry[]>([]);
   const [avatarFileName, setAvatarFileName] = useState("");
+  const [avatarPrompt, setAvatarPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
   type SectionKey = "profile" | "defaults" | "terms" | "tone" | "schoolType" | "approach" | "ability" | "classProfile" | "classNotes" | "prefs";
   const SECTION_KEYS: SectionKey[] = ["profile","defaults","terms","tone","schoolType","approach","ability","classProfile","classNotes","prefs"];
   const blankRecord = <T,>(v: T) => Object.fromEntries(SECTION_KEYS.map(k => [k, v])) as Record<SectionKey, T>;
@@ -298,6 +300,35 @@ export default function SettingsPage() {
     } catch {
       setSectionErrors(prev => ({ ...prev, profile: "Could not process that image. Please try a different file." }));
       setSectionStatus(prev => ({ ...prev, profile: "error" }));
+    }
+  }
+
+  async function handleGenerateAIAvatar() {
+    if (!profile.displayName.trim() && !avatarPrompt.trim()) {
+      setSectionErrors(prev => ({ ...prev, profile: "Enter your name or a description first." }));
+      setSectionStatus(prev => ({ ...prev, profile: "error" }));
+      return;
+    }
+    setSectionErrors(prev => ({ ...prev, profile: "" }));
+    setAiGenerating(true);
+    try {
+      const res = await fetch("/api/avatar/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: profile.displayName.trim(), description: avatarPrompt.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.dataUrl) {
+        throw new Error(data?.error || "Image generation failed. Please try again.");
+      }
+      const compressed = await compressDataUrl(data.dataUrl);
+      setProfile((prev) => ({ ...prev, avatarUrl: compressed }));
+      setAvatarFileName("AI generated avatar");
+    } catch (err) {
+      setSectionErrors(prev => ({ ...prev, profile: err instanceof Error ? err.message : "Image generation failed. Please try again." }));
+      setSectionStatus(prev => ({ ...prev, profile: "error" }));
+    } finally {
+      setAiGenerating(false);
     }
   }
 
@@ -422,19 +453,73 @@ export default function SettingsPage() {
             </div>
 
             <div className="field">
-              <input
-                id={uploadInputId}
-                className="file-upload-input"
-                type="file"
-                accept="image/*"
-                onChange={onAvatarUpload}
-              />
-              <label htmlFor={uploadInputId} className="landing-thoughts-btn file-upload-cta">
-                Upload Photo
+              <label style={FIELD_LABEL_STYLE}>
+                Avatar description (optional)
               </label>
-              <span className="muted" style={{ fontSize: "0.78rem", marginTop: "0.45rem", display: "block" }}>
-                {avatarFileName || "No file selected"}
-              </span>
+              <input
+                value={avatarPrompt}
+                onChange={(e) => setAvatarPrompt(e.target.value)}
+                placeholder="e.g. woman with short curly red hair, glasses, blue cardigan — or leave blank to use your name"
+              />
+              <p style={{ margin: "0.2rem 0 0", fontSize: "0.75rem", color: "var(--muted)" }}>
+                Be specific about appearance: hair colour &amp; style, skin tone, clothing, age, accessories. The more detail, the better the match.
+              </p>
+            </div>
+
+            <div>
+              <label style={FIELD_LABEL_STYLE}>
+                Or upload / generate a photo
+              </label>
+
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <input
+                    id={uploadInputId}
+                    className="file-upload-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={onAvatarUpload}
+                  />
+                  <label htmlFor={uploadInputId} className="landing-thoughts-btn file-upload-cta">
+                    Upload Photo
+                  </label>
+                </div>
+
+                <span className="muted" style={{ fontSize: "0.78rem", color: "var(--muted)" }}>or</span>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateAIAvatar}
+                  disabled={aiGenerating}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "0.45rem",
+                    padding: "0.5rem 1rem",
+                    borderRadius: "999px",
+                    border: "1.5px solid var(--accent)",
+                    background: "rgb(var(--accent-rgb) / 0.08)",
+                    color: "var(--accent)",
+                    fontSize: "0.84rem", fontWeight: 600,
+                    cursor: aiGenerating ? "wait" : "pointer",
+                    fontFamily: "inherit",
+                    transition: "opacity 150ms ease",
+                    opacity: aiGenerating ? 0.7 : 1,
+                  }}
+                >
+                  {aiGenerating ? (
+                    <>
+                      <span style={{ width: "12px", height: "12px", border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 0.65s linear infinite" }} />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
+                        <path d="M8 0a.75.75 0 0 1 .712.513l1.33 3.986 3.987 1.33a.75.75 0 0 1 0 1.422l-3.986 1.33-1.33 3.987a.75.75 0 0 1-1.422 0L5.96 8.58 1.975 7.25a.75.75 0 0 1 0-1.422L5.96 4.498 7.29.512A.75.75 0 0 1 8 0zm0 2.988L7.07 5.73a.75.75 0 0 1-.47.47L3.86 7.13l2.74.93a.75.75 0 0 1 .47.47L8 11.27l.93-2.74a.75.75 0 0 1 .47-.47l2.74-.93-2.74-.93a.75.75 0 0 1-.47-.47L8 2.988z" />
+                      </svg>
+                      Create with AI
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {profile.avatarUrl ? (
@@ -863,7 +948,148 @@ export default function SettingsPage() {
           <SaveBar onSave={() => saveSection("prefs", [postProfile])} status={sectionStatus.prefs} error={sectionErrors.prefs} />
         </div>
 
+        <DangerZone />
+
       </form>
     </main>
+  );
+}
+
+// ── Danger Zone ────────────────────────────────────────────────────────────────
+
+function DangerZone() {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/account/delete", { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError((data as { error?: string })?.error ?? "Could not delete account. Please try again.");
+        setDeleting(false);
+        return;
+      }
+      // Account deleted — redirect to home
+      window.location.href = "/";
+    } catch {
+      setError("Network error. Please try again.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="card" style={{ border: "1px solid rgb(239 68 68 / 0.35)", background: "rgb(239 68 68 / 0.03)" }}>
+        <h2 style={{ margin: "0 0 0.3rem", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ef4444" }}>
+          Danger Zone
+        </h2>
+        <p style={{ margin: "0 0 1rem", fontSize: "0.82rem", color: "var(--muted)" }}>
+          Permanently delete your account and all associated data. This cannot be undone.
+        </p>
+        <button
+          type="button"
+          onClick={() => { setOpen(true); setConfirm(""); setError(""); }}
+          style={{
+            padding: "0.5rem 1.1rem",
+            borderRadius: "9px",
+            border: "1.5px solid #ef4444",
+            background: "transparent",
+            color: "#ef4444",
+            fontSize: "0.84rem",
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            transition: "background 160ms ease",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgb(239 68 68 / 0.08)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+        >
+          Delete my account
+        </button>
+      </div>
+
+      {/* Confirmation modal */}
+      {open && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(3px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "1rem",
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget && !deleting) setOpen(false); }}
+        >
+          <div className="card" style={{ maxWidth: 440, width: "100%", margin: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="#ef4444" aria-hidden="true">
+                <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 4.5zm0 6.5a.875.875 0 1 1 0-1.75A.875.875 0 0 1 8 11z" />
+              </svg>
+              <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#ef4444" }}>
+                Delete account
+              </h2>
+            </div>
+
+            <p style={{ margin: "0 0 0.5rem", fontSize: "0.87rem", color: "var(--text)", lineHeight: 1.55 }}>
+              This will <strong>permanently delete</strong> your account, profile, lesson library, and all saved data. There is no way to recover it.
+            </p>
+            <p style={{ margin: "0 0 1rem", fontSize: "0.87rem", color: "var(--text)" }}>
+              Type <strong>DELETE</strong> to confirm:
+            </p>
+
+            <div className="field" style={{ marginBottom: "1rem" }}>
+              <input
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="DELETE"
+                disabled={deleting}
+                style={{ fontFamily: "inherit" }}
+                autoFocus
+              />
+            </div>
+
+            {error && (
+              <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "#fc8181" }}>{error}</p>
+            )}
+
+            <div style={{ display: "flex", gap: "0.6rem", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={confirm !== "DELETE" || deleting}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "0.45rem",
+                  padding: "0.5rem 1.1rem", borderRadius: "9px",
+                  border: "none",
+                  background: confirm === "DELETE" && !deleting ? "#ef4444" : "rgb(239 68 68 / 0.35)",
+                  color: "white",
+                  fontSize: "0.84rem", fontWeight: 600,
+                  cursor: confirm === "DELETE" && !deleting ? "pointer" : "not-allowed",
+                  fontFamily: "inherit",
+                  transition: "background 160ms ease",
+                }}
+              >
+                {deleting && (
+                  <span style={{ width: "12px", height: "12px", border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 0.65s linear infinite" }} />
+                )}
+                {deleting ? "Deleting…" : "Delete my account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
