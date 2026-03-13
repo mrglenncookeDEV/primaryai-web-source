@@ -26,6 +26,13 @@ type Profile = {
   hugelyBelowStandardPercent: number | "";
 };
 
+type ThemeMode = "light" | "dark" | "solid";
+
+type Preferences = {
+  theme: ThemeMode;
+  palette: string;
+};
+
 type TermEntry = {
   id: string;
   termName: string;
@@ -91,6 +98,31 @@ const ABILITY_MIX_OPTIONS = [
   { value: "predominantly_higher", label: "Predominantly higher ability", desc: "Raised baseline; greater depth task pushes the most able significantly" },
 ];
 
+const THEME_OPTIONS: { value: ThemeMode; label: string; desc: string }[] = [
+  { value: "light", label: "Light", desc: "Bright workspace with soft surfaces and strong contrast." },
+  { value: "dark", label: "Dark", desc: "Low-glare darker surfaces for longer planning sessions." },
+  { value: "solid", label: "Solid", desc: "Full-colour background using your chosen palette." },
+];
+
+const PALETTE_OPTIONS = [
+  { id: "duck-egg", label: "Duck egg", swatch: "#78d8cf" },
+  { id: "sage", label: "Sage green", swatch: "#7ab87a" },
+  { id: "lavender", label: "Lavender", swatch: "#9b8ae0" },
+  { id: "rose", label: "Dusty rose", swatch: "#d47a96" },
+  { id: "slate", label: "Slate blue", swatch: "#6b91c0" },
+  { id: "sand", label: "Warm sand", swatch: "#d4a870" },
+  { id: "black", label: "Black", swatch: "#2a2a2a" },
+  { id: "white", label: "White", swatch: "#e0e0e0" },
+  { id: "royal", label: "Royal blue", swatch: "#2952cc" },
+  { id: "emerald", label: "Emerald", swatch: "#2ecc71" },
+  { id: "burnt-orange", label: "Burnt orange", swatch: "#cc5500" },
+];
+
+const INITIAL_PREFERENCES: Preferences = {
+  theme: "light",
+  palette: "slate",
+};
+
 const MIN_CLASS_NOTES_CHARS = 200;
 
 const STEPS = [
@@ -123,6 +155,16 @@ function toInputPercent(value: unknown): number | "" {
 
 function toPayloadPercent(value: number | ""): number | null {
   return value === "" ? null : value;
+}
+
+function applyAppearancePrefs(theme: ThemeMode, palette: string) {
+  if (typeof document === "undefined") return;
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.palette = palette;
+  try {
+    localStorage.setItem("theme", theme);
+    localStorage.setItem("palette", palette);
+  } catch {}
 }
 
 // ── Shared style constants ─────────────────────────────────────────────────────
@@ -373,6 +415,7 @@ export default function ProfileSetupPage() {
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<Profile>(INITIAL_PROFILE);
   const [terms, setTerms] = useState<TermEntry[]>([]);
+  const [preferences, setPreferences] = useState<Preferences>(INITIAL_PREFERENCES);
   const [avatarFileName, setAvatarFileName] = useState("");
   const [avatarPrompt, setAvatarPrompt] = useState("");
   const [saving, setSaving] = useState(false);
@@ -389,15 +432,32 @@ export default function ProfileSetupPage() {
   // Load existing data
   useEffect(() => {
     void (async () => {
-      const [setupRes, profileRes, termsRes] = await Promise.all([
+      let localTheme: ThemeMode = INITIAL_PREFERENCES.theme;
+      let localPalette = INITIAL_PREFERENCES.palette;
+      try {
+        const storedTheme = localStorage.getItem("theme");
+        const storedPalette = localStorage.getItem("palette");
+        if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "solid") {
+          localTheme = storedTheme;
+        }
+        if (storedPalette) {
+          localPalette = storedPalette;
+        }
+      } catch {}
+      setPreferences({ theme: localTheme, palette: localPalette });
+      applyAppearancePrefs(localTheme, localPalette);
+
+      const [setupRes, profileRes, termsRes, prefsRes] = await Promise.all([
         fetch("/api/profile/setup"),
         fetch("/api/profile"),
         fetch("/api/profile/terms"),
+        fetch("/api/preferences"),
       ]);
 
       const setupData = await setupRes.json().catch(() => ({}));
       const profileData = await profileRes.json().catch(() => ({}));
       const termsData = await termsRes.json().catch(() => ({}));
+      const prefsData = await prefsRes.json().catch(() => null);
 
       setProfile((prev) => ({
         ...prev,
@@ -429,6 +489,15 @@ export default function ProfileSetupPage() {
           termStartDate: String(t?.termStartDate || ""),
           termEndDate: String(t?.termEndDate || ""),
         })));
+      }
+
+      if (prefsRes.ok && prefsData?.theme && prefsData?.palette) {
+        const nextPreferences = {
+          theme: prefsData.theme as ThemeMode,
+          palette: String(prefsData.palette),
+        };
+        setPreferences(nextPreferences);
+        applyAppearancePrefs(nextPreferences.theme, nextPreferences.palette);
       }
     })();
   }, []);
@@ -515,6 +584,22 @@ export default function ProfileSetupPage() {
     hugelyBelowStandardPercent: toPayloadPercent(profile.hugelyBelowStandardPercent),
   };
 
+  function setTheme(theme: ThemeMode) {
+    setPreferences((prev) => {
+      const next = { ...prev, theme };
+      applyAppearancePrefs(next.theme, next.palette);
+      return next;
+    });
+  }
+
+  function setPalette(palette: string) {
+    setPreferences((prev) => {
+      const next = { ...prev, palette };
+      applyAppearancePrefs(next.theme, next.palette);
+      return next;
+    });
+  }
+
   async function saveStep(): Promise<boolean> {
     setSaving(true);
     setError("");
@@ -536,6 +621,10 @@ export default function ProfileSetupPage() {
         fetch("/api/profile/terms", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ terms }),
+        }),
+        fetch("/api/preferences", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(preferences),
         }),
       ];
       const results = await Promise.all(calls);
@@ -632,6 +721,70 @@ export default function ProfileSetupPage() {
           {/* ── Step 1: Profile ── */}
           {step === 0 && (
             <div style={{ display: "grid", gap: "1.25rem" }}>
+              <div style={{ display: "grid", gap: "1rem" }}>
+                <div>
+                  <label style={{ ...FIELD_LABEL, marginBottom: "0.6rem" }}>Workspace style</label>
+                  <div style={{ display: "grid", gap: "0.5rem" }}>
+                    {THEME_OPTIONS.map((opt) => (
+                      <RadioCard
+                        key={opt.value}
+                        active={preferences.theme === opt.value}
+                        onClick={() => setTheme(opt.value)}
+                        label={opt.label}
+                        desc={opt.desc}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ ...FIELD_LABEL, marginBottom: "0.6rem" }}>Palette colour</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))", gap: "0.6rem" }}>
+                    {PALETTE_OPTIONS.map((palette) => {
+                      const active = preferences.palette === palette.id;
+                      return (
+                        <button
+                          key={palette.id}
+                          type="button"
+                          onClick={() => setPalette(palette.id)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.65rem",
+                            width: "100%",
+                            padding: "0.75rem 0.85rem",
+                            borderRadius: "12px",
+                            border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                            background: active ? "rgb(var(--accent-rgb) / 0.08)" : "var(--field-bg)",
+                            color: "var(--text)",
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            textAlign: "left",
+                            transition: "border-color 160ms ease, background 160ms ease",
+                          }}
+                        >
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              width: "18px",
+                              height: "18px",
+                              borderRadius: "999px",
+                              background: palette.swatch,
+                              border: palette.id === "white" ? "1px solid rgb(148 163 184 / 0.45)" : "1px solid transparent",
+                              boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.12)",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span style={{ fontSize: "0.84rem", fontWeight: active ? 700 : 600, lineHeight: 1.3 }}>
+                            {palette.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               <div className="field">
                 <label style={FIELD_LABEL}>Display name</label>
                 <input

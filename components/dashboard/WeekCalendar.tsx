@@ -650,7 +650,7 @@ export default function WeekCalendar({
                     <span className="scheduler-term-row-text">
                       <span className="scheduler-term-row-title">{row.subject}</span>
                       <span className="scheduler-term-row-meta">
-                        {row.totalEvents} {row.totalEvents === 1 ? "lesson" : "lessons"}
+                        {row.totalEvents} {row.totalEvents === 1 ? "event" : "events"}
                       </span>
                     </span>
                   </div>
@@ -668,7 +668,7 @@ export default function WeekCalendar({
                       const barIntensity = dayEntry ? Math.min(1, dayEntry.mins / termMaxDayMins) : 0;
                       const firstEvent = dayEntry?.events[0];
                       const tooltipText = dayEntry
-                        ? `${row.subject}: ${dayEntry.events.length} lesson${dayEntry.events.length !== 1 ? "s" : ""} · ${dayEntry.mins} min`
+                        ? `${row.subject}: ${dayEntry.events.length} event${dayEntry.events.length !== 1 ? "s" : ""} · ${dayEntry.mins} min`
                         : undefined;
                       return (
                         <div
