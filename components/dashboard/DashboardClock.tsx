@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 
 const INITIAL_CLOCK_TIME = new Date("2024-01-01T09:00:00.000Z");
 
+function coord(value: number) {
+  return Number(value.toFixed(3));
+}
+
 export function DashboardClock() {
   const [now, setNow] = useState(INITIAL_CLOCK_TIME);
 
@@ -29,8 +33,8 @@ export function DashboardClock() {
         const isMain = i % 3 === 0;
         return (
           <line key={i}
-            x1={30 + (isMain ? 20 : 22) * Math.cos(rad)} y1={30 + (isMain ? 20 : 22) * Math.sin(rad)}
-            x2={30 + 25 * Math.cos(rad)}                  y2={30 + 25 * Math.sin(rad)}
+            x1={coord(30 + (isMain ? 20 : 22) * Math.cos(rad))} y1={coord(30 + (isMain ? 20 : 22) * Math.sin(rad))}
+            x2={coord(30 + 25 * Math.cos(rad))}                  y2={coord(30 + 25 * Math.sin(rad))}
             stroke="#1c1c1e" strokeWidth={isMain ? 1.8 : 0.9} strokeLinecap="round" opacity={isMain ? 1 : 0.5}
           />
         );
@@ -39,22 +43,22 @@ export function DashboardClock() {
       {([12, 3, 6, 9] as const).map((n, i) => {
         const rad = (i * 90 - 90) * Math.PI / 180;
         return (
-          <text key={n} x={30 + 15 * Math.cos(rad)} y={30 + 15 * Math.sin(rad)}
+          <text key={n} x={coord(30 + 15 * Math.cos(rad))} y={coord(30 + 15 * Math.sin(rad))}
             textAnchor="middle" dominantBaseline="central"
             fontSize="7" fontWeight="700" fill="#1c1c1e" fontFamily="-apple-system, system-ui, sans-serif"
           >{n}</text>
         );
       })}
       {/* Hour hand */}
-      <line x1={30} y1={30} x2={30 + 11 * Math.cos(toRad(hourDeg))} y2={30 + 11 * Math.sin(toRad(hourDeg))}
+      <line x1={30} y1={30} x2={coord(30 + 11 * Math.cos(toRad(hourDeg)))} y2={coord(30 + 11 * Math.sin(toRad(hourDeg)))}
         stroke="#1c1c1e" strokeWidth="3.2" strokeLinecap="round" />
       {/* Minute hand */}
-      <line x1={30} y1={30} x2={30 + 18 * Math.cos(toRad(minDeg))} y2={30 + 18 * Math.sin(toRad(minDeg))}
+      <line x1={30} y1={30} x2={coord(30 + 18 * Math.cos(toRad(minDeg)))} y2={coord(30 + 18 * Math.sin(toRad(minDeg)))}
         stroke="#1c1c1e" strokeWidth="2" strokeLinecap="round" />
       {/* Second hand */}
       <line
-        x1={30 - 6 * Math.cos(toRad(secDeg))} y1={30 - 6 * Math.sin(toRad(secDeg))}
-        x2={30 + 22 * Math.cos(toRad(secDeg))} y2={30 + 22 * Math.sin(toRad(secDeg))}
+        x1={coord(30 - 6 * Math.cos(toRad(secDeg)))} y1={coord(30 - 6 * Math.sin(toRad(secDeg)))}
+        x2={coord(30 + 22 * Math.cos(toRad(secDeg)))} y2={coord(30 + 22 * Math.sin(toRad(secDeg)))}
         stroke="#f59e0b" strokeWidth="1.2" strokeLinecap="round"
       />
       {/* Centre dot */}

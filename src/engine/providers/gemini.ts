@@ -8,7 +8,7 @@ export class GeminiProvider implements EngineProvider {
   }
 
   async generate(prompt: string, systemPrompt?: string) {
-    const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+    const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
@@ -26,7 +26,8 @@ export class GeminiProvider implements EngineProvider {
     );
 
     if (!res.ok) {
-      throw new Error(`Gemini request failed: ${res.status}`);
+      const details = await res.text().catch(() => "");
+      throw new Error(`Gemini request failed: ${res.status}${details ? ` - ${details.slice(0, 240)}` : ""}`);
     }
 
     const data = await res.json();

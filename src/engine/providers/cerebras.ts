@@ -28,7 +28,8 @@ export class CerebrasProvider implements EngineProvider {
     });
 
     if (!res.ok) {
-      throw new Error(`Cerebras request failed: ${res.status}`);
+      const details = await res.text().catch(() => "");
+      throw new Error(`Cerebras request failed: ${res.status}${details ? ` - ${details.slice(0, 240)}` : ""}`);
     }
 
     const data = await res.json();

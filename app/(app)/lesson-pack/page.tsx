@@ -16,10 +16,19 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 type ProviderStatus = "pending" | "searching" | "done" | "failed";
+type ProviderState = {
+  status: ProviderStatus | "rate_limited" | "unavailable";
+  error?: string;
+};
 type EngineStatus = {
-  providers: Record<string, ProviderStatus>;
+  providers: Record<string, ProviderState>;
   pass: string | null;
   ensembled: boolean;
+};
+type ProviderCatalogItem = {
+  id: string;
+  available: boolean;
+  rateLimited?: boolean;
 };
 
 type LessonPack = {
@@ -58,18 +67,33 @@ function isPack(r: LessonPackResponse): r is LessonPack {
   return !("error" in r);
 }
 
+function buildInitialProviderStates(providerCatalog: ProviderCatalogItem[]) {
+  return providerCatalog.reduce<Record<string, ProviderState>>((acc, provider) => {
+    acc[provider.id] = {
+      status: provider.available ? (provider.rateLimited ? "rate_limited" : "pending") : "unavailable",
+    };
+    return acc;
+  }, {});
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SectionLabel({ children, color = "var(--accent)" }: { children: ReactNode; color?: string }) {
   return (
     <h3 style={{
       margin: "0 0 0.85rem",
-      fontSize: "0.7rem",
+      fontSize: "0.68rem",
       fontWeight: 700,
       letterSpacing: "0.12em",
       textTransform: "uppercase" as const,
       color,
-    }}>{children}</h3>
+      display: "flex",
+      alignItems: "center",
+      gap: "0.45rem",
+    }}>
+      <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: color, flexShrink: 0, display: "inline-block" }} />
+      {children}
+    </h3>
   );
 }
 
@@ -108,17 +132,27 @@ function RevealItem({ question, answer, index }: { question: string; answer: str
           <button
             onClick={() => setRevealed(true)}
             style={{
-              fontSize: "0.75rem",
-              color: "var(--muted)",
-              background: "transparent",
-              border: "1px solid var(--border)",
+              fontSize: "0.74rem",
+              color: "var(--accent)",
+              background: "rgb(var(--accent-rgb) / 0.08)",
+              border: "1px solid rgb(var(--accent-rgb) / 0.2)",
               borderRadius: "6px",
-              padding: "0.22rem 0.6rem",
+              padding: "0.22rem 0.65rem",
               cursor: "pointer",
               fontFamily: "inherit",
-              transition: "border-color 150ms ease, color 150ms ease",
+              fontWeight: 600,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              transition: "border-color 150ms ease, background 150ms ease",
             }}
-          >Show answer</button>
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+            </svg>
+            Show answer
+          </button>
         )}
       </div>
     </div>
@@ -138,6 +172,7 @@ function SlideCard({ slide, index }: { slide: { title: string; bullets: string[]
       background: "var(--surface)",
       display: "flex",
       flexDirection: "column",
+      boxShadow: "0 2px 12px rgb(0 0 0 / 0.1)",
     }}>
       <div style={{
         background: "rgb(var(--accent-rgb) / 0.07)",
@@ -184,7 +219,9 @@ function SlideCard({ slide, index }: { slide: { title: string; bullets: string[]
                 gap: "0.3rem",
               }}
             >
-              <span style={{ display: "inline-block", transition: "transform 180ms ease", transform: notesOpen ? "rotate(90deg)" : "none" }}>▶</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", transition: "transform 180ms ease", transform: notesOpen ? "rotate(90deg)" : "none", flexShrink: 0 }}>
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
               {notesOpen ? "Hide notes" : "Speaker notes"}
             </button>
             {notesOpen && (
@@ -221,6 +258,7 @@ export default function LessonPackPage() {
   const [classNotesLength, setClassNotesLength] = useState(0);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [providerCatalog, setProviderCatalog] = useState<ProviderCatalogItem[]>([]);
   const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
   const [contextFileName, setContextFileName] = useState("");
   const [contextNotes, setContextNotes] = useState("");
@@ -263,6 +301,27 @@ export default function LessonPackPage() {
     const timeout = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/lesson-pack/providers", { cache: "no-store" })
+      .then((res) => res.json().catch(() => ({})))
+      .then((data) => {
+        if (!cancelled && data?.ok && Array.isArray(data.providers)) {
+          setProviderCatalog(
+            data.providers.map((provider: ProviderCatalogItem) => ({
+              id: String(provider.id || ""),
+              available: Boolean(provider.available),
+              rateLimited: Boolean(provider.rateLimited),
+            })),
+          );
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Load profile defaults
   useEffect(() => {
@@ -383,7 +442,7 @@ export default function LessonPackPage() {
     setExportResult(null);
     setSaveState("idle");
     setSaveMsg("");
-    setEngineStatus({ providers: {}, pass: null, ensembled: false });
+    setEngineStatus({ providers: buildInitialProviderStates(providerCatalog), pass: null, ensembled: false });
 
     try {
       const res = await fetch("/api/lesson-pack/stream", {
@@ -420,12 +479,15 @@ export default function LessonPackPage() {
             if (event.type === "provider_start") {
               setEngineStatus((prev) => prev ? {
                 ...prev,
-                providers: { ...prev.providers, [event.id]: "searching" },
+                providers: { ...prev.providers, [event.id]: { status: "searching" } },
               } : prev);
             } else if (event.type === "provider_done") {
               setEngineStatus((prev) => prev ? {
                 ...prev,
-                providers: { ...prev.providers, [event.id]: event.ok ? "done" : "failed" },
+                providers: {
+                  ...prev.providers,
+                  [event.id]: { status: event.ok ? "done" : "failed", error: event.error ? String(event.error) : undefined },
+                },
               } : prev);
             } else if (event.type === "ensemble") {
               setEngineStatus((prev) => prev ? { ...prev, ensembled: true } : prev);
@@ -500,7 +562,7 @@ export default function LessonPackPage() {
     setExportResult(null);
     setSaveState("idle");
     setSaveMsg("");
-    setEngineStatus({ providers: {}, pass: null, ensembled: false });
+    setEngineStatus({ providers: buildInitialProviderStates(providerCatalog), pass: null, ensembled: false });
 
     try {
       const res = await fetch("/api/lesson-pack/stream", {
@@ -538,12 +600,15 @@ export default function LessonPackPage() {
             if (event.type === "provider_start") {
               setEngineStatus((prev) => prev ? {
                 ...prev,
-                providers: { ...prev.providers, [event.id]: "searching" },
+                providers: { ...prev.providers, [event.id]: { status: "searching" } },
               } : prev);
             } else if (event.type === "provider_done") {
               setEngineStatus((prev) => prev ? {
                 ...prev,
-                providers: { ...prev.providers, [event.id]: event.ok ? "done" : "failed" },
+                providers: {
+                  ...prev.providers,
+                  [event.id]: { status: event.ok ? "done" : "failed", error: event.error ? String(event.error) : undefined },
+                },
               } : prev);
             } else if (event.type === "ensemble") {
               setEngineStatus((prev) => prev ? { ...prev, ensembled: true } : prev);
@@ -590,21 +655,29 @@ export default function LessonPackPage() {
       ) : null}
 
       {/* Page header */}
-      <div style={{ marginBottom: "1.75rem" }}>
-        <h1 style={{
-          margin: "0 0 0.3rem",
-          fontSize: "1.6rem",
-          fontWeight: 700,
-          letterSpacing: "-0.03em",
-          color: "var(--text)",
-        }}>Lesson Pack Generator</h1>
-        <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted)", lineHeight: 1.5 }}>
-          Complete, curriculum-aligned resources generated in seconds — objectives, differentiated activities, slides, and more.
-        </p>
+      <div style={{ marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", gap: "0.85rem" }}>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent)", flexShrink: 0, marginTop: "4px" }}>
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          <path d="M8 7h8M8 11h6"/>
+        </svg>
+        <div>
+          <h1 style={{
+            margin: "0 0 0.3rem",
+            fontSize: "1.55rem",
+            fontWeight: 700,
+            letterSpacing: "-0.03em",
+            color: "var(--text)",
+          }}>Lesson Pack Generator</h1>
+          <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted)", lineHeight: 1.5 }}>
+            Complete, curriculum-aligned resources generated in seconds — objectives, differentiated activities, slides, and more.
+          </p>
+        </div>
       </div>
 
       {/* ── Form card ── */}
-      <div className="hero" style={{ marginBottom: "2rem" }}>
+      <div className="hero" style={{ marginBottom: "2rem", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 35%, transparent) 70%, transparent 100%)", borderRadius: "20px 20px 0 0" }} />
         <form onSubmit={handleSubmit}>
           <div style={{ display: "grid", gap: "0.85rem", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: "1rem" }}>
 
@@ -727,6 +800,8 @@ export default function LessonPackPage() {
               borderRadius: "12px",
               opacity: loading ? 0.72 : 1,
               gap: "0.6rem",
+              background: loading ? undefined : "linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 75%, var(--accent-hover)) 100%)",
+              boxShadow: loading ? undefined : "0 2px 16px rgb(var(--accent-rgb) / 0.32), inset 0 1px 0 rgba(255,255,255,0.18)",
             }}
           >
             {loading ? (
@@ -743,7 +818,18 @@ export default function LessonPackPage() {
                 }} />
                 Generating your lesson pack…
               </>
-            ) : !profileLoaded ? "Loading your profile…" : "Generate Lesson Pack"}
+            ) : (
+              <>
+                {profileLoaded && (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" fill="currentColor" opacity="0.3"/>
+                    <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"/>
+                    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/>
+                  </svg>
+                )}
+                {!profileLoaded ? "Loading your profile…" : "Generate Lesson Pack"}
+              </>
+            )}
           </button>
           {profileLoaded && !canGenerate && (
             <div
@@ -788,6 +874,8 @@ export default function LessonPackPage() {
           background: "var(--surface)",
           padding: "1.25rem 1.4rem",
           overflow: "hidden",
+          boxShadow: "0 4px 24px rgb(0 0 0 / 0.1), 0 1px 4px rgb(0 0 0 / 0.06)",
+          backgroundImage: "linear-gradient(135deg, rgb(var(--accent-rgb) / 0.04) 0%, transparent 60%)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", marginBottom: "1rem" }}>
             <div style={{
@@ -809,8 +897,8 @@ export default function LessonPackPage() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            {Object.entries(engineStatus.providers).map(([id, status]) => (
-              <div key={id} style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            {Object.entries(engineStatus.providers).map(([id, providerState]) => (
+              <div key={id} style={{ display: "flex", alignItems: "center", gap: "0.6rem" }} title={providerState.error || undefined}>
                 <span style={{
                   flexShrink: 0,
                   width: "18px",
@@ -820,7 +908,7 @@ export default function LessonPackPage() {
                   justifyContent: "center",
                   fontSize: "0.72rem",
                 }}>
-                  {status === "searching" ? (
+                  {providerState.status === "searching" ? (
                     <span style={{
                       width: "10px",
                       height: "10px",
@@ -830,16 +918,35 @@ export default function LessonPackPage() {
                       display: "inline-block",
                       animation: "spin 0.65s linear infinite",
                     }} />
-                  ) : status === "done" ? (
+                  ) : providerState.status === "done" ? (
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="#4ade80"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z" /></svg>
-                  ) : status === "failed" ? (
+                  ) : providerState.status === "failed" ? (
                     <svg width="10" height="10" viewBox="0 0 16 16" fill="#fc8181"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z" /></svg>
+                  ) : providerState.status === "rate_limited" ? (
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="#f59e0b"><path d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5A6.5 6.5 0 0 0 8 1.5zm.75 3v3.19l2.22 1.33-.75 1.23L7.25 8.5v-4z" /></svg>
+                  ) : providerState.status === "unavailable" ? (
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6.2 2.2v3.1" />
+                      <path d="M9.8 2.2v3.1" />
+                      <path d="M4.4 5.3h7.2a1.4 1.4 0 0 1 1.4 1.4v1.7a4.9 4.9 0 0 1-1.36 3.42L10.5 13" />
+                      <path d="M5.5 13 4.36 11.82A4.9 4.9 0 0 1 3 8.4V6.7a1.4 1.4 0 0 1 1.4-1.4h2.1" />
+                      <path d="m2.2 2.2 11.6 11.6" />
+                    </svg>
                   ) : null}
                 </span>
                 <span style={{
                   fontSize: "0.8rem",
-                  color: status === "done" ? "#4ade80" : status === "failed" ? "rgba(252,129,129,0.7)" : "var(--muted)",
-                  fontWeight: status === "searching" ? 500 : 400,
+                  color:
+                    providerState.status === "done"
+                      ? "#4ade80"
+                      : providerState.status === "failed"
+                        ? "rgba(252,129,129,0.7)"
+                        : providerState.status === "rate_limited"
+                          ? "#f59e0b"
+                          : providerState.status === "unavailable"
+                            ? "rgba(148,163,184,0.78)"
+                            : "var(--muted)",
+                  fontWeight: providerState.status === "searching" ? 500 : 400,
                   transition: "color 200ms ease",
                 }}>
                   {PROVIDER_LABELS[id] ?? id}
@@ -893,6 +1000,7 @@ export default function LessonPackPage() {
             borderRadius: "16px",
             border: "1px solid var(--border-card)",
             background: "linear-gradient(135deg, rgb(var(--accent-rgb) / 0.07) 0%, transparent 55%)",
+            boxShadow: "0 4px 20px rgb(0 0 0 / 0.1), 0 1px 3px rgb(0 0 0 / 0.06)",
           }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", marginBottom: "0.4rem", flexWrap: "wrap" }}>
@@ -941,14 +1049,21 @@ export default function LessonPackPage() {
                   onClick={handleManualSave}
                   disabled={saveState === "saving"}
                   className="nav-btn-ghost"
-                  style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", opacity: saveState === "saving" ? 0.65 : 1, display: "flex", alignItems: "center", gap: "0.4rem", minHeight: "36px" }}
+                  style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", opacity: saveState === "saving" ? 0.65 : 1, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "36px" }}
                 >
                   {saveState === "saving" ? (
                     <>
                       <span style={{ width: "10px", height: "10px", border: "1.5px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 0.65s linear infinite" }} />
                       Saving…
                     </>
-                  ) : "Save to Library"}
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                      </svg>
+                      Save to Library
+                    </>
+                  )}
                 </button>
               )}
               {(pack._meta?.autoSaved || saveState === "saved") && (
@@ -964,20 +1079,45 @@ export default function LessonPackPage() {
                 type="button"
                 onClick={() => handleExport("lesson-pdf")}
                 className="nav-btn-ghost"
-                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px" }}
-              >Export PDF</button>
+                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                Export PDF
+              </button>
               <button
                 type="button"
                 onClick={() => handleExport("slides-pptx")}
                 className="nav-btn-ghost"
-                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px" }}
-              >Export PPTX</button>
+                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                Export PPTX
+              </button>
               <button
                 type="button"
                 onClick={() => handleExport("worksheet-doc")}
                 className="nav-btn-ghost"
-                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px" }}
-              >Export Worksheet</button>
+                style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", minHeight: "36px", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <line x1="3" y1="6" x2="3.01" y2="6"/>
+                  <line x1="3" y1="12" x2="3.01" y2="12"/>
+                  <line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+                Export Worksheet
+              </button>
             </div>
           </div>
 
@@ -1036,7 +1176,11 @@ export default function LessonPackPage() {
                     background: "rgba(239, 68, 68, 0.065)",
                     border: "1px solid rgba(239, 68, 68, 0.13)",
                   }}>
-                    <span style={{ color: "#fc8181", flexShrink: 0, marginTop: "1px", fontSize: "0.9rem" }}>⚠</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fc8181" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "1px" }}>
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
                     <span style={{ fontSize: "0.87rem", lineHeight: 1.55, color: "var(--text)" }}>{m}</span>
                   </div>
                 ))}
@@ -1084,7 +1228,9 @@ export default function LessonPackPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   {pack.send_adaptations.map((a, i) => (
                     <div key={i} style={{ display: "flex", gap: "0.65rem", alignItems: "flex-start" }}>
-                      <span style={{ color: "#a78bfa", flexShrink: 0, fontSize: "0.7rem", marginTop: "4px" }}>◆</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="#a78bfa" style={{ flexShrink: 0, marginTop: "5px" }}>
+                        <path d="M12 2L2 12l10 10 10-10L12 2z"/>
+                      </svg>
                       <span style={{ fontSize: "0.87rem", lineHeight: 1.55, color: "var(--text)" }}>{a}</span>
                     </div>
                   ))}
@@ -1215,7 +1361,15 @@ export default function LessonPackPage() {
                   }} />
                   Regenerating…
                 </>
-              ) : "Regenerate with feedback"}
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <polyline points="1 4 1 10 7 10"/>
+                    <path d="M3.51 15a9 9 0 1 0 .49-3.9"/>
+                  </svg>
+                  Regenerate with feedback
+                </>
+              )}
             </button>
           </div>
 
