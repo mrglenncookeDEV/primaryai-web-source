@@ -1094,6 +1094,7 @@ export default function SchedulerDrawer({
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
               <button
                 type="button"
+                className="scheduler-print-btn"
                 onClick={handlePrint}
                 title="Print / Save as PDF"
                 style={{
@@ -1140,7 +1141,7 @@ export default function SchedulerDrawer({
                   </button>
                 ))}
               </div>
-              {viewMode === "week" ? (
+              {viewMode === "week" || viewMode === "term" ? (
                 <label
                   style={{
                     display: "inline-flex",

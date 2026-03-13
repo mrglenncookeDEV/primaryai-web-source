@@ -295,16 +295,18 @@ export default function WeekCalendar({
     for (let cursor = new Date(start); cursor <= end; cursor = addDays(cursor, 1)) {
       const iso = toISO(cursor);
       const day = cursor.getDay();
-      days.push({
+      const entry = {
         iso,
         date: new Date(cursor),
         isWeekend: day === 0 || day === 6,
         isMonday: day === 1,
         isToday: iso === todayISO,
-      });
+      };
+      if (!showWeekends && entry.isWeekend) continue;
+      days.push(entry);
     }
     return days;
-  }, [currentTerm, todayISO]);
+  }, [currentTerm, showWeekends, todayISO]);
 
   const termEvents = useMemo(
     () =>
@@ -376,7 +378,7 @@ export default function WeekCalendar({
   }, [termSubjectRows]);
 
   const termColTemplate = useMemo(
-    () => termDays.map(d => d.isWeekend ? "18px" : "minmax(28px, 1fr)").join(" "),
+    () => termDays.map(() => "minmax(28px, 1fr)").join(" "),
     [termDays],
   );
 
@@ -611,19 +613,24 @@ export default function WeekCalendar({
               className="scheduler-term-grid"
               style={{
                 gridTemplateColumns: `180px ${termColTemplate}`,
-                minWidth: `${180 + termDays.reduce((sum, d) => sum + (d.isWeekend ? 18 : 28), 0)}px`,
+                minWidth: `${180 + termDays.length * 28}px`,
               }}
             >
               <div className="scheduler-term-head scheduler-term-head-label">Subject</div>
               {termDays.map((day, dayIdx) => {
-                const showMonth = !day.isWeekend && (dayIdx === 0 || day.date.getDate() === 1);
+                const previousVisibleDay = dayIdx > 0 ? termDays[dayIdx - 1] : null;
+                const showMonth =
+                  !day.isWeekend &&
+                  (!previousVisibleDay || previousVisibleDay.date.getMonth() !== day.date.getMonth());
                 return (
                   <div
                     key={day.iso}
                     className={`scheduler-term-head${day.isToday ? " is-today" : ""}${day.isWeekend ? " is-weekend" : ""}${day.isMonday ? " is-week-start" : ""}${allDayColumnColors[day.iso] ? " scheduler-all-day-col" : ""}`}
                     style={allDayColumnColors[day.iso] ? { background: `color-mix(in srgb, ${allDayColumnColors[day.iso]} 12%, var(--surface))` } : undefined}
                   >
-                    {showMonth && <span className="scheduler-term-head-month">{day.date.toLocaleDateString("en-GB", { month: "short" })}</span>}
+                    <span className={`scheduler-term-head-month${showMonth ? "" : " is-placeholder"}`}>
+                      {showMonth ? day.date.toLocaleDateString("en-GB", { month: "short" }) : "Mmm"}
+                    </span>
                     <span className="scheduler-term-head-day">{day.date.toLocaleDateString("en-GB", { weekday: "narrow" })}</span>
                     <span className="scheduler-term-head-date">{day.date.getDate()}</span>
                   </div>
