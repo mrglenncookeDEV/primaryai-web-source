@@ -334,9 +334,11 @@ export default function SchedulerDrawer({
     if (!open || packsLoaded.current) return;
     packsLoaded.current = true;
     setPacksLoading(true);
-    fetch("/api/library?view=summary&limit=200")
+    const controller = new AbortController();
+    fetch("/api/library?view=summary&limit=200", { signal: controller.signal })
       .then((r) => r.json())
       .then((data) => {
+        if (controller.signal.aborted) return;
         if (data.ok && Array.isArray(data.items)) {
           setPacks(
             data.items.map((item: Record<string, string>) => ({
@@ -349,8 +351,17 @@ export default function SchedulerDrawer({
           );
         }
       })
-      .catch(() => setError("Could not load packs."))
-      .finally(() => setPacksLoading(false));
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setError("Could not load packs.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setPacksLoading(false);
+        }
+      });
+    return () => controller.abort();
   }, [open]);
 
   useEffect(() => {
@@ -361,9 +372,11 @@ export default function SchedulerDrawer({
   useEffect(() => {
     if (!open) return;
     setLoadState((prev) => ({ ...prev, terms: false }));
-    fetch("/api/profile/terms", { cache: "no-store" })
+    const controller = new AbortController();
+    fetch("/api/profile/terms", { cache: "no-store", signal: controller.signal })
       .then((response) => response.json().catch(() => ({})))
       .then((data) => {
+        if (controller.signal.aborted) return;
         if (Array.isArray(data?.terms)) {
           setTerms(
             data.terms.map((term: Record<string, string>) => ({
@@ -376,20 +389,27 @@ export default function SchedulerDrawer({
         }
       })
       .catch(() => undefined)
-      .finally(() => setLoadState((prev) => ({ ...prev, terms: true })));
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoadState((prev) => ({ ...prev, terms: true }));
+        }
+      });
+    return () => controller.abort();
   }, [open]);
 
   // Load events for the current view range
   const loadEvents = useCallback((mode: CalendarViewMode, anchorDate: Date, includeWeekends: boolean, term: UserTerm | null) => {
     const { from, to } = getRangeForView(mode, anchorDate, includeWeekends, term);
+    const controller = new AbortController();
     setEventsLoading(true);
     setLoadState((prev) => ({ ...prev, calendar: false }));
     setError("");
     Promise.all([
-      fetch(`/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store" }).then((r) => r.json()),
-      fetch(`/api/calendar/bank-holidays?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store", signal: controller.signal }).then((r) => r.json()),
+      fetch(`/api/calendar/bank-holidays?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store", signal: controller.signal }).then((r) => r.json()),
     ])
       .then(([data, bankHolidayData]) => {
+        if (controller.signal.aborted) return;
         if (data.ok && Array.isArray(data.events)) {
           setEvents(data.events.map(mapApiEvent));
         }
@@ -399,11 +419,18 @@ export default function SchedulerDrawer({
           setBankHolidayEvents([]);
         }
       })
-      .catch(() => setError("Could not load schedule."))
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setError("Could not load schedule.");
+        }
+      })
       .finally(() => {
-        setEventsLoading(false);
-        setLoadState((prev) => ({ ...prev, calendar: true }));
+        if (!controller.signal.aborted) {
+          setEventsLoading(false);
+          setLoadState((prev) => ({ ...prev, calendar: true }));
+        }
       });
+    return () => controller.abort();
   }, [mapApiEvent]);
 
   useEffect(() => {
@@ -413,7 +440,7 @@ export default function SchedulerDrawer({
       setLoadState((prev) => ({ ...prev, calendar: true }));
       return;
     }
-    loadEvents(viewMode, cursorDate, showWeekends, currentTerm);
+    return loadEvents(viewMode, cursorDate, showWeekends, currentTerm);
   }, [open, viewMode, cursorDate, loadEvents, showWeekends, todayWeekIso, currentTerm]);
 
   useEffect(() => {
@@ -486,16 +513,22 @@ export default function SchedulerDrawer({
 
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
     loadOutlookStatus().catch((err) => {
+      if (cancelled) return;
       const message = err instanceof Error ? err.message : "Could not load Outlook sync status";
       setLoadState((prev) => ({ ...prev, outlook: true }));
       setError(message);
     });
     loadGoogleStatus().catch((err) => {
+      if (cancelled) return;
       const message = err instanceof Error ? err.message : "Could not load Google Calendar sync status";
       setLoadState((prev) => ({ ...prev, google: true }));
       setError(message);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [open, loadOutlookStatus, loadGoogleStatus]);
 
   useEffect(() => {

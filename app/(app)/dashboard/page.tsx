@@ -1202,22 +1202,56 @@ export default function DashboardPage() {
             alignSelf: "flex-start",
           }}
         >
-          <SchedulerDrawer
-            embedded
-            open
-            onClose={() => {}}
-            onScheduleChange={handleScheduleMutation}
-            onViewModeStateChange={setSchedulerViewMode}
-            displayName={displayName || undefined}
-            initialPacks={items.map((item) => ({
-              id: item.id,
-              title: item.title,
-              subject: item.subject,
-              yearGroup: item.yearGroup,
-              topic: item.topic,
-            }))}
-            initialWeekEvents={scheduleEvents}
-          />
+          {initialBootLoading ? (
+            <div
+              style={{
+                minHeight: "540px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.9rem",
+                padding: "2rem 1.5rem",
+                background: "var(--surface)",
+              }}
+            >
+              <span
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  border: "3px solid rgb(var(--accent-rgb) / 0.18)",
+                  borderTopColor: "var(--accent)",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite",
+                }}
+              />
+              <div style={{ textAlign: "center" }}>
+                <p style={{ margin: "0 0 0.25rem", fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
+                  Loading scheduler
+                </p>
+                <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted)" }}>
+                  Preparing timetable and calendar connections.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <SchedulerDrawer
+              embedded
+              open
+              onClose={() => {}}
+              onScheduleChange={handleScheduleMutation}
+              onViewModeStateChange={setSchedulerViewMode}
+              displayName={displayName || undefined}
+              initialPacks={items.map((item) => ({
+                id: item.id,
+                title: item.title,
+                subject: item.subject,
+                yearGroup: item.yearGroup,
+                topic: item.topic,
+              }))}
+              initialWeekEvents={scheduleEvents}
+            />
+          )}
         </div>
 
         <div className={`dashboard-hero-side-wrap${schedulerViewMode === "term" ? " is-below-term" : ""}`}>
