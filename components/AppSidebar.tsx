@@ -85,19 +85,42 @@ export default function AppSidebar() {
   const primaryNavItems = NAV.filter((item) => item.href !== "/account");
 
   useEffect(() => {
-    fetch("/api/profile/setup")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data?.profileSetup) return;
-        const url = String(data.profileSetup.avatarUrl || "");
-        const name = String(data.profileSetup.displayName || "");
-        setAvatarUrl(url);
-        if (!url && name) {
-          const parts = name.trim().split(/\s+/);
-          setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
-        }
-      })
-      .catch(() => {});
+    const loadProfileSetup = () => {
+      fetch("/api/profile/setup", { cache: "no-store" })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (!data?.profileSetup) return;
+          const url = String(data.profileSetup.avatarUrl || "");
+          const name = String(data.profileSetup.displayName || "");
+          setAvatarUrl(url);
+          if (!url && name) {
+            const parts = name.trim().split(/\s+/);
+            setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
+          } else if (!name) {
+            setInitials("");
+          }
+        })
+        .catch(() => {});
+    };
+
+    const handleProfileSetupUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ displayName?: string; avatarUrl?: string }>;
+      const url = String(customEvent.detail?.avatarUrl || "");
+      const name = String(customEvent.detail?.displayName || "");
+      setAvatarUrl(url);
+      if (!url && name) {
+        const parts = name.trim().split(/\s+/);
+        setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
+      } else if (!name) {
+        setInitials("");
+      }
+    };
+
+    loadProfileSetup();
+    window.addEventListener("pa:profile-setup-updated", handleProfileSetupUpdated as EventListener);
+    return () => {
+      window.removeEventListener("pa:profile-setup-updated", handleProfileSetupUpdated as EventListener);
+    };
   }, []);
 
   async function handleLogout(event: FormEvent<HTMLFormElement>) {

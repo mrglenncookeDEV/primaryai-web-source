@@ -635,6 +635,14 @@ export default function ProfileSetupPage() {
         setSaving(false);
         return false;
       }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("pa:profile-setup-updated", {
+          detail: {
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+          },
+        }));
+      }
       setSaving(false);
       return true;
     } catch {

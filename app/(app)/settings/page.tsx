@@ -366,7 +366,22 @@ export default function SettingsPage() {
   }
 
   const postProfile = () => fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...profile, ealPercent: toPayloadPercent(profile.ealPercent), pupilPremiumPercent: toPayloadPercent(profile.pupilPremiumPercent), aboveStandardPercent: toPayloadPercent(profile.aboveStandardPercent), belowStandardPercent: toPayloadPercent(profile.belowStandardPercent), hugelyAboveStandardPercent: toPayloadPercent(profile.hugelyAboveStandardPercent), hugelyBelowStandardPercent: toPayloadPercent(profile.hugelyBelowStandardPercent) }) });
-  const postSetup = () => fetch("/api/profile/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName: profile.displayName, avatarUrl: profile.avatarUrl }) });
+  const postSetup = async () => {
+    const response = await fetch("/api/profile/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: profile.displayName, avatarUrl: profile.avatarUrl }),
+    });
+    if (response.ok && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pa:profile-setup-updated", {
+        detail: {
+          displayName: profile.displayName,
+          avatarUrl: profile.avatarUrl,
+        },
+      }));
+    }
+    return response;
+  };
   const postTerms = () => fetch("/api/profile/terms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ terms }) });
 
   function termStatus(term: TermEntry) {
