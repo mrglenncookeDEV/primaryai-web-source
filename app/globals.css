@@ -7377,14 +7377,14 @@ a.scheduler-modal-confirm {
 .app-sidebar {
   position: sticky;
   top: 64px;
-  width: 62px;
+  width: 70px;
   height: calc(100vh - 64px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.85rem 0;
-  gap: 0.2rem;
+  padding: 0.6rem 0;
+  gap: 8px;
   background: var(--nav-bg);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
@@ -7395,12 +7395,11 @@ a.scheduler-modal-confirm {
 }
 
 .app-sidebar-clock {
-  width: 58px;
-  height: 58px;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.2rem;
   flex-shrink: 0;
 }
 
@@ -7411,32 +7410,135 @@ a.scheduler-modal-confirm {
   box-shadow: 0 2px 8px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(0,0,0,0.06);
 }
 
+/* ── Dashboard Calendar tile ── */
+.app-sidebar-calendar {
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dashboard-calendar {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(0,0,0,0.06);
+  user-select: none;
+}
+
+.dashboard-calendar-header {
+  background: #ff3b30;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dashboard-calendar-month {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-family: -apple-system, system-ui, sans-serif;
+  line-height: 1;
+}
+
+.dashboard-calendar-body {
+  background: #fff;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-calendar-day {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1c1c1e;
+  font-family: -apple-system, system-ui, sans-serif;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Solid theme: sidebar is white, so keep calendar white-bodied — just tighten shadow */
+html[data-theme="solid"] .dashboard-calendar {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.07);
+}
+
+/* Dark theme (root): dark navy sidebar — invert the tile like macOS dark Calendar widget */
+:root .dashboard-calendar-body {
+  background: #1c1c1e;
+}
+
+:root .dashboard-calendar-day {
+  color: #f5f5f7;
+}
+
+:root .dashboard-calendar {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.08);
+}
+
+/* Light theme: restore white body explicitly */
+html[data-theme="light"] .dashboard-calendar-body,
+html[data-theme="solid"] .dashboard-calendar-body {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .dashboard-calendar-day,
+html[data-theme="solid"] .dashboard-calendar-day {
+  color: #1c1c1e;
+}
+
+html[data-theme="light"] .dashboard-calendar {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(0,0,0,0.06);
+}
+
 .app-sidebar-link {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
   border: none;
   background: transparent;
-  color: var(--muted);
+  color: #fff;
   cursor: pointer;
   font: inherit;
   text-decoration: none;
-  transition: background 150ms ease, color 150ms ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(0,0,0,0.06);
+  transition: transform 130ms ease, box-shadow 130ms ease, opacity 130ms ease;
 }
 
 .app-sidebar-link:hover {
-  background: rgb(var(--accent-rgb) / 0.08);
-  color: var(--text);
+  transform: scale(0.96);
+  opacity: 0.92;
   text-decoration: none;
 }
 
+.app-sidebar-link:active {
+  transform: scale(0.88);
+  opacity: 0.85;
+}
+
 .app-sidebar-link.active {
-  background: rgb(var(--accent-rgb) / 0.14);
-  color: var(--accent);
+  outline: 2.5px solid rgba(255,255,255,0.75);
+  outline-offset: 2px;
+}
+
+html[data-theme="light"] .app-sidebar-link.active,
+html[data-theme="solid"] .app-sidebar-link.active {
+  outline-color: rgba(0,0,0,0.3);
 }
 
 .app-sidebar-tooltip {
@@ -7483,7 +7585,7 @@ html[data-theme="solid"] .app-sidebar-tooltip {
   width: 28px;
   height: 1px;
   background: rgb(var(--accent-rgb) / 0.1);
-  margin: 0.35rem 0;
+  margin: 2px 0;
   flex-shrink: 0;
 }
 
@@ -7508,21 +7610,23 @@ html[data-theme="solid"] .app-sidebar-tooltip {
 }
 
 .app-sidebar-nav-avatar {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   border-radius: 14px;
   object-fit: cover;
   display: block;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.7);
 }
 
-.app-sidebar-nav-avatar-fallback {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  font-size: 0.92rem;
+.app-sidebar-nav-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1rem;
   font-weight: 700;
-  box-shadow: none;
+  color: #fff;
+  letter-spacing: 0.03em;
 }
 
 /* ═══════════════════════════════════════════
