@@ -378,38 +378,49 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
 
   return (
     <div style={card}>
-      {/* accent bar */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: "linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 35%, transparent) 75%, transparent 100%)", borderRadius: "18px 18px 0 0" }} />
+      {/* Radial glow in top-right corner */}
+      <div style={{ position: "absolute", top: 0, right: 0, width: "160px", height: "120px", background: "radial-gradient(ellipse at 100% 0%, rgb(var(--accent-rgb) / 0.13) 0%, transparent 70%)", borderRadius: "0 18px 0 0", pointerEvents: "none" }} />
+      {/* Top accent line */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent 0%, rgb(var(--accent-rgb) / 0.7) 30%, rgb(var(--accent-rgb) / 0.9) 50%, rgb(var(--accent-rgb) / 0.7) 70%, transparent 100%)", borderRadius: "18px 18px 0 0" }} />
 
       {/* header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", marginBottom: "1.2rem" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent)", flexShrink: 0 }}>
-          <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" fill="currentColor" opacity="0.25"/>
-          <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"/>
-          <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/>
-        </svg>
-        <div style={{ minWidth: 0 }}>
-          <p style={{ margin: "0 0 0.15rem", fontSize: "0.84rem", fontWeight: 700, color: "var(--text)", lineHeight: 1.25 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "0.9rem", marginBottom: "1.25rem", position: "relative" }}>
+        {/* Icon tile */}
+        <div style={{
+          width: "46px", height: "46px", borderRadius: "13px", flexShrink: 0,
+          background: "linear-gradient(145deg, color-mix(in srgb, var(--accent) 55%, #9333ea) 0%, var(--accent) 100%)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 16px rgb(var(--accent-rgb) / 0.45), 0 1px 3px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.28)",
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3l1.5 4.1L18 9l-4.5 1.9L12 15l-1.5-4.1L6 9l4.5-1.9L12 3z" fill="white" fillOpacity="0.3"/>
+            <path d="M12 3l1.5 4.1L18 9l-4.5 1.9L12 15l-1.5-4.1L6 9l4.5-1.9L12 3z"/>
+            <path d="M19.5 15l.8 2L22 18l-1.7.8-.8 2-.8-2L17 18l1.7-.8.8-2z"/>
+          </svg>
+        </div>
+        <div style={{ minWidth: 0, paddingTop: "0.1rem" }}>
+          <p style={{ margin: "0 0 0.22rem", fontSize: "0.95rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text)", lineHeight: 1.2 }}>
             AI Schedule Assistant
           </p>
-          <p style={{ margin: 0, fontSize: "0.76rem", lineHeight: 1.5, color: "var(--muted)" }}>
-            Summarise your week, build a plan, spot gaps, or schedule a full term.
+          <p style={{ margin: 0, fontSize: "0.77rem", lineHeight: 1.55, color: "var(--muted)" }}>
+            Summarise your week, build smart plans, and spot curriculum gaps.
           </p>
         </div>
       </div>
 
-      {/* tabs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0.45rem", marginBottom: "1.1rem" }}>
+      {/* Segmented tab control */}
+      <div style={{ display: "flex", padding: "3px", borderRadius: "12px", gap: "2px", background: "var(--field-bg)", border: "1px solid var(--border)", marginBottom: "1.1rem" }}>
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
-            padding: "0.6rem 0.65rem", borderRadius: "11px", fontSize: "0.73rem",
-            fontFamily: "inherit", cursor: "pointer", fontWeight: activeTab === t.id ? 700 : 600,
-            border: activeTab === t.id ? "1.5px solid rgb(var(--accent-rgb) / 0.55)" : "1px solid var(--border)",
-            background: activeTab === t.id ? "rgb(var(--accent-rgb) / 0.12)" : "color-mix(in srgb, var(--surface) 80%, transparent)",
-            color: activeTab === t.id ? "var(--accent)" : "var(--muted)",
-            textAlign: "center",
-            boxShadow: activeTab === t.id ? "0 2px 10px rgb(var(--accent-rgb) / 0.16), inset 0 1px 0 rgba(255,255,255,0.1)" : "none",
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem",
+            padding: "0.48rem 0.3rem", borderRadius: "9px", fontSize: "0.71rem",
+            fontFamily: "inherit", cursor: "pointer", fontWeight: activeTab === t.id ? 700 : 500,
+            border: "none",
+            background: activeTab === t.id ? "var(--surface)" : "transparent",
+            color: activeTab === t.id ? "var(--text)" : "var(--muted)",
+            boxShadow: activeTab === t.id ? "0 1px 5px rgba(0,0,0,0.13), 0 0 0 0.5px rgba(0,0,0,0.07)" : "none",
+            transition: "background 150ms, color 150ms, box-shadow 150ms",
+            whiteSpace: "nowrap",
           }}>
             {t.icon}{t.label}
           </button>

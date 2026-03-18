@@ -763,49 +763,56 @@ export default function LibraryPage() {
     <div className="lib-shell">
       {/* ── Top chrome ── */}
       <div className="lib-chrome">
-        <div className="lib-chrome-left">
-          <h1 className="lib-chrome-title">Library</h1>
-          <div className="lib-chrome-stats">
-            <span className="lib-chrome-stat">{packs.length} lesson {packs.length === 1 ? "pack" : "packs"}</span>
-            <span className="lib-chrome-stat-divider">·</span>
-            <span className="lib-chrome-stat">{documents.length} {documents.length === 1 ? "document" : "documents"}</span>
-            <span className="lib-chrome-stat-divider">·</span>
-            <span className="lib-chrome-stat">{folders.length} {folders.length === 1 ? "folder" : "folders"}</span>
+
+        {/* Full-width search row */}
+        <div className="lib-chrome-search-row">
+          <label className="lib-chrome-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search library…"
+              className="lib-chrome-search-input"
+            />
+          </label>
+        </div>
+
+        {/* Title / stats / action buttons */}
+        <div className="lib-chrome-bar">
+          <div className="lib-chrome-left">
+            <h1 className="lib-chrome-title">Library</h1>
+            <div className="lib-chrome-stats">
+              <span className="lib-chrome-stat">{packs.length} lesson {packs.length === 1 ? "pack" : "packs"}</span>
+              <span className="lib-chrome-stat-divider">·</span>
+              <span className="lib-chrome-stat">{documents.length} {documents.length === 1 ? "document" : "documents"}</span>
+              <span className="lib-chrome-stat-divider">·</span>
+              <span className="lib-chrome-stat">{folders.length} {folders.length === 1 ? "folder" : "folders"}</span>
+            </div>
+          </div>
+          <div className="lib-chrome-right">
+            {status && <span className="lib-chrome-error">{status}</span>}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => void handleUpload(e.target.files)}
+            />
+            <button className="lib-chrome-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <IconUpload size={13} />
+              {uploading ? "Uploading…" : "Upload"}
+            </button>
+            <Link href="/lesson-pack" className="lib-chrome-btn is-primary lib-chrome-btn-primary-top">
+              <IconPlus size={13} />
+              New lesson pack
+            </Link>
           </div>
         </div>
-        <div className="lib-chrome-right">
-          {status && <span className="lib-chrome-error">{status}</span>}
-          <div className="lib-chrome-tools">
-            <label className="lib-chrome-search">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search library…"
-                className="lib-chrome-search-input"
-              />
-            </label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            style={{ display: "none" }}
-            onChange={(e) => void handleUpload(e.target.files)}
-          />
-          <button className="lib-chrome-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-            <IconUpload size={13} />
-            {uploading ? "Uploading…" : "Upload"}
-          </button>
-          <Link href="/lesson-pack" className="lib-chrome-btn is-primary lib-chrome-btn-primary-top">
-            <IconPlus size={13} />
-            New lesson pack
-          </Link>
-          </div>
-        </div>
+
       </div>
 
       {/* ── Workspace ── */}

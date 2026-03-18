@@ -11,11 +11,11 @@ type Props = {
 };
 
 const RINGS = [
-  { key: "S", label: "Seconds", r: 28, color: "#f59e0b", light: "#fde68a", dark: "#92400e" },
-  { key: "M", label: "Minutes", r: 43, color: "#10b981", light: "#6ee7b7", dark: "#064e3b" },
-  { key: "H", label: "Hours",   r: 58, color: "#06b6d4", light: "#67e8f9", dark: "#164e63" },
-  { key: "D", label: "Days",    r: 73, color: "#3b82f6", light: "#93c5fd", dark: "#1e3a8a" },
-  { key: "W", label: "Weeks",   r: 88, color: "#8b5cf6", light: "#c4b5fd", dark: "#3b0764" },
+  { key: "S", label: "Seconds", r: 28, color: "#f59e0b", light: "#fbbf24", dark: "#78350f" },
+  { key: "M", label: "Minutes", r: 43, color: "#10b981", light: "#34d399", dark: "#064e3b" },
+  { key: "H", label: "Hours",   r: 58, color: "#06b6d4", light: "#22d3ee", dark: "#155e75" },
+  { key: "D", label: "Days",    r: 73, color: "#3b82f6", light: "#60a5fa", dark: "#1e3a8a" },
+  { key: "W", label: "Weeks",   r: 88, color: "#8b5cf6", light: "#a78bfa", dark: "#3b0764" },
 ] as const;
 
 // Day window: 7am–4pm = 9 hours (rings start full at 7am, drain to zero at 4pm)
@@ -50,6 +50,16 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
   const [bankHols, setBankHols] = useState<Set<string>>(new Set());
   const [toast, setToast]   = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(() =>
+    typeof window !== "undefined" && document.documentElement.dataset.theme === "dark"
+  );
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.dataset.theme === "dark");
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
   const prevMinute          = useRef<number>(-1);
   const prevDaysRef         = useRef<number>(-1);
   const toastTimer          = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,7 +188,23 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
   // Per-ring fracs: S→secFrac, M→minFrac, H→dayFrac, D→termFrac, W→termFrac
   const ringFracs = [secFrac, minFrac, dayFrac, termFrac, termFrac];
 
-  const CX = 100, SW = 9, GSW = 13;
+  const fc = isDark ? {
+    base:    ["rgba(10,10,16,1)", "rgba(18,16,26,0.96)", "rgba(6,6,12,1)"],
+    sheen:   ["rgba(90,110,200,0.14)", "rgba(70,55,130,0.07)", "rgba(255,255,255,0)"],
+    vig:     ["rgba(0,0,0,0)", "rgba(0,0,0,0.28)", "rgba(0,0,0,0.55)"],
+    groove:  (_i: number) => 0.62,
+    tick:    "rgba(255,255,255,0.70)",
+    logo:    "rgba(220,215,210,0.85)",
+  } : {
+    base:    ["#ffffff", "#f5f4f2", "#e2e0dc"],
+    sheen:   ["rgba(210,230,255,0.45)", "rgba(220,210,255,0.18)", "rgba(255,255,255,0)"],
+    vig:     ["rgba(0,0,0,0)", "rgba(0,0,0,0.03)", "rgba(0,0,0,0.12)"],
+    groove:  (i: number) => [0.52, 0.46, 0.40, 0.28, 0.02][i],
+    tick:    "rgba(40,30,18,0.75)",
+    logo:    "rgba(30,25,20,0.80)",
+  };
+
+  const CX = 100, SW = 11, GSW = 15;
 
   return (
     <>
@@ -196,10 +222,23 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
       {/* Left: rings */}
       <svg viewBox="0 0 200 200" className="term-countdown-svg" aria-label="Term countdown">
         <defs>
+          {/* Dial face base — pearl in light mode, dark in dark mode */}
+          <radialGradient id="pearl-base" cx="48%" cy="42%" r="56%">
+            <stop offset="0%"   stopColor={fc.base[0]} />
+            <stop offset="55%"  stopColor={fc.base[1]} />
+            <stop offset="100%" stopColor={fc.base[2]} />
+          </radialGradient>
+          {/* Dial sheen */}
+          <radialGradient id="pearl-sheen" cx="28%" cy="15%" r="65%">
+            <stop offset="0%"   stopColor={fc.sheen[0]} />
+            <stop offset="50%"  stopColor={fc.sheen[1]} />
+            <stop offset="100%" stopColor={fc.sheen[2]} />
+          </radialGradient>
+          {/* Depth vignette */}
           <radialGradient id="dial-bg" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="rgba(0,0,0,0.38)" />
-            <stop offset="70%"  stopColor="rgba(0,0,0,0.14)" />
-            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            <stop offset="0%"   stopColor={fc.vig[0]} />
+            <stop offset="72%"  stopColor={fc.vig[1]} />
+            <stop offset="100%" stopColor={fc.vig[2]} />
           </radialGradient>
 
           {/*
@@ -209,7 +248,7 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             brightest point, with shadow at the inner and outer edges,
             giving a consistent cylindrical "bulge" on every ring.
           */}
-          {RINGS.map(({ key, color, light, dark, r }) => {
+          {RINGS.map(({ key, light, dark, r }) => {
             const outerEdge = r + SW / 2;
             const pct = (v: number) => `${((v / outerEdge) * 100).toFixed(2)}%`;
             return (
@@ -270,9 +309,11 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           </linearGradient>
         </defs>
 
-        {/* Dark dial face — fills inter-groove gaps so no white shows between rings */}
-        <circle cx={CX} cy={100} r={93} fill="rgba(12,12,18,0.82)" />
-        {/* Subtle radial vignette on top */}
+        {/* Pearlescent dial face */}
+        <circle cx={CX} cy={100} r={93} fill="url(#pearl-base)" />
+        {/* Iridescent sheen overlay */}
+        <circle cx={CX} cy={100} r={93} fill="url(#pearl-sheen)" />
+        {/* Subtle centre depth vignette */}
         <circle cx={CX} cy={100} r={93} fill="url(#dial-bg)" />
 
         {/* Rings */}
@@ -290,7 +331,8 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             <g key={key}>
               {/* ── Recessed groove ── */}
               <circle cx={CX} cy={100} r={r} fill="none"
-                stroke="rgba(0,0,0,0.55)" strokeWidth={GSW} />
+                stroke={!isDark && i === 4 ? "#f0ede8" : `rgba(${isDark ? "0,0,0" : "25,18,10"},${fc.groove(i)})`}
+                strokeWidth={GSW} />
 
               {/* ── 3D pipe: vibrant gradient cylinder ── */}
               <circle
@@ -308,37 +350,27 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           );
         })}
 
-        {/* 12/3/6/9 o'clock tick marks just outside the weeks ring */}
-        {[0, 90, 180, 270].map(deg => {
-          const rad = (deg - 90) * Math.PI / 180;
-          return (
-            <line
-              key={deg}
-              x1={CX + Math.cos(rad) * 93} y1={100 + Math.sin(rad) * 93}
-              x2={CX + Math.cos(rad) * 98} y2={100 + Math.sin(rad) * 98}
-              stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round"
-            />
-          );
-        })}
 
-        {/* Centre hub — PrimaryAI logo */}
-        <circle cx={CX} cy={100} r={16} fill="var(--surface)" opacity={0.88} />
+        {/* Centre hub — pearl disc */}
+        <circle cx={CX} cy={100} r={16} fill="url(#pearl-base)" opacity={0.95} />
+        <circle cx={CX} cy={100} r={16} fill="url(#pearl-sheen)" opacity={0.95} />
+        <circle cx={CX} cy={100} r={16} fill="none" stroke="rgba(70,60,50,0.18)" strokeWidth="0.8" />
         <g transform="translate(90 90) scale(0.842)" opacity={0.88}>
           {/* Roof — orange */}
           <path d="M2.5,7.5 L11.5,3.1 c0.3,-0.15, 0.7,-0.15, 1,0 L21.5,7.5"
             stroke="#ff9f43" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {/* House walls */}
           <path d="M19.5,12 v6.5 c0,1.1, -0.9,2, -2,2 h-11 c-1.1,0, -2,-0.9, -2,-2 V12"
-            stroke="var(--text)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            stroke={fc.logo} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {/* Book right page */}
           <path d="M19.5,12 C17.5,10.2, 14.5,10.2, 12,12"
-            stroke="var(--text)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            stroke={fc.logo} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {/* Book spine */}
           <path d="M12,12.2 v8.1"
-            stroke="var(--text)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            stroke={fc.logo} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {/* Book left page */}
           <path d="M12,12 C9.5,10.2, 6.5,10.2, 4.5,12"
-            stroke="var(--text)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            stroke={fc.logo} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </g>
 
         {/* Sweeping second hand — Countdown-style */}
@@ -354,6 +386,28 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           {/* Main hand */}
           <line x1={CX} y1={68} x2={CX} y2={9} stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="butt" opacity="0.95" />
         </g>
+
+        {/* Tick marks — 60 total, rendered on top of rings so they're visible */}
+        {Array.from({ length: 60 }, (_, i) => {
+          const angle = (i * 6 - 90) * Math.PI / 180;
+          const isCardinal = i % 15 === 0;
+          const isMajor    = i % 5 === 0;
+          const outerR = 91.5;
+          const innerR = isCardinal ? 83 : isMajor ? 87 : 90;
+          const sw     = isCardinal ? 2.4 : isMajor ? 1.7 : 1.1;
+          return (
+            <line
+              key={i}
+              x1={CX + Math.cos(angle) * outerR}
+              y1={100 + Math.sin(angle) * outerR}
+              x2={CX + Math.cos(angle) * innerR}
+              y2={100 + Math.sin(angle) * innerR}
+              stroke={fc.tick}
+              strokeWidth={sw}
+              strokeLinecap="round"
+            />
+          );
+        })}
 
         {/* ── Brushed steel case ── */}
         {/* Bezel body — filled ring with 3D torus gradient */}

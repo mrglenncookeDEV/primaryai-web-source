@@ -74,7 +74,10 @@ const NAV = [
   },
 ];
 
-export default function AppSidebar() {
+// App routes already rendered by the (app) layout — global mode skips them.
+const APP_ROUTE_PREFIXES = ["/dashboard", "/library", "/lesson-pack", "/ai-planner", "/settings", "/account", "/billing"];
+
+export default function AppSidebar({ mode = "app" }: { mode?: "app" | "global" }) {
   const path = usePathname() ?? "";
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [initials, setInitials] = useState<string>("");
@@ -90,6 +93,14 @@ export default function AppSidebar() {
   const dockRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ dx: 0, dy: 0 });
   const isDragging = useRef(false);
+
+  // Global mode: hide on app routes (they have their own sidebar) and on widget/preview
+  const isAppRoute = APP_ROUTE_PREFIXES.some(p => path === p || path.startsWith(p + "/"));
+  const isEmbedRoute = path.startsWith("/widget") || path.startsWith("/preview");
+  const hidden = mode === "global" && (isAppRoute || isEmbedRoute);
+
+  // Global mode: no spacer aside (no flex container on marketing pages)
+  const withSpacer = mode === "app";
 
   const accountItem = NAV.find((item) => item.href === "/account") ?? null;
   const primaryNavItems = NAV.filter((item) => item.href !== "/account");
@@ -217,9 +228,8 @@ export default function AppSidebar() {
     ? { position: "fixed", left: pos.x, top: pos.y, transform: "none" }
     : { position: "fixed", left: 12, top: "50%", transform: "translateY(-50%)" };
 
-  return (
-    <aside className="app-sidebar" aria-label="App navigation">
-
+  const dockContent = (
+    <>
       {/* Ghost placeholder — faint dotted outline when dock has been dragged away */}
       {pos && ghostSize && (
         <div
@@ -309,6 +319,15 @@ export default function AppSidebar() {
         </form>
 
       </div>
+    </>
+  );
+
+  if (hidden) return null;
+  if (!withSpacer) return dockContent;
+
+  return (
+    <aside className="app-sidebar" aria-label="App navigation">
+      {dockContent}
     </aside>
   );
 }

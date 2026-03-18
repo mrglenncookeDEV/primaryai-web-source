@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import BackgroundScene from "@/components/BackgroundScene";
 import PageLoader from "@/components/PageLoader";
+import AppSidebar from "@/components/AppSidebar";
+import { getAuthSession } from "@/lib/auth";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,7 +28,8 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const session = await getAuthSession();
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
       <head>
@@ -42,6 +45,7 @@ export default function RootLayout({ children }) {
         <Suspense>
           <PageLoader />
         </Suspense>
+        {session && <AppSidebar mode="global" />}
         {children}
       </body>
     </html>

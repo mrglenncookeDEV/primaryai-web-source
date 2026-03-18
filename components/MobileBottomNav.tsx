@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { VscLibrary } from "react-icons/vsc";
 
-const NAV_ITEMS = [
+const NAV_LEFT = [
   {
     href: "/dashboard",
     label: "Dashboard",
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" rx="1.5" />
         <rect x="14" y="3" width="7" height="7" rx="1.5" />
         <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -19,35 +19,27 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: "/lesson-pack",
-    label: "New Lesson",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-        <path d="M2 12l10 5 10-5" />
-      </svg>
-    ),
-  },
-  {
     href: "/library",
     label: "Library",
-    icon: <VscLibrary size={20} />,
+    icon: <VscLibrary size={22} />,
   },
+];
+
+const NAV_RIGHT = [
   {
     href: "/ai-planner",
     label: "AI Planner",
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"/>
-        <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5 9.5 2z" />
+        <path d="M19.5 11 20.5 13.5 23 14.5 20.5 15.5 19.5 18 18.5 15.5 16 14.5 18.5 13.5 19.5 11z" />
       </svg>
     ),
   },
   {
     href: "/account",
     label: "Account",
-    icon: null, // replaced with avatar below
+    icon: null,
   },
 ];
 
@@ -103,10 +95,45 @@ export default function MobileBottomNav() {
     };
   }, []);
 
+  const fabActive = path === "/lesson-pack" || path.startsWith("/lesson-pack/");
+
   return (
     <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-      {NAV_ITEMS.map(({ href, label, icon }) => {
+
+      {/* Left items */}
+      {NAV_LEFT.map(({ href, label, icon }) => {
         const active = path === href || (href !== "/dashboard" && path.startsWith(href));
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={`mobile-bottom-nav-item${active ? " active" : ""}`}
+            aria-label={label}
+            aria-current={active ? "page" : undefined}
+          >
+            <span className="mobile-bottom-nav-icon">{icon}</span>
+            <span className="mobile-bottom-nav-label">{label}</span>
+          </Link>
+        );
+      })}
+
+      {/* Elevated centre FAB — New Lesson */}
+      <Link
+        href="/lesson-pack"
+        className={`mobile-bottom-nav-fab${fabActive ? " active" : ""}`}
+        aria-label="New Lesson"
+        aria-current={fabActive ? "page" : undefined}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+        <span className="mobile-bottom-nav-fab-label">New</span>
+      </Link>
+
+      {/* Right items */}
+      {NAV_RIGHT.map(({ href, label, icon }) => {
+        const active = path === href || path.startsWith(`${href}/`);
         return (
           <Link
             key={href}
@@ -128,12 +155,13 @@ export default function MobileBottomNav() {
                 </div>
               )
             ) : (
-              icon
+              <span className="mobile-bottom-nav-icon">{icon}</span>
             )}
             <span className="mobile-bottom-nav-label">{label}</span>
           </Link>
         );
       })}
+
     </nav>
   );
 }
