@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { IoFolderOutline } from "react-icons/io5";
+import { FaRegFolderOpen } from "react-icons/fa";
 import { subjectColor } from "@/lib/subjectColor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -83,16 +85,7 @@ function fileTypeLabel(mimeType: string | null, name: string): string {
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 
 function IconFolder({ open, size = 15 }: { open?: boolean; size?: number }) {
-  return open ? (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-      <path d="M2 10h20" />
-    </svg>
-  ) : (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  );
+  return open ? <FaRegFolderOpen size={size} /> : <IoFolderOutline size={size} />;
 }
 
 function IconBook({ size = 14 }: { size?: number }) {
@@ -453,7 +446,7 @@ function FolderRow({
   return (
     <div onClick={onSelect} className={`lib-tree-item${isSelected ? " is-active" : ""}`}>
       <span className="lib-tree-icon" style={{ color: isSelected ? "var(--accent)" : "#f59e0b" }}>
-        <IconFolder open={isSelected} size={14} />
+        <IconFolder open={isSelected} size={28} />
       </span>
       {editing ? (
         <input

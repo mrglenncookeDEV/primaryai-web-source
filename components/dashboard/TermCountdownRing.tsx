@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
+import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 type Props = {
   termName: string;
@@ -9,11 +11,11 @@ type Props = {
 };
 
 const RINGS = [
-  { key: "S", label: "Seconds", r: 28, color: "#f59e0b" },
-  { key: "M", label: "Minutes", r: 43, color: "#10b981" },
-  { key: "H", label: "Hours",   r: 58, color: "#06b6d4" },
-  { key: "D", label: "Days",    r: 73, color: "#3b82f6" },
-  { key: "W", label: "Weeks",   r: 88, color: "#8b5cf6" },
+  { key: "S", label: "Seconds", r: 28, color: "#f59e0b", light: "#fde68a", dark: "#92400e" },
+  { key: "M", label: "Minutes", r: 43, color: "#10b981", light: "#6ee7b7", dark: "#064e3b" },
+  { key: "H", label: "Hours",   r: 58, color: "#06b6d4", light: "#67e8f9", dark: "#164e63" },
+  { key: "D", label: "Days",    r: 73, color: "#3b82f6", light: "#93c5fd", dark: "#1e3a8a" },
+  { key: "W", label: "Weeks",   r: 88, color: "#8b5cf6", light: "#c4b5fd", dark: "#3b0764" },
 ] as const;
 
 // Day window: 7am–4pm = 9 hours (rings start full at 7am, drain to zero at 4pm)
@@ -176,13 +178,13 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
   // Per-ring fracs: S→secFrac, M→minFrac, H→dayFrac, D→termFrac, W→termFrac
   const ringFracs = [secFrac, minFrac, dayFrac, termFrac, termFrac];
 
-  const CX = 100, SW = 9;
+  const CX = 100, SW = 9, GSW = 13;
 
   return (
     <>
     <div className="term-countdown-banner">
       <div>
-        <h2 className="term-countdown-banner-title">{termName} Term</h2>
+        <h2 className="term-countdown-banner-title">Countdown</h2>
       </div>
       <div className="term-countdown-banner-swatches">
         {[...RING_COLORS].reverse().map((color, i) => (
@@ -199,9 +201,78 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             <stop offset="70%"  stopColor="rgba(0,0,0,0.14)" />
             <stop offset="100%" stopColor="rgba(0,0,0,0)" />
           </radialGradient>
+
+          {/*
+            Per-ring 3D pipe gradients — radial, centred on the dial.
+            The gradient radius equals the outer edge of each stroke.
+            This makes the centre of the stroke (= centre of the tube) the
+            brightest point, with shadow at the inner and outer edges,
+            giving a consistent cylindrical "bulge" on every ring.
+          */}
+          {RINGS.map(({ key, color, light, dark, r }) => {
+            const outerEdge = r + SW / 2;
+            const pct = (v: number) => `${((v / outerEdge) * 100).toFixed(2)}%`;
+            return (
+              <radialGradient key={key} id={`pipe-${key}`}
+                cx={CX} cy={100} r={outerEdge}
+                gradientUnits="userSpaceOnUse">
+                <stop offset={pct(r - SW / 2)} stopColor={dark}  />
+                <stop offset={pct(r)}           stopColor={light} />
+                <stop offset="100%"             stopColor={dark}  />
+              </radialGradient>
+            );
+          })}
+          {/* ── Brushed-steel case defs ── */}
+          {/* Annular mask: outer r=99, inner r=92 (clears the ring area) */}
+          <mask id="bezel-mask">
+            <circle cx={CX} cy={100} r={99} fill="white" />
+            <circle cx={CX} cy={100} r={92} fill="black" />
+          </mask>
+
+          {/* Bezel radial gradient: dark inner/outer bevel edges, bright midband (3D torus) */}
+          <radialGradient id="bezel-grad" cx={CX} cy={100} r={99} gradientUnits="userSpaceOnUse">
+            <stop offset="92%"   stopColor="#1a1a1c" />
+            <stop offset="93%"   stopColor="#727276" />
+            <stop offset="94.5%" stopColor="#c4c4c8" />
+            <stop offset="95.5%" stopColor="#ededef" />
+            <stop offset="97%"   stopColor="#b8b8bc" />
+            <stop offset="98%"   stopColor="#747478" />
+            <stop offset="100%"  stopColor="#242428" />
+          </radialGradient>
+
+          {/* Specular glare at ~10 o'clock */}
+          <radialGradient id="bezel-specular" cx="30%" cy="18%" r="42%">
+            <stop offset="0%"   stopColor="rgba(255,255,255,0.62)" />
+            <stop offset="50%"  stopColor="rgba(255,255,255,0.18)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
+
+          {/* Directional brushed-grain filter (high horizontal frequency = fine lateral streaks) */}
+          <filter id="steel-grain" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04 1.6" numOctaves="4" seed="11" result="noise" />
+            <feColorMatrix in="noise" type="matrix"
+              values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.2 0" result="grain" />
+            <feBlend in="SourceGraphic" in2="grain" mode="soft-light" result="grained" />
+            <feComposite in="grained" in2="SourceGraphic" operator="in" />
+          </filter>
+
+          {/* Button/stem gradient — dark→bright→dark vertical banding, lathe-cut metal rod look */}
+          <linearGradient id="btn-steel" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#2a2a2e" />
+            <stop offset="8%"   stopColor="#848488" />
+            <stop offset="22%"  stopColor="#bcbcc0" />
+            <stop offset="38%"  stopColor="#dedee2" />
+            <stop offset="50%"  stopColor="#ebebed" />
+            <stop offset="62%"  stopColor="#d0d0d4" />
+            <stop offset="78%"  stopColor="#909094" />
+            <stop offset="92%"  stopColor="#606064" />
+            <stop offset="100%" stopColor="#26262a" />
+          </linearGradient>
         </defs>
 
-        {/* Radial gradient background */}
+        {/* Dark dial face — fills inter-groove gaps so no white shows between rings */}
+        <circle cx={CX} cy={100} r={93} fill="rgba(12,12,18,0.82)" />
+        {/* Subtle radial vignette on top */}
         <circle cx={CX} cy={100} r={93} fill="url(#dial-bg)" />
 
         {/* Rings */}
@@ -210,24 +281,29 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           const circ   = 2 * Math.PI * r;
           const offset = circ * (1 - frac);
           const isFast = i === 0;
+          const transStyle = {
+            transition: isFast
+              ? "stroke-dashoffset 0.9s linear"
+              : "stroke-dashoffset 1.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          };
           return (
             <g key={key}>
-              <circle cx={CX} cy={100} r={r} fill="none" stroke={color} strokeWidth={SW} opacity={0.07} />
+              {/* ── Recessed groove ── */}
+              <circle cx={CX} cy={100} r={r} fill="none"
+                stroke="rgba(0,0,0,0.55)" strokeWidth={GSW} />
+
+              {/* ── 3D pipe: vibrant gradient cylinder ── */}
               <circle
                 cx={CX} cy={100} r={r}
-                fill="none" stroke={color} strokeWidth={SW}
+                fill="none" stroke={`url(#pipe-${key})`} strokeWidth={SW}
                 strokeLinecap={isFast ? "butt" : "round"}
                 strokeDasharray={circ}
                 strokeDashoffset={offset}
                 transform={`rotate(-90 ${CX} 100)`}
-                style={{
-                  opacity: 0.95 - i * 0.09,
-                  transition: isFast
-                    ? "stroke-dashoffset 0.9s linear"
-                    : "stroke-dashoffset 1.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                }}
+                style={transStyle}
               />
-              {isFast && <circle cx={CX} cy={100 - r} r={SW / 2} fill={color} opacity={0.95} />}
+              {/* Tip ball */}
+              {isFast && <circle cx={CX} cy={100 - r} r={SW / 2} fill={`url(#pipe-${key})`} />}
             </g>
           );
         })}
@@ -279,26 +355,59 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           <line x1={CX} y1={68} x2={CX} y2={9} stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="butt" opacity="0.95" />
         </g>
 
-        {/* Stopwatch frame — double bezel, crown with stem, side buttons */}
-        <g opacity={0.25} stroke="var(--text)" strokeLinecap="round" strokeLinejoin="round">
-          {/* Outer bezel */}
-          <circle cx={CX} cy={100} r={97} fill="none" strokeWidth="2.2" />
-          {/* Inner bezel — creates double-ring case effect */}
-          <circle cx={CX} cy={100} r={91} fill="none" strokeWidth="1.2" />
-          {/* Crown stem (narrow, connects circle top to button) */}
-          <rect x={98} y={-4} width={4} height={7} rx={1} fill="var(--text)" stroke="none" />
-          {/* Crown button (wide rounded rectangle) */}
-          <rect x={93} y={-13} width={14} height={9} rx={3} fill="none" strokeWidth="2" />
-          {/* Left side button (~10:30), rotated to follow the case curvature */}
-          <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.2} fill="none" strokeWidth="1.8"
-            transform={`translate(35 22) rotate(230)`} />
-          {/* Right side button (~1:30) */}
-          <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.2} fill="none" strokeWidth="1.8"
-            transform={`translate(165 22) rotate(310)`} />
-        </g>
+        {/* ── Brushed steel case ── */}
+        {/* Bezel body — filled ring with 3D torus gradient */}
+        <circle cx={CX} cy={100} r={99}
+          fill="url(#bezel-grad)"
+          mask="url(#bezel-mask)"
+          filter="url(#steel-grain)"
+        />
+        {/* Specular glare overlay at ~10 o'clock */}
+        <circle cx={CX} cy={100} r={99}
+          fill="url(#bezel-specular)"
+          mask="url(#bezel-mask)"
+        />
+        {/* Crisp outer rim highlight */}
+        <circle cx={CX} cy={100} r={98.5}
+          fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth={0.8} />
+        {/* Inner groove — separation between case and dial face */}
+        <circle cx={CX} cy={100} r={92.5}
+          fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={1.4} />
+        <circle cx={CX} cy={100} r={91.8}
+          fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={0.7} />
+
+        {/* Crown stem */}
+        <rect x={98} y={-4} width={4} height={8} rx={1.2}
+          fill="url(#btn-steel)" filter="url(#steel-grain)" />
+        <rect x={98} y={-4} width={4} height={8} rx={1.2}
+          fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth={0.5} />
+
+        {/* Crown button */}
+        <rect x={93} y={-14} width={14} height={10} rx={3.5}
+          fill="url(#btn-steel)" filter="url(#steel-grain)" />
+        <rect x={93} y={-14} width={14} height={10} rx={3.5}
+          fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={0.7} />
+        <rect x={93} y={-14} width={14} height={10} rx={3.5}
+          fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={0.4} />
+
+        {/* Left side button (~10:30) */}
+        <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
+          fill="url(#btn-steel)" filter="url(#steel-grain)"
+          transform="translate(35 22) rotate(230)" />
+        <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
+          fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={0.7}
+          transform="translate(35 22) rotate(230)" />
+
+        {/* Right side button (~1:30) */}
+        <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
+          fill="url(#btn-steel)" filter="url(#steel-grain)"
+          transform="translate(165 22) rotate(310)" />
+        <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
+          fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={0.7}
+          transform="translate(165 22) rotate(310)" />
       </svg>
 
-      {/* Right: numeric readout */}
+      {/* Right: numeric readout + calendar/clock */}
       <div className="term-countdown-right">
         <div className="term-countdown-legend">
           {[
@@ -326,6 +435,10 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             );
           })}
         </div>
+        <div className="term-countdown-left">
+          <DashboardCalendar />
+          <DashboardClock />
+        </div>
       </div>
     </div>
     <p style={{
@@ -336,6 +449,7 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
       textAlign: "center",
       letterSpacing: "0.01em",
     }}>
+      {termName}{" · "}
       {termStart.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
       {" – "}
       {termEnd.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}

@@ -1,7 +1,21 @@
 import "./globals.css";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import BackgroundScene from "@/components/BackgroundScene";
 import PageLoader from "@/components/PageLoader";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500"],
+});
 
 export const metadata = {
   title: "PrimaryAI",
@@ -14,7 +28,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
       <head>
         {/* Set theme before first paint to prevent flash */}
         <script
