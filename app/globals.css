@@ -5126,7 +5126,8 @@ body:has(.notes-shell) .app-body {
 
   body:has(.lib-shell) .app-body,
   body:has(.notes-shell) .app-body {
-    height: auto;
+    height: calc(100dvh - 64px - 62px);
+    max-height: calc(100dvh - 64px - 62px);
   }
 
   .app-content:has(.lib-shell),
@@ -10315,9 +10316,24 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
 .notes-attach-item:hover .notes-attach-delete { opacity: 1; }
 
 @media (max-width: 640px) {
-  .notes-shell { flex-direction: column; height: auto; }
-  .notes-list-panel { width: 100%; max-width: 100%; border-right: none; border-bottom: 1px solid var(--border-card); max-height: 40vh; }
-  .notes-editor-panel { min-height: 60vh; }
+  .notes-shell {
+    flex-direction: column;
+    height: calc(100dvh - 64px - 62px); /* nav + bottom nav */
+  }
+  .notes-list-panel {
+    width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-card);
+    flex: 0 0 38%;
+    max-height: 38%;
+    overflow-y: auto;
+  }
+  .notes-editor-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
 }
 
 /* ── NotesPanel (embedded in pack drawer / event view) ──────────────────── */
@@ -10456,3 +10472,160 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
   margin-top: 0.25rem;
 }
 .notes-panel-open-link:hover { text-decoration: underline; }
+
+
+/* ═══════════════════════════════════════════
+   MOBILE POLISH — consolidated fixes
+   (appended; more specific than earlier rules)
+═══════════════════════════════════════════ */
+
+/* ── Nav: reduce padding between 480–799px ── */
+@media (max-width: 799px) {
+  .top-nav {
+    padding: 0 1.25rem;
+  }
+}
+
+/* ── Term countdown: reflow to column on narrow screens ── */
+@media (max-width: 640px) {
+  .term-countdown-wrap {
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1rem 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .term-countdown-svg {
+    width: 140px;
+    height: 140px;
+  }
+
+  .term-countdown-right {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .term-countdown-legend {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+
+  .term-countdown-group {
+    flex-direction: column;
+  }
+}
+
+/* ── Radial view: stack column on narrow screens ── */
+@media (max-width: 640px) {
+  .scheduler-radial-wrap {
+    padding: 0.75rem;
+  }
+
+  .scheduler-radial-body {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .scheduler-radial-svg {
+    max-width: min(300px, 90vw);
+  }
+
+  .scheduler-radial-table-wrap {
+    width: 100%;
+    align-self: stretch;
+  }
+}
+
+/* ── Scheduler term view toggle: tighten on small screens ── */
+@media (max-width: 479px) {
+  .scheduler-term-view-switch {
+    padding: 0.35rem 0.6rem;
+  }
+}
+
+/* ── Dashboard: 1-column hero stats at very small sizes ── */
+@media (max-width: 380px) {
+  .dashboard-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── App content: ensure bottom-nav clearance for notes/lib ── */
+@media (max-width: 900px) {
+  body:has(.notes-shell) .app-content,
+  body:has(.lib-shell) .app-content {
+    padding-bottom: 0;  /* notes/lib handle their own internal scroll */
+  }
+
+  /* Prevent the term countdown from overflowing its card on small screens */
+  .dashboard-hero-stat.term-countdown-stat {
+    overflow: hidden;
+  }
+}
+
+/* ── Settings / AI-planner / account pages: tighten container padding ── */
+@media (max-width: 640px) {
+  .settings-container,
+  .account-container,
+  .ai-planner-wrap {
+    padding: 1rem;
+  }
+
+  /* Full-width cards in settings on mobile */
+  .settings-section,
+  .account-section {
+    border-radius: 12px;
+  }
+}
+
+/* ── Scheduler drawer: full height usage on mobile ── */
+@media (max-width: 799px) {
+  .scheduler-drawer {
+    top: 0;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .scheduler-drawer-header {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* ── Scheduler modal: slightly more screen on very small phones ── */
+@media (max-width: 479px) {
+  .scheduler-modal {
+    max-height: 96dvh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+}
+
+/* ── Library chrome buttons: full-width at 480px and below ── */
+@media (max-width: 480px) {
+  .lib-chrome-btn-primary-top {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Notes title input: tighten on mobile ── */
+@media (max-width: 640px) {
+  .notes-title-input {
+    font-size: 1.1rem;
+  }
+
+  .notes-list-panel {
+    min-height: 0;
+  }
+}
+
+/* ── Prevent horizontal overflow globally ── */
+@media (max-width: 900px) {
+  .app-body,
+  .app-content {
+    overflow-x: hidden;
+  }
+}

@@ -58,9 +58,11 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => obs.disconnect();
   }, []);
+  const [minuteFlash, setMinuteFlash] = useState(false);
   const prevMinute          = useRef<number>(-1);
   const prevDaysRef         = useRef<number>(-1);
   const toastTimer          = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashTimer          = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fireConfetti = useCallback(() => {
     import("canvas-confetti").then(({ default: confetti }) => {
@@ -109,6 +111,21 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
     }
     prevMinute.current = m;
   }, [now, fireConfetti, showToast]);
+
+  // Right-button red blink (×3) at the top of every minute
+  useEffect(() => {
+    if (now.getSeconds() !== 0) return;
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    const blink = (remaining: number) => {
+      if (remaining <= 0) return;
+      setMinuteFlash(true);
+      flashTimer.current = setTimeout(() => {
+        setMinuteFlash(false);
+        flashTimer.current = setTimeout(() => blink(remaining - 1), 160);
+      }, 220);
+    };
+    blink(6);
+  }, [now]);
 
   // Parse dates
   const [sy, sm, sd] = termStartDate.split("-").map(Number);
@@ -203,6 +220,19 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
   };
 
   const CX = 100, SW = 11, GSW = 15;
+
+  const sweepDeg = (now.getSeconds() / 60) * 360;
+
+  function pieSector(r: number, fromDeg: number, toDeg: number): string {
+    if (toDeg <= fromDeg) return "";
+    if (toDeg >= 360) toDeg = 359.99;
+    const toRad = (d: number) => -Math.PI / 2 + (d * Math.PI) / 180;
+    const sr = toRad(fromDeg), er = toRad(toDeg);
+    const large = toDeg - fromDeg > 180 ? 1 : 0;
+    const x1 = CX + r * Math.cos(sr), y1 = 100 + r * Math.sin(sr);
+    const x2 = CX + r * Math.cos(er), y2 = 100 + r * Math.sin(er);
+    return `M ${CX} 100 L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+  }
 
   return (
     <>
@@ -331,6 +361,20 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             <feComposite in="grained" in2="SourceGraphic" operator="in" />
           </filter>
 
+          {/* Red button gradient — for minute-flash on right side button */}
+          <linearGradient id="btn-red" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#7f1d1d" />
+            <stop offset="20%"  stopColor="#dc2626" />
+            <stop offset="50%"  stopColor="#ef4444" />
+            <stop offset="80%"  stopColor="#dc2626" />
+            <stop offset="100%" stopColor="#7f1d1d" />
+          </linearGradient>
+
+          {/* Sweep edge softener — gentle blur to dissolve sector/fan boundaries */}
+          <filter id="sweep-blur" x="-15%" y="-15%" width="130%" height="130%">
+            <feGaussianBlur stdDeviation="2.5" />
+          </filter>
+
           {/* Button/stem gradient — dark→bright→dark vertical banding, lathe-cut metal rod look */}
           <linearGradient id="btn-steel" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor="#2a2a2e" />
@@ -351,6 +395,11 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
         <circle cx={CX} cy={100} r={93} fill="url(#pearl-sheen)" />
         {/* Subtle centre depth vignette */}
         <circle cx={CX} cy={100} r={93} fill="url(#dial-bg)" />
+
+        {/* ── Persistent elapsed sweep (stays filled as hand moves) ── */}
+        {sweepDeg > 0.5 && (
+          <path d={pieSector(90, 0, sweepDeg)} fill="#ef4444" opacity={0.13} />
+        )}
 
         {/* Rings */}
         {RINGS.map(({ key, r, color }, i) => {
@@ -412,11 +461,10 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           transform={`rotate(${-(now.getSeconds() / 60) * 360} ${CX} 100)`}
           style={{ transition: "transform 0.9s linear" }}
         >
-          {/* Fading sector trail — wider & fainter further behind the hand */}
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="30" strokeLinecap="butt" opacity="0.025" transform={`rotate(50 ${CX} 100)`} />
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="20" strokeLinecap="butt" opacity="0.05"  transform={`rotate(28 ${CX} 100)`} />
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="12" strokeLinecap="butt" opacity="0.08"  transform={`rotate(14 ${CX} 100)`} />
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="6"  strokeLinecap="butt" opacity="0.14"  transform={`rotate(5 ${CX} 100)`} />
+          {/* Comet glow near hand */}
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="60" strokeLinecap="butt" opacity="0.06" transform={`rotate(28 ${CX} 100)`} />
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="30" strokeLinecap="butt" opacity="0.10" transform={`rotate(12 ${CX} 100)`} />
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="12" strokeLinecap="butt" opacity="0.15" transform={`rotate(4 ${CX} 100)`} />
           {/* Main hand */}
           <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="2.5" strokeLinecap="butt" opacity="0.95" />
         </g>
@@ -510,13 +558,21 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={0.7}
           transform="translate(35 22) rotate(230)" />
 
-        {/* Right side button (~1:30) */}
+        {/* Right side button (~1:30) — flashes red on the minute */}
         <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
-          fill="url(#btn-steel)" filter="url(#steel-grain)"
-          transform="translate(165 22) rotate(310)" />
+          fill={minuteFlash ? "url(#btn-red)" : "url(#btn-steel)"}
+          filter="url(#steel-grain)"
+          transform="translate(165 22) rotate(310)"
+          style={{ transition: "fill 0.15s ease" }} />
         <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
-          fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={0.7}
+          fill="none" stroke={minuteFlash ? "rgba(180,0,0,0.7)" : "rgba(0,0,0,0.55)"} strokeWidth={0.7}
           transform="translate(165 22) rotate(310)" />
+        {minuteFlash && (
+          <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
+            fill="rgba(239,68,68,0.35)"
+            transform="translate(165 22) rotate(310)"
+            style={{ filter: "blur(2px)" }} />
+        )}
       </svg>
 
     </div>
