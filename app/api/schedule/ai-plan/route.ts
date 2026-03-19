@@ -58,6 +58,8 @@ RULES:
 
 Respond with ONLY valid JSON in this exact format:
 {
+  "assumptions": ["2-4 short assumptions you had to make from the teacher's description"],
+  "confidence": "high",
   "events": [
     {
       "title": "Maths - Fractions",
@@ -75,14 +77,22 @@ Respond with ONLY valid JSON in this exact format:
 
   try {
     const raw = await callScheduleAI(prompt);
-    const parsed = extractJson(raw) as { events?: unknown[] };
+    const parsed = extractJson(raw) as { events?: unknown[]; assumptions?: string[]; confidence?: string };
     if (!Array.isArray(parsed?.events)) throw new Error("AI returned unexpected format");
 
     const events = parsed.events.filter((e: any) =>
       e?.title && e?.scheduled_date && e?.start_time && e?.end_time
     );
 
-    return NextResponse.json({ ok: true, events });
+    const confidence =
+      parsed.confidence === "high" || parsed.confidence === "low" ? parsed.confidence : "medium";
+
+    return NextResponse.json({
+      ok: true,
+      events,
+      assumptions: Array.isArray(parsed.assumptions) ? parsed.assumptions.slice(0, 4).map(String) : [],
+      confidence,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("ai-plan error:", message);

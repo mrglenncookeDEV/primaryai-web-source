@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { BsWatch } from "react-icons/bs";
 
 type AiEvent = {
   title: string;
@@ -18,6 +19,14 @@ type SummaryData = {
   summary: string;
   highlights: string[];
   suggestions: string[];
+};
+
+type ReflectionVote = "agree" | "not_quite" | "ignore";
+
+type PlanResponse = {
+  events: AiEvent[];
+  assumptions?: string[];
+  confidence?: "high" | "medium" | "low";
 };
 
 type GapItem = {
@@ -77,13 +86,23 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState("");
   const [planEvents, setPlanEvents] = useState<AiEvent[] | null>(null);
+  const [planMeta, setPlanMeta] = useState<{ assumptions: string[]; confidence: "high" | "medium" | "low" }>({
+    assumptions: [],
+    confidence: "medium",
+  });
   const [planCommitting, setPlanCommitting] = useState(false);
   const [planDone, setPlanDone] = useState(false);
+  const [planReviewTouched, setPlanReviewTouched] = useState(false);
+  const [planEventFlags, setPlanEventFlags] = useState<Record<number, string[]>>({});
+  const [planReviewPrompt, setPlanReviewPrompt] = useState("");
+  const [planVote, setPlanVote] = useState<ReflectionVote | null>(null);
 
   // Gaps
   const [gaps, setGaps] = useState<{ gaps: GapItem[]; wellCovered: string[] } | null>(null);
   const [gapsLoading, setGapsLoading] = useState(false);
   const [gapsError, setGapsError] = useState("");
+  const [summaryVote, setSummaryVote] = useState<ReflectionVote | null>(null);
+  const [gapsVote, setGapsVote] = useState<ReflectionVote | null>(null);
 
   // Term plan
   const [termDocText, setTermDocText] = useState("");
@@ -97,6 +116,59 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
   const [termFileUploading, setTermFileUploading] = useState(false);
   const termFileRef = useRef<HTMLInputElement>(null);
 
+  async function trackTelemetry(event: string, payload: Record<string, unknown> = {}) {
+    try {
+      await fetch("/api/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event, payload }),
+      });
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  function setReviewTouched(event: string, payload: Record<string, unknown> = {}) {
+    setPlanReviewTouched(true);
+    void trackTelemetry(event, payload);
+  }
+
+  function togglePlanEventFlag(index: number, flag: string) {
+    setPlanEventFlags((prev) => {
+      const current = prev[index] ?? [];
+      const next = current.includes(flag) ? current.filter((item) => item !== flag) : [...current, flag];
+      return { ...prev, [index]: next };
+    });
+    setReviewTouched("schedule_plan_flagged", { index, flag });
+  }
+
+  function planWarnings(events: AiEvent[], flags: Record<number, string[]>) {
+    const warnings: string[] = [];
+    if (!events.length) return warnings;
+
+    if (events.some((evt) => evt.start_time < "09:00" || evt.end_time > "15:30")) {
+      warnings.push("Some events sit outside a typical UK primary school day.");
+    }
+    if (events.some((evt) => evt.start_time < "13:00" && evt.end_time > "12:00")) {
+      warnings.push("At least one event overlaps the usual lunch window.");
+    }
+    if (events.some((evt) => !evt.subject || evt.subject === "General")) {
+      warnings.push("Some events still have a generic or missing subject.");
+    }
+    if (events.some((evt) => String(evt.title || "").trim().length < 10 || !String(evt.title || "").includes("-"))) {
+      warnings.push("Some event titles are broad and may need sharpening before you add them.");
+    }
+    const lessonSubjects = Array.from(new Set(events.filter((evt) => evt.event_type !== "custom").map((evt) => evt.subject)));
+    if (lessonSubjects.length > 0 && !lessonSubjects.some((subject) => !["Maths", "English"].includes(subject))) {
+      warnings.push("This draft leans heavily on core subjects and may be missing foundation coverage.");
+    }
+    if (Object.values(flags).some((items) => items.length > 0)) {
+      warnings.push("You have already flagged issues in the draft. Resolve or accept them before commit.");
+    }
+
+    return warnings;
+  }
+
   // ── Summary ─────────────────────────────────────────────────────────────────
 
   async function loadSummary() {
@@ -108,6 +180,7 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Summary failed");
       setSummary(data);
+      setSummaryVote(null);
     } catch (err) {
       setSummaryError(err instanceof Error ? err.message : "Could not load summary");
     } finally {
@@ -127,6 +200,7 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gap analysis failed");
       setGaps(data);
+      setGapsVote(null);
     } catch (err) {
       setGapsError(err instanceof Error ? err.message : "Could not analyse gaps");
     } finally {
@@ -141,16 +215,30 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
     setPlanLoading(true);
     setPlanError("");
     setPlanEvents(null);
+    setPlanMeta({ assumptions: [], confidence: "medium" });
     setPlanDone(false);
+    setPlanReviewTouched(false);
+    setPlanEventFlags({});
+    setPlanReviewPrompt("");
+    setPlanVote(null);
     try {
       const res = await fetch("/api/schedule/ai-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: planDesc, weekStart: planWeekStart }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as PlanResponse & { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Planning failed");
       setPlanEvents(data.events ?? []);
+      setPlanMeta({
+        assumptions: Array.isArray(data.assumptions) ? data.assumptions : [],
+        confidence: data.confidence ?? "medium",
+      });
+      void trackTelemetry("schedule_plan_generated", {
+        weekStart: planWeekStart,
+        eventCount: data.events?.length ?? 0,
+        confidence: data.confidence ?? "medium",
+      });
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : "Planning failed");
     } finally {
@@ -160,22 +248,36 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
 
   async function commitPlanEvents() {
     if (!planEvents?.length) return;
+    if (!planReviewTouched) {
+      const proceed = window.confirm("You have not reviewed this draft yet. Add events anyway?");
+      if (!proceed) return;
+      void trackTelemetry("schedule_plan_committed_without_review", { eventCount: planEvents.length });
+    } else {
+      void trackTelemetry("schedule_plan_committed_after_review", {
+        eventCount: planEvents.length,
+        flaggedEvents: Object.values(planEventFlags).filter((items) => items.length > 0).length,
+      });
+    }
     setPlanCommitting(true);
     setPlanError("");
     try {
       for (const evt of planEvents) {
-        await fetch("/api/schedule", {
+        const res = await fetch("/api/schedule", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: evt.title, subject: evt.subject,
             yearGroup: evt.year_group, scheduledDate: evt.scheduled_date,
             startTime: evt.start_time, endTime: evt.end_time,
-            eventType: evt.event_type ?? "lesson_pack",
-            eventCategory: evt.event_category ?? null,
+            eventType: evt.event_type === "lesson_pack" ? "custom" : (evt.event_type ?? "custom"),
+            eventCategory: evt.event_type === "lesson_pack" ? "planned_lesson" : (evt.event_category ?? null),
             notes: evt.notes ?? null,
           }),
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error ?? "Could not save one of the planned events");
+        }
       }
       setPlanDone(true);
       setPlanEvents(null);
@@ -337,6 +439,18 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
     borderLeft: "3px solid rgb(var(--accent-rgb) / 0.5)",
   };
 
+  const reviewChip: React.CSSProperties = {
+    fontSize: "0.72rem",
+    fontWeight: 600,
+    fontFamily: "inherit",
+    borderRadius: "999px",
+    cursor: "pointer",
+    padding: "0.28rem 0.6rem",
+    border: "1px solid var(--border)",
+    background: "transparent",
+    color: "var(--muted)",
+  };
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "summary", label: "Week Summary", icon: (
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -348,11 +462,7 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
         <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/>
       </svg>
     )},
-    { id: "gaps",    label: "Gap Check", icon: (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-      </svg>
-    )},
+    { id: "gaps",    label: "Gap Check", icon: <BsWatch size={13} style={{ flexShrink: 0 }} /> },
     { id: "term",    label: "Term Plan", icon: (
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
         <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
@@ -447,6 +557,33 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
           {summary && !summaryLoading && (
             <div style={{ ...sectionCard, display: "flex", flexDirection: "column", gap: "0.85rem" }}>
               <p style={{ margin: 0, fontSize: "0.86rem", lineHeight: 1.65, color: "var(--text)" }}>{summary.summary}</p>
+              <div style={{ display: "grid", gap: "0.35rem" }}>
+                <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--muted)" }}>Your Judgment</p>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  {[
+                    { id: "agree", label: "Agree" },
+                    { id: "not_quite", label: "Not quite" },
+                    { id: "ignore", label: "Ignore" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setSummaryVote(item.id as ReflectionVote);
+                        void trackTelemetry("schedule_summary_judged", { vote: item.id });
+                      }}
+                      style={{
+                        ...reviewChip,
+                        border: summaryVote === item.id ? "1px solid var(--accent)" : reviewChip.border,
+                        background: summaryVote === item.id ? "rgb(var(--accent-rgb) / 0.12)" : reviewChip.background,
+                        color: summaryVote === item.id ? "var(--accent)" : reviewChip.color,
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {summary.highlights.length > 0 && (
                 <div>
                   <p style={{ margin: "0 0 0.3rem", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--muted)" }}>Highlights</p>
@@ -499,6 +636,57 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
           </button>
           {planEvents && planEvents.length > 0 && (
             <div style={{ ...sectionCard, display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+              <div style={{ ...sectionCard, padding: "0.8rem 0.9rem" }}>
+                <p style={{ margin: "0 0 0.35rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
+                  Check the draft
+                </p>
+                <p style={{ margin: "0 0 0.45rem", fontSize: "0.82rem", color: planMeta.confidence === "high" ? "#16a34a" : planMeta.confidence === "low" ? "#f59e0b" : "var(--accent)", fontWeight: 700 }}>
+                  Confidence: {planMeta.confidence.toUpperCase()}
+                </p>
+                {planMeta.assumptions.length > 0 && (
+                  <div style={{ marginBottom: "0.55rem" }}>
+                    <p style={{ margin: "0 0 0.2rem", fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700 }}>AI assumptions</p>
+                    <ul style={{ margin: 0, paddingLeft: "1rem" }}>
+                      {planMeta.assumptions.map((item, index) => (
+                        <li key={index} style={{ fontSize: "0.8rem", color: "var(--text)", lineHeight: 1.5 }}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div style={{ display: "grid", gap: "0.35rem" }}>
+                  {[
+                    "What assumption did the AI make?",
+                    "What is missing from this week?",
+                    "Which event would you change first?",
+                  ].map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => {
+                        setPlanReviewPrompt(prompt);
+                        setReviewTouched("schedule_plan_review_opened", { prompt });
+                      }}
+                      style={{ ...reviewChip, textAlign: "left", justifyContent: "flex-start" as const }}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+                {planReviewPrompt && (
+                  <p style={{ margin: "0.55rem 0 0", fontSize: "0.8rem", color: "var(--text)", lineHeight: 1.5 }}>
+                    Your judgment prompt: {planReviewPrompt}
+                  </p>
+                )}
+                {planWarnings(planEvents, planEventFlags).length > 0 && (
+                  <div style={{ marginTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                    {planWarnings(planEvents, planEventFlags).map((warning) => (
+                      <p key={warning} style={{ margin: 0, fontSize: "0.78rem", color: "#f59e0b", lineHeight: 1.45 }}>
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
               <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
                 Preview — {planEvents.length} event{planEvents.length !== 1 ? "s" : ""}
               </p>
@@ -507,7 +695,52 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
                   <div key={i} style={previewCard}>
                     <p style={{ margin: "0 0 0.1rem", fontWeight: 600, fontSize: "0.82rem", color: "var(--text)" }}>{evt.title}</p>
                     <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--muted)" }}>{formatDate(evt.scheduled_date)} · {evt.start_time}–{evt.end_time} · {evt.subject}</p>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", marginTop: "0.45rem" }}>
+                      {["Time wrong", "Subject wrong", "Too vague", "Missing context"].map((flag) => {
+                        const active = (planEventFlags[i] ?? []).includes(flag);
+                        return (
+                          <button
+                            key={flag}
+                            type="button"
+                            onClick={() => togglePlanEventFlag(i, flag)}
+                            style={{
+                              ...reviewChip,
+                              padding: "0.22rem 0.5rem",
+                              border: active ? "1px solid var(--accent)" : reviewChip.border,
+                              background: active ? "rgb(var(--accent-rgb) / 0.12)" : reviewChip.background,
+                              color: active ? "var(--accent)" : reviewChip.color,
+                            }}
+                          >
+                            {flag}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                {[
+                  { id: "agree", label: "Agree" },
+                  { id: "not_quite", label: "Not quite" },
+                  { id: "ignore", label: "Ignore" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setPlanVote(item.id as ReflectionVote);
+                      setReviewTouched("schedule_plan_judged", { vote: item.id });
+                    }}
+                    style={{
+                      ...reviewChip,
+                      border: planVote === item.id ? "1px solid var(--accent)" : reviewChip.border,
+                      background: planVote === item.id ? "rgb(var(--accent-rgb) / 0.12)" : reviewChip.background,
+                      color: planVote === item.id ? "var(--accent)" : reviewChip.color,
+                    }}
+                  >
+                    {item.label}
+                  </button>
                 ))}
               </div>
               <div style={controlRow}>
@@ -538,6 +771,30 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
           {gapsError && <p style={{ margin: 0, fontSize: "0.82rem", color: "#ef4444" }}>{gapsError}</p>}
           {gaps && !gapsLoading && (
             <>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                {[
+                  { id: "agree", label: "Agree" },
+                  { id: "not_quite", label: "Not quite" },
+                  { id: "ignore", label: "Ignore" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setGapsVote(item.id as ReflectionVote);
+                      void trackTelemetry("schedule_gaps_judged", { vote: item.id });
+                    }}
+                    style={{
+                      ...reviewChip,
+                      border: gapsVote === item.id ? "1px solid var(--accent)" : reviewChip.border,
+                      background: gapsVote === item.id ? "rgb(var(--accent-rgb) / 0.12)" : reviewChip.background,
+                      color: gapsVote === item.id ? "var(--accent)" : reviewChip.color,
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
               {gaps.wellCovered.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
                   {gaps.wellCovered.map((s) => (

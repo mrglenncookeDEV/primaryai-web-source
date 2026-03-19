@@ -45,7 +45,15 @@ type LessonPack = {
   plenary: string;
   mini_assessment: { questions: string[]; answers: string[] };
   slides: Array<{ title: string; bullets: string[]; speaker_notes?: string }>;
-  _meta?: { autoSaved?: boolean };
+  _meta?: {
+    autoSaved?: boolean;
+    usedCurriculumObjectives: string[];
+    usedContextNotes: boolean;
+    usedTeacherProfile: boolean;
+    passesRun: Array<"quality" | "alignment" | "finalize">;
+    confidence: "high" | "medium" | "low";
+    confidenceReason: string;
+  };
 };
 
 type LessonPackResponse = LessonPack | { error: string };
@@ -54,6 +62,22 @@ type ExportResponse = { ok: boolean; format: string; data: unknown } | { error: 
 const YEAR_GROUPS = ["Reception", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
 const MIN_CLASS_NOTES_CHARS = 200;
 const CONTEXT_FILE_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.txt,.md,.csv,.json,.tsv,.log,.rtf,.ods";
+const GUIDED_REVIEW_PROMPTS = [
+  "Tighten objectives",
+  "Simplify pupil explanation",
+  "Improve worked example",
+  "Increase challenge",
+  "Add scaffolds",
+  "Improve SEND adaptations",
+  "Strengthen assessment",
+  "Improve curriculum alignment",
+] as const;
+const SECTION_REVIEW_OPTIONS = {
+  objectives: ["Clear", "Too broad", "Not measurable"],
+  worked_example: ["Clear", "Needs modelling", "Too abstract"],
+  activities: ["Well differentiated", "Too similar", "Needs scaffolds"],
+  adaptations: ["Useful", "Too generic", "Needs specificity"],
+} as const;
 
 const SUBJECT_GROUPS = [
   { label: "Core Subjects", subjects: ["Maths", "English", "Science"] },
@@ -277,6 +301,10 @@ export default function LessonPackPage() {
   const [contextError, setContextError] = useState("");
   const [contextParsing, setContextParsing] = useState(false);
   const [contextChars, setContextChars] = useState(0);
+  const [reviewTouched, setReviewTouched] = useState(false);
+  const [guidedFeedback, setGuidedFeedback] = useState<string[]>([]);
+  const [sectionReview, setSectionReview] = useState<Record<string, string>>({});
+  const [exportWarning, setExportWarning] = useState<null | { type: "export"; format: "lesson-pdf" | "slides-pptx" | "worksheet-doc" } | { type: "save" }>(null);
   const [uploadLessonOpen, setUploadLessonOpen] = useState(false);
   const [uploadLessonSaving, setUploadLessonSaving] = useState(false);
   const [uploadLessonError, setUploadLessonError] = useState("");
@@ -327,6 +355,53 @@ export default function LessonPackPage() {
     const timeout = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  async function trackTelemetry(event: string, payload: Record<string, unknown> = {}) {
+    try {
+      await fetch("/api/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event, payload }),
+      });
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  function markReviewInteraction(event: string, payload: Record<string, unknown> = {}) {
+    setReviewTouched(true);
+    void trackTelemetry(event, payload);
+  }
+
+  function toggleGuidedFeedback(label: string) {
+    setGuidedFeedback((prev) => {
+      const next = prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label];
+      return next;
+    });
+    markReviewInteraction("lesson_pack_review_opened", { prompt: label });
+  }
+
+  function setSectionReviewChoice(section: string, value: string) {
+    setSectionReview((prev) => ({ ...prev, [section]: value }));
+    markReviewInteraction("lesson_pack_section_flagged", { section, value });
+  }
+
+  function buildFeedbackPayload() {
+    const parts: string[] = [];
+    if (guidedFeedback.length > 0) {
+      parts.push(`Requested review focus: ${guidedFeedback.join("; ")}.`);
+    }
+    const sectionNotes = Object.entries(sectionReview)
+      .filter(([, value]) => value && !["Clear", "Useful", "Well differentiated"].includes(value))
+      .map(([section, value]) => `${section}: ${value}`);
+    if (sectionNotes.length > 0) {
+      parts.push(`Section review notes: ${sectionNotes.join("; ")}.`);
+    }
+    if (feedback.trim()) {
+      parts.push(feedback.trim());
+    }
+    return parts.join("\n\n").trim();
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -408,6 +483,9 @@ export default function LessonPackPage() {
         setForm({ year_group: item.year_group ?? pack.year_group ?? "", subject: item.subject ?? pack.subject ?? "", topic: item.topic ?? pack.topic ?? "" });
         setSaveState("saved");
         setSaveMsg("Loaded from library");
+        setReviewTouched(false);
+        setGuidedFeedback([]);
+        setSectionReview({});
       } catch {
         // silently ignore — user can generate normally
       } finally {
@@ -468,7 +546,11 @@ export default function LessonPackPage() {
     setExportResult(null);
     setSaveState("idle");
     setSaveMsg("");
+    setReviewTouched(false);
+    setGuidedFeedback([]);
+    setSectionReview({});
     setEngineStatus({ providers: buildInitialProviderStates(providerCatalog), pass: null, ensembled: false });
+    void trackTelemetry("lesson_pack_generated", { yearGroup: form.year_group, subject: form.subject, topic: form.topic });
 
     try {
       const res = await fetch("/api/lesson-pack/stream", {
@@ -534,8 +616,12 @@ export default function LessonPackPage() {
     }
   }
 
-  async function handleExport(format: "lesson-pdf" | "slides-pptx" | "worksheet-doc") {
+  async function handleExport(format: "lesson-pdf" | "slides-pptx" | "worksheet-doc", allowWithoutReview = false) {
     if (!result || !isPack(result)) return;
+    if (!reviewTouched && !allowWithoutReview) {
+      setExportWarning({ type: "export", format });
+      return;
+    }
     const res = await fetch("/api/lesson-pack/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -558,10 +644,15 @@ export default function LessonPackPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    void trackTelemetry(allowWithoutReview ? "lesson_pack_exported_without_review" : "lesson_pack_exported_after_review", { format });
   }
 
-  async function handleManualSave() {
+  async function handleManualSave(allowWithoutReview = false) {
     if (!result || !isPack(result) || saveState === "saving" || saveState === "saved") return;
+    if (!reviewTouched && !allowWithoutReview) {
+      setExportWarning({ type: "save" });
+      return;
+    }
     setSaveState("saving");
     setSaveMsg("");
     const res = await fetch("/api/library", {
@@ -572,6 +663,7 @@ export default function LessonPackPage() {
     const data = await res.json();
     if (res.ok) {
       setSaveState("saved");
+      void trackTelemetry(allowWithoutReview ? "lesson_pack_saved_without_review" : "lesson_pack_saved_after_review");
     } else {
       setSaveState("error");
       setSaveMsg(res.status === 401 ? "Sign in to save to your library" : (data?.error ?? "Save failed"));
@@ -579,7 +671,8 @@ export default function LessonPackPage() {
   }
 
   async function handleRegenerate() {
-    if (!feedback.trim() || regenLoading) return;
+    const compiledFeedback = buildFeedbackPayload();
+    if (!compiledFeedback || regenLoading) return;
     if (!canGenerate) {
       showClassNotesToast();
       return;
@@ -588,6 +681,7 @@ export default function LessonPackPage() {
     setExportResult(null);
     setSaveState("idle");
     setSaveMsg("");
+    markReviewInteraction("lesson_pack_regenerated", { guidedFeedback, sectionReview });
     setEngineStatus({ providers: buildInitialProviderStates(providerCatalog), pass: null, ensembled: false });
 
     try {
@@ -596,7 +690,7 @@ export default function LessonPackPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          feedback: feedback.trim(),
+          feedback: compiledFeedback,
           context_notes: contextNotes || undefined,
           forceSave: forceSaveFromScheduler,
         }),
@@ -643,6 +737,7 @@ export default function LessonPackPage() {
             } else if (event.type === "pack") {
               setResult(event.pack as LessonPackResponse);
               setFeedback("");
+              setGuidedFeedback([]);
             } else if (event.type === "error") {
               setResult({ error: event.message });
             }
@@ -752,6 +847,26 @@ export default function LessonPackPage() {
     settingsChecklist.hugelyBelowStandardPercent &&
     settingsChecklist.attainmentBandsValid;
   const canGenerate = profileLoaded && classNotesReady && teacherSettingsReady;
+  const reviewSectionButton = (section: string, value: string) => (
+    <button
+      type="button"
+      key={`${section}-${value}`}
+      onClick={() => setSectionReviewChoice(section, value)}
+      style={{
+        fontSize: "0.72rem",
+        fontWeight: 600,
+        fontFamily: "inherit",
+        borderRadius: "999px",
+        cursor: "pointer",
+        padding: "0.28rem 0.6rem",
+        border: sectionReview[section] === value ? "1px solid var(--accent)" : "1px solid var(--border)",
+        background: sectionReview[section] === value ? "rgb(var(--accent-rgb) / 0.12)" : "transparent",
+        color: sectionReview[section] === value ? "var(--accent)" : "var(--muted)",
+      }}
+    >
+      {value}
+    </button>
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -1269,6 +1384,34 @@ export default function LessonPackPage() {
       {/* ── Result ── */}
       {pack && (
         <div>
+          {exportWarning && (
+            <div className="auth-message is-error" style={{ marginBottom: "1rem" }}>
+              <span className="auth-message-text">
+                You have not reviewed this draft yet. {exportWarning.type === "export" ? "Export" : "Save"} anyway?
+              </span>
+              <div style={{ display: "flex", gap: "0.55rem", marginLeft: "auto", flexWrap: "wrap" }}>
+                <button type="button" className="nav-btn-ghost" onClick={() => setExportWarning(null)} style={{ fontSize: "0.8rem", padding: "0.45rem 0.8rem" }}>
+                  Review first
+                </button>
+                <button
+                  type="button"
+                  className="nav-btn-cta"
+                  onClick={() => {
+                    const action = exportWarning;
+                    setExportWarning(null);
+                    if (action.type === "export") {
+                      void handleExport(action.format, true);
+                    } else {
+                      void handleManualSave(true);
+                    }
+                  }}
+                  style={{ fontSize: "0.8rem", padding: "0.45rem 0.8rem" }}
+                >
+                  {exportWarning.type === "export" ? "Export draft" : "Save draft"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Pack header */}
           <div style={{
@@ -1328,7 +1471,7 @@ export default function LessonPackPage() {
               {!pack._meta?.autoSaved && saveState !== "saved" && (
                 <button
                   type="button"
-                  onClick={handleManualSave}
+                  onClick={() => void handleManualSave()}
                   disabled={saveState === "saving"}
                   className="nav-btn-ghost"
                   style={{ fontSize: "0.85rem", padding: "0.55rem 1rem", opacity: saveState === "saving" ? 0.65 : 1, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "36px" }}
@@ -1405,10 +1548,51 @@ export default function LessonPackPage() {
 
           {/* Sections */}
           <div style={{ display: "grid", gap: "1rem" }}>
+            <div className="card">
+              <SectionLabel>Teacher Review</SectionLabel>
+              <p style={{ margin: "0 0 0.8rem", fontSize: "0.88rem", lineHeight: 1.65, color: "var(--text)" }}>
+                This is a draft. Check assumptions before saving, exporting, or teaching from it.
+              </p>
+              <div style={{ display: "grid", gap: "0.85rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                <div>
+                  <p style={{ margin: "0 0 0.3rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted)" }}>Built From</p>
+                  <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.65, color: "var(--text)" }}>
+                    {pack.year_group} · {pack.subject} · {pack.topic}
+                    <br />
+                    Curriculum objectives: {pack._meta?.usedCurriculumObjectives.length ? `${pack._meta.usedCurriculumObjectives.length} matched` : "AI-generated from topic context"}
+                    <br />
+                    Teacher profile: {pack._meta?.usedTeacherProfile ? "used" : "not used"}
+                    <br />
+                    Uploaded context: {pack._meta?.usedContextNotes ? "used" : "none"}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 0.3rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted)" }}>AI Checks Run</p>
+                  <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.65, color: "var(--text)" }}>
+                    {(pack._meta?.passesRun ?? []).join(", ") || "quality, alignment, finalize"}
+                  </p>
+                  <p style={{ margin: "0.45rem 0 0", fontSize: "0.84rem", lineHeight: 1.6, color: "var(--muted)" }}>
+                    Objectives clarity, differentiation, misconceptions, assessment progression, and curriculum fit were checked automatically.
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 0.3rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted)" }}>Confidence</p>
+                  <p style={{ margin: "0 0 0.25rem", fontSize: "0.84rem", fontWeight: 700, color: pack._meta?.confidence === "high" ? "#22c55e" : pack._meta?.confidence === "low" ? "#f59e0b" : "var(--accent)" }}>
+                    {(pack._meta?.confidence ?? "medium").toUpperCase()}
+                  </p>
+                  <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "var(--text)" }}>
+                    {pack._meta?.confidenceReason ?? "Review carefully before using in class."}
+                  </p>
+                </div>
+              </div>
+            </div>
 
             {/* Learning Objectives */}
             <div className="card">
               <SectionLabel>Learning Objectives</SectionLabel>
+              <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+                {SECTION_REVIEW_OPTIONS.objectives.map((value) => reviewSectionButton("objectives", value))}
+              </div>
               <ol style={{ margin: 0, padding: "0 0 0 1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {pack.learning_objectives.map((obj, i) => (
                   <li key={i} style={{ fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text)" }}>{obj}</li>
@@ -1431,6 +1615,9 @@ export default function LessonPackPage() {
             {/* Worked Example */}
             <div className="card">
               <SectionLabel color="var(--orange)">Worked Example</SectionLabel>
+              <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+                {SECTION_REVIEW_OPTIONS.worked_example.map((value) => reviewSectionButton("worked_example", value))}
+              </div>
               <div style={{
                 background: "var(--field-bg)",
                 borderRadius: "10px",
@@ -1472,6 +1659,9 @@ export default function LessonPackPage() {
             {/* Differentiated Activities */}
             <div className="card">
               <SectionLabel>Differentiated Activities</SectionLabel>
+              <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+                {SECTION_REVIEW_OPTIONS.activities.map((value) => reviewSectionButton("activities", value))}
+              </div>
               <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
                 {(["support", "expected", "greater_depth"] as const).map((key) => {
                   const meta = {
@@ -1507,6 +1697,9 @@ export default function LessonPackPage() {
             {pack.send_adaptations.length > 0 && (
               <div className="card">
                 <SectionLabel color="#a78bfa">SEND Adaptations</SectionLabel>
+                <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+                  {SECTION_REVIEW_OPTIONS.adaptations.map((value) => reviewSectionButton("adaptations", value))}
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   {pack.send_adaptations.map((a, i) => (
                     <div key={i} style={{ display: "flex", gap: "0.65rem", alignItems: "flex-start" }}>
@@ -1520,10 +1713,25 @@ export default function LessonPackPage() {
               </div>
             )}
 
-            {/* Review and Reflect */}
+            {/* Pupil Plenary */}
             <div className="card">
-              <SectionLabel>Review and Reflect</SectionLabel>
+              <SectionLabel>Pupil Plenary</SectionLabel>
               <p style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.7, color: "var(--text)" }}>{pack.plenary}</p>
+            </div>
+
+            <div className="card">
+              <SectionLabel color="var(--muted)">Professional Check</SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+                {[
+                  "What would you keep as-is?",
+                  "What would you adapt for this class?",
+                  "What would you reject before teaching this lesson?",
+                ].map((item) => (
+                  <div key={item} style={{ padding: "0.7rem 0.85rem", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--field-bg)", fontSize: "0.84rem", lineHeight: 1.55, color: "var(--text)" }}>
+                    {item}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Mini Assessment */}
@@ -1591,11 +1799,38 @@ export default function LessonPackPage() {
           <div className="card" style={{ marginTop: "1.5rem" }}>
             <SectionLabel color="var(--muted)">Request Changes</SectionLabel>
             <p style={{ margin: "0 0 0.75rem", fontSize: "0.85rem", color: "var(--muted)", lineHeight: 1.5 }}>
-              Describe what you&apos;d like to change — for example: &quot;Make the worked example simpler&quot; or &quot;Add more SEND adaptations for dyslexia&quot;.
+              Challenge the draft before regenerating. Pick a review focus, then add any teacher-specific guidance below.
             </p>
+            <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+              {GUIDED_REVIEW_PROMPTS.map((label) => (
+                <button
+                  type="button"
+                  key={label}
+                  onClick={() => toggleGuidedFeedback(label)}
+                  style={{
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                    borderRadius: "999px",
+                    cursor: "pointer",
+                    padding: "0.34rem 0.72rem",
+                    border: guidedFeedback.includes(label) ? "1px solid var(--accent)" : "1px solid var(--border)",
+                    background: guidedFeedback.includes(label) ? "rgb(var(--accent-rgb) / 0.12)" : "transparent",
+                    color: guidedFeedback.includes(label) ? "var(--accent)" : "var(--muted)",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <textarea
               value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
+              onChange={(e) => {
+                setFeedback(e.target.value);
+                if (e.target.value.trim()) {
+                  markReviewInteraction("lesson_pack_review_opened", { source: "textarea" });
+                }
+              }}
               placeholder="e.g. The activities are too similar — make the greater depth task more open-ended…"
               rows={3}
               style={{
@@ -1617,13 +1852,13 @@ export default function LessonPackPage() {
             <button
               type="button"
               onClick={handleRegenerate}
-              disabled={!feedback.trim() || regenLoading}
+              disabled={!buildFeedbackPayload() || regenLoading}
               className="nav-btn-cta"
               style={{
                 padding: "0.65rem 1.25rem",
                 fontSize: "0.88rem",
                 borderRadius: "10px",
-                opacity: (!feedback.trim() || regenLoading) ? 0.6 : 1,
+                opacity: (!buildFeedbackPayload() || regenLoading) ? 0.6 : 1,
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",

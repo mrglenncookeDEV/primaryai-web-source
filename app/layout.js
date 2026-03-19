@@ -3,7 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import BackgroundScene from "@/components/BackgroundScene";
 import PageLoader from "@/components/PageLoader";
-import AppSidebar from "@/components/AppSidebar";
+import GlobalDock from "@/components/GlobalDock";
 import { getAuthSession } from "@/lib/auth";
 
 const inter = Inter({
@@ -45,7 +45,7 @@ export default async function RootLayout({ children }) {
         <Suspense>
           <PageLoader />
         </Suspense>
-        {session && <AppSidebar mode="global" />}
+        {session && <GlobalDock />}
         {children}
       </body>
     </html>

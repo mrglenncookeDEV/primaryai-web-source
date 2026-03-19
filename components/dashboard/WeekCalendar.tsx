@@ -180,6 +180,7 @@ export default function WeekCalendar({
 }: Props) {
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [termViewStyle, setTermViewStyle] = useState<"gantt" | "radial">("gantt");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const startSlotMarkerRef = useRef<HTMLDivElement | null>(null);
   const filterMenuRef = useRef<HTMLDivElement | null>(null);
@@ -610,107 +611,138 @@ export default function WeekCalendar({
         </div>
       ) : viewMode === "term" ? (
         currentTerm && termDays.length > 0 ? (
-          <div className="scheduler-term-scroll">
-            <div
-              className="scheduler-term-grid"
-              style={{
-                gridTemplateColumns: `180px ${termColTemplate}`,
-                minWidth: `${180 + termDays.length * 28}px`,
-              }}
-            >
-              <div className="scheduler-term-head scheduler-term-head-label">Subject</div>
-              {termDays.map((day, dayIdx) => {
-                const previousVisibleDay = dayIdx > 0 ? termDays[dayIdx - 1] : null;
-                const showMonth =
-                  !day.isWeekend &&
-                  (!previousVisibleDay || previousVisibleDay.date.getMonth() !== day.date.getMonth());
-                return (
-                  <div
-                    key={day.iso}
-                    className={`scheduler-term-head${day.isToday ? " is-today" : ""}${day.isWeekend ? " is-weekend" : ""}${day.isMonday ? " is-week-start" : ""}${allDayColumnColors[day.iso] ? " scheduler-all-day-col" : ""}`}
-                    style={allDayColumnColors[day.iso] ? { background: `color-mix(in srgb, ${allDayColumnColors[day.iso]} 12%, var(--surface))` } : undefined}
-                  >
-                    <span className={`scheduler-term-head-month${showMonth ? "" : " is-placeholder"}`}>
-                      {showMonth ? day.date.toLocaleDateString("en-GB", { month: "short" }) : "Mmm"}
-                    </span>
-                    <span className="scheduler-term-head-day">{day.date.toLocaleDateString("en-GB", { weekday: "narrow" })}</span>
-                    <span className="scheduler-term-head-date">{day.date.getDate()}</span>
-                  </div>
-                );
-              })}
-
-              {termSubjectRows.length > 0 ? termSubjectRows.map((row, rowIdx) => (
-                <div key={row.subject} style={{ display: "contents" }}>
-                  {/* Row label */}
-                  <div
-                    className={`scheduler-term-row-label scheduler-term-row-label-subject${rowIdx % 2 === 1 ? " is-alt" : ""}`}
-                    style={{ borderLeft: `3px solid ${row.color}` }}
-                  >
-                    <span className="scheduler-term-row-icon" style={{ color: row.color }}>
-                      <ScheduleEventIcon subject={row.subject} size={13} />
-                    </span>
-                    <span className="scheduler-term-row-text">
-                      <span className="scheduler-term-row-title">{row.subject}</span>
-                      <span className="scheduler-term-row-meta">
-                        {row.totalEvents} {row.totalEvents === 1 ? "event" : "events"}
-                      </span>
-                    </span>
-                  </div>
-                  {/* Day cells with Gantt bars */}
-                  <div
-                    className="scheduler-term-row-track"
-                    style={{
-                      gridColumn: `2 / span ${termDays.length}`,
-                      gridTemplateColumns: termColTemplate,
-                    }}
-                  >
-                    {termDays.map((day, dayIdx) => {
-                      const dayEntry = row.dayData.get(day.iso);
-                      const dayTotal = termDayTotals.get(day.iso) ?? 0;
-                      const barIntensity = dayEntry ? Math.min(1, dayEntry.mins / termMaxDayMins) : 0;
-                      const firstEvent = dayEntry?.events[0];
-                      const tooltipText = dayEntry
-                        ? `${row.subject}: ${dayEntry.events.length} event${dayEntry.events.length !== 1 ? "s" : ""} · ${dayEntry.mins} min`
-                        : undefined;
-                      return (
-                        <div
-                          key={`${row.subject}-${day.iso}`}
-                          className={`scheduler-term-row-cell${day.isWeekend ? " is-weekend" : ""}${day.isMonday ? " is-week-start" : ""}${dayEntry ? " has-events" : ""}${day.isToday ? " is-today-col" : ""}${rowIdx % 2 === 1 ? " is-alt" : ""}${allDayColumnColors[day.iso] ? " scheduler-all-day-col" : ""}`}
-                          style={{ gridColumn: dayIdx + 1 }}
-                          onClick={firstEvent ? () => onEventClick(firstEvent) : undefined}
-                          title={tooltipText}
-                        >
-                          {dayEntry && barIntensity > 0 && (
-                            <span
-                              className="scheduler-gantt-bar"
-                              style={{
-                                height: `${Math.max(18, Math.round(barIntensity * 78))}%`,
-                                background: row.color,
-                                opacity: 0.55 + barIntensity * 0.35,
-                              }}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )) : (
-                <>
-                  <div className="scheduler-term-row-label scheduler-term-row-label-empty">No events in this term.</div>
-                  <div className="scheduler-term-row-track" style={{ gridColumn: `2 / span ${termDays.length}`, gridTemplateColumns: termColTemplate }}>
-                    {termDays.map((day, dayIdx) => (
-                      <div
-                        key={`empty-${day.iso}`}
-                        className={`scheduler-term-row-cell${day.isWeekend ? " is-weekend" : ""}${day.isMonday ? " is-week-start" : ""}`}
-                        style={{ gridColumn: dayIdx + 1 }}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
+          <>
+            {/* View style toggle */}
+            <div className="scheduler-term-view-switch">
+              <button
+                type="button"
+                className={`scheduler-term-view-btn${termViewStyle === "gantt" ? " active" : ""}`}
+                onClick={() => setTermViewStyle("gantt")}
+                title="Timeline view"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="16" y2="12" /><line x1="3" y1="18" x2="19" y2="18" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={`scheduler-term-view-btn${termViewStyle === "radial" ? " active" : ""}`}
+                onClick={() => setTermViewStyle("radial")}
+                title="Radial view"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="11" />
+                </svg>
+              </button>
             </div>
-          </div>
+
+            {termViewStyle === "gantt" ? (
+              <div className="scheduler-term-scroll">
+                <div
+                  className="scheduler-term-grid"
+                  style={{
+                    gridTemplateColumns: `180px ${termColTemplate}`,
+                    minWidth: `${180 + termDays.length * 28}px`,
+                  }}
+                >
+                  <div className="scheduler-term-head scheduler-term-head-label">Subject</div>
+                  {termDays.map((day, dayIdx) => {
+                    const previousVisibleDay = dayIdx > 0 ? termDays[dayIdx - 1] : null;
+                    const showMonth =
+                      !day.isWeekend &&
+                      (!previousVisibleDay || previousVisibleDay.date.getMonth() !== day.date.getMonth());
+                    return (
+                      <div
+                        key={day.iso}
+                        className={`scheduler-term-head${day.isToday ? " is-today" : ""}${day.isWeekend ? " is-weekend" : ""}${day.isMonday ? " is-week-start" : ""}${allDayColumnColors[day.iso] ? " scheduler-all-day-col" : ""}`}
+                        style={allDayColumnColors[day.iso] ? { background: `color-mix(in srgb, ${allDayColumnColors[day.iso]} 12%, var(--surface))` } : undefined}
+                      >
+                        <span className={`scheduler-term-head-month${showMonth ? "" : " is-placeholder"}`}>
+                          {showMonth ? day.date.toLocaleDateString("en-GB", { month: "short" }) : "Mmm"}
+                        </span>
+                        <span className="scheduler-term-head-day">{day.date.toLocaleDateString("en-GB", { weekday: "narrow" })}</span>
+                        <span className="scheduler-term-head-date">{day.date.getDate()}</span>
+                      </div>
+                    );
+                  })}
+
+                  {termSubjectRows.length > 0 ? termSubjectRows.map((row, rowIdx) => (
+                    <div key={row.subject} style={{ display: "contents" }}>
+                      <div
+                        className={`scheduler-term-row-label scheduler-term-row-label-subject${rowIdx % 2 === 1 ? " is-alt" : ""}`}
+                        style={{ borderLeft: `3px solid ${row.color}` }}
+                      >
+                        <span className="scheduler-term-row-icon" style={{ color: row.color }}>
+                          <ScheduleEventIcon subject={row.subject} size={13} />
+                        </span>
+                        <span className="scheduler-term-row-text">
+                          <span className="scheduler-term-row-title">{row.subject}</span>
+                          <span className="scheduler-term-row-meta">
+                            {row.totalEvents} {row.totalEvents === 1 ? "event" : "events"}
+                          </span>
+                        </span>
+                      </div>
+                      <div
+                        className="scheduler-term-row-track"
+                        style={{
+                          gridColumn: `2 / span ${termDays.length}`,
+                          gridTemplateColumns: termColTemplate,
+                        }}
+                      >
+                        {termDays.map((day, dayIdx) => {
+                          const dayEntry = row.dayData.get(day.iso);
+                          const barIntensity = dayEntry ? Math.min(1, dayEntry.mins / termMaxDayMins) : 0;
+                          const firstEvent = dayEntry?.events[0];
+                          const tooltipText = dayEntry
+                            ? `${row.subject}: ${dayEntry.events.length} event${dayEntry.events.length !== 1 ? "s" : ""} · ${dayEntry.mins} min`
+                            : undefined;
+                          return (
+                            <div
+                              key={`${row.subject}-${day.iso}`}
+                              className={`scheduler-term-row-cell${day.isWeekend ? " is-weekend" : ""}${day.isMonday ? " is-week-start" : ""}${dayEntry ? " has-events" : ""}${day.isToday ? " is-today-col" : ""}${rowIdx % 2 === 1 ? " is-alt" : ""}${allDayColumnColors[day.iso] ? " scheduler-all-day-col" : ""}`}
+                              style={{ gridColumn: dayIdx + 1 }}
+                              onClick={firstEvent ? () => onEventClick(firstEvent) : undefined}
+                              title={tooltipText}
+                            >
+                              {dayEntry && barIntensity > 0 && (
+                                <span
+                                  className="scheduler-gantt-bar"
+                                  style={{
+                                    height: `${Math.max(18, Math.round(barIntensity * 78))}%`,
+                                    background: row.color,
+                                    opacity: 0.55 + barIntensity * 0.35,
+                                  }}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )) : (
+                    <>
+                      <div className="scheduler-term-row-label scheduler-term-row-label-empty">No events in this term.</div>
+                      <div className="scheduler-term-row-track" style={{ gridColumn: `2 / span ${termDays.length}`, gridTemplateColumns: termColTemplate }}>
+                        {termDays.map((day, dayIdx) => (
+                          <div
+                            key={`empty-${day.iso}`}
+                            className={`scheduler-term-row-cell${day.isWeekend ? " is-weekend" : ""}${day.isMonday ? " is-week-start" : ""}`}
+                            style={{ gridColumn: dayIdx + 1 }}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <TermRadialView
+                termDays={termDays}
+                termSubjectRows={termSubjectRows}
+                currentTerm={currentTerm}
+              />
+            )}
+          </>
         ) : (
           <div className="scheduler-term-empty">
             Add term dates in Settings to use the term timeline.
@@ -871,6 +903,173 @@ export default function WeekCalendar({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Radial term view ─────────────────────────────────────────────────────────
+
+type TermRadialViewProps = {
+  termDays: Array<{ iso: string; date: Date; isWeekend: boolean; isMonday: boolean; isToday: boolean }>;
+  termSubjectRows: Array<{
+    subject: string;
+    color: string;
+    totalEvents: number;
+    dayData: Map<string, { mins: number; events: ScheduleEvent[] }>;
+  }>;
+  currentTerm: { termName: string; termStartDate: string; termEndDate: string } | null;
+};
+
+function TermRadialView({ termDays, termSubjectRows, currentTerm }: TermRadialViewProps) {
+  const n = termDays.length;
+  const innerR = 46;
+  const ringW = 13;
+  const ringGap = 3;
+  const perRing = ringW + ringGap;
+  const outerEdge = innerR + termSubjectRows.length * perRing + ringW - ringGap;
+  const labelR = outerEdge + 18;
+  const svgHalf = labelR + 22;
+  const svgSize = svgHalf * 2;
+  const cx = svgHalf, cy = svgHalf;
+
+  const angleStep = n > 0 ? (2 * Math.PI) / n : 0;
+  const gapFrac = n > 70 ? 0.04 : n > 40 ? 0.07 : 0.10;
+  const startOffset = -Math.PI / 2;
+
+  function arcPath(iR: number, oR: number, startA: number, endA: number) {
+    if (endA <= startA) return "";
+    const large = endA - startA > Math.PI ? 1 : 0;
+    const x1o = cx + oR * Math.cos(startA), y1o = cy + oR * Math.sin(startA);
+    const x2o = cx + oR * Math.cos(endA),   y2o = cy + oR * Math.sin(endA);
+    const x1i = cx + iR * Math.cos(startA), y1i = cy + iR * Math.sin(startA);
+    const x2i = cx + iR * Math.cos(endA),   y2i = cy + iR * Math.sin(endA);
+    return `M ${x1o} ${y1o} A ${oR} ${oR} 0 ${large} 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${iR} ${iR} 0 ${large} 0 ${x1i} ${y1i} Z`;
+  }
+
+  const subjectDayCounts = termSubjectRows.map(
+    (row) => termDays.filter((d) => (row.dayData.get(d.iso)?.events.length ?? 0) > 0).length
+  );
+
+  return (
+    <div className="scheduler-radial-wrap">
+      <div className="scheduler-radial-body">
+
+        {/* SVG radial chart */}
+        <svg
+          viewBox={`0 0 ${svgSize} ${svgSize}`}
+          className="scheduler-radial-svg"
+          style={{ width: "100%", height: "auto" }}
+        >
+          {/* Background track rings */}
+          {termSubjectRows.map((row, rowIdx) => {
+            const iR = innerR + rowIdx * perRing;
+            const oR = iR + ringW;
+            return (
+              <circle
+                key={`track-${row.subject}`}
+                cx={cx} cy={cy}
+                r={(iR + oR) / 2}
+                fill="none"
+                stroke={row.color}
+                strokeWidth={ringW}
+                strokeOpacity={0.13}
+              />
+            );
+          })}
+
+          {/* Filled arc segments for days with events */}
+          {termSubjectRows.map((row, rowIdx) => {
+            const iR = innerR + rowIdx * perRing;
+            const oR = iR + ringW;
+            return termDays.map((day, dayIdx) => {
+              const entry = row.dayData.get(day.iso);
+              if (!entry || entry.events.length === 0) return null;
+              const startA = startOffset + dayIdx * angleStep + angleStep * gapFrac;
+              const endA   = startOffset + (dayIdx + 1) * angleStep - angleStep * gapFrac;
+              const opacity = Math.min(1, 0.6 + (entry.events.length / 5) * 0.4);
+              return (
+                <path
+                  key={`${row.subject}-${day.iso}`}
+                  d={arcPath(iR, oR, startA, endA)}
+                  fill={row.color}
+                  opacity={opacity}
+                />
+              );
+            });
+          })}
+
+          {/* Today marker line */}
+          {termDays.map((day, dayIdx) => {
+            if (!day.isToday) return null;
+            const midA = startOffset + (dayIdx + 0.5) * angleStep;
+            return (
+              <line
+                key="today"
+                x1={cx + (innerR - 6) * Math.cos(midA)} y1={cy + (innerR - 6) * Math.sin(midA)}
+                x2={cx + (outerEdge + 10) * Math.cos(midA)} y2={cy + (outerEdge + 10) * Math.sin(midA)}
+                stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="3 2"
+              />
+            );
+          })}
+
+          {/* Week-start day labels around the outside */}
+          {termDays.map((day, dayIdx) => {
+            if (!day.isMonday) return null;
+            const midA = startOffset + (dayIdx + 0.5) * angleStep;
+            const lx = cx + labelR * Math.cos(midA);
+            const ly = cy + labelR * Math.sin(midA);
+            const rotateDeg = (midA * 180) / Math.PI + 90;
+            return (
+              <text
+                key={`lbl-${day.iso}`}
+                x={lx} y={ly}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={n > 80 ? 5.5 : n > 50 ? 6.5 : 7.5}
+                fill="var(--muted)"
+                transform={`rotate(${rotateDeg}, ${lx}, ${ly})`}
+              >
+                {day.date.getDate()}
+              </text>
+            );
+          })}
+
+          {/* Centre label */}
+          <text x={cx} y={cy - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--text)">
+            {currentTerm?.termName ?? "Term"}
+          </text>
+          <text x={cx} y={cy + 7} textAnchor="middle" fontSize="9" fill="var(--muted)">
+            {n} school days
+          </text>
+        </svg>
+
+        {/* Summary table — sits to the right of the circle */}
+        {termSubjectRows.length > 0 && (
+          <div className="scheduler-radial-table-wrap">
+            <table className="scheduler-radial-table">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>Days</th>
+                  <th>Lessons</th>
+                </tr>
+              </thead>
+              <tbody>
+                {termSubjectRows.map((row, i) => (
+                  <tr key={row.subject}>
+                    <td>
+                      <span className="scheduler-radial-table-dot" style={{ background: row.color }} />
+                      {row.subject}
+                    </td>
+                    <td>{subjectDayCounts[i]}</td>
+                    <td>{row.totalEvents}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

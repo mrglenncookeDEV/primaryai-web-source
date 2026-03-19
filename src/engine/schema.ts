@@ -28,6 +28,15 @@ export const LessonPackSchema = z.object({
       speaker_notes: z.string().optional(),
     })
   ),
+  _meta: z.object({
+    autoSaved: z.boolean().optional(),
+    usedCurriculumObjectives: z.array(z.string()),
+    usedContextNotes: z.boolean(),
+    usedTeacherProfile: z.boolean(),
+    passesRun: z.array(z.enum(["quality", "alignment", "finalize"])),
+    confidence: z.enum(["high", "medium", "low"]),
+    confidenceReason: z.string(),
+  }).optional(),
 });
 
 export const LessonPackRequestSchema = z

@@ -12,6 +12,16 @@ export type EngineEvent =
   | { type: "complete"; providerId: string; cacheHit: boolean }
   | { type: "error"; message: string };
 
+export type LessonPackGenerationMeta = {
+  autoSaved?: boolean;
+  usedCurriculumObjectives: string[];
+  usedContextNotes: boolean;
+  usedTeacherProfile: boolean;
+  passesRun: Array<"quality" | "alignment" | "finalize">;
+  confidence: "high" | "medium" | "low";
+  confidenceReason: string;
+};
+
 export interface LessonPackRequest {
   year_group: string;
   subject: string;

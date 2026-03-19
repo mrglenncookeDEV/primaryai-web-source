@@ -4,7 +4,7 @@ import { retrieveObjectives } from "./retrieve";
 import { cache } from "./cache";
 import { record } from "./telemetry";
 import { lessonPackToSlides } from "./exporters";
-import type { EngineEvent, LessonPackRequest, LessonPackReview } from "./types";
+import type { EngineEvent, LessonPackGenerationMeta, LessonPackRequest, LessonPackReview } from "./types";
 
 type OnEvent = (event: EngineEvent) => void;
 
@@ -664,14 +664,24 @@ export async function generateLessonPackWithMeta(
   pack: LessonPack;
   providerId: string;
   cacheHit: boolean;
+  meta: LessonPackGenerationMeta;
 }> {
   const cacheKey = getLessonPackCacheKey(req);
   const cached = !req.feedback && cache.get<LessonPack>(cacheKey);
   if (cached) {
+    const cachedMeta = cached._meta ?? {
+      usedCurriculumObjectives: [],
+      usedContextNotes: Boolean(req.context_notes?.trim()),
+      usedTeacherProfile: Boolean(req.profile),
+      passesRun: ["quality", "alignment", "finalize"] as Array<"quality" | "alignment" | "finalize">,
+      confidence: "medium" as const,
+      confidenceReason: "Cached draft reused from a previous generation.",
+    };
     return {
       pack: cached,
       providerId: "cache",
       cacheHit: true,
+      meta: cachedMeta,
     };
   }
 
@@ -811,7 +821,32 @@ ${JSON.stringify(LESSON_PACK_OUTPUT_TEMPLATE, null, 2)}
   const aligned = await runAlignmentPass(reviewed, req, objectives, onEvent);
   onEvent?.({ type: "pass", name: "finalize" });
   const useful = ensureUsefulContent(aligned, req, objectives);
-  const finalized = attachProgrammaticSlides(useful);
+  const confidence: LessonPackGenerationMeta["confidence"] =
+    objectives.length >= 2
+      ? "high"
+      : req.context_notes?.trim().length
+        ? "medium"
+        : req.topic.trim().split(/\s+/).length >= 2
+          ? "medium"
+          : "low";
+  const confidenceReason =
+    confidence === "high"
+      ? "Retrieved curriculum objectives gave the draft a strong alignment basis."
+      : confidence === "medium"
+        ? "The draft has enough lesson context to be useful, but should still be checked carefully."
+        : "The topic is broad or lightly specified, so the draft relies on more AI inference than usual.";
+  const meta: LessonPackGenerationMeta = {
+    usedCurriculumObjectives: objectives,
+    usedContextNotes: Boolean(req.context_notes?.trim()),
+    usedTeacherProfile: Boolean(req.profile),
+    passesRun: ["quality", "alignment", "finalize"],
+    confidence,
+    confidenceReason,
+  };
+  const finalized = LessonPackSchema.parse({
+    ...attachProgrammaticSlides(useful),
+    _meta: meta,
+  });
 
   if (!req.feedback) {
     cache.set(cacheKey, finalized);
@@ -821,6 +856,7 @@ ${JSON.stringify(LESSON_PACK_OUTPUT_TEMPLATE, null, 2)}
     pack: finalized,
     providerId: generated.providerId,
     cacheHit: false,
+    meta,
   };
 }
 

@@ -68,7 +68,11 @@ export async function POST(req: Request) {
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
 
-  const send = (event: EngineEvent | { type: "pack"; pack: unknown; providerId: string; cacheHit: boolean }) => {
+  const send = (
+    event:
+      | EngineEvent
+      | { type: "pack"; pack: unknown; providerId: string; cacheHit: boolean; meta?: unknown }
+  ) => {
     try {
       writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
     } catch {
@@ -80,7 +84,13 @@ export async function POST(req: Request) {
   void (async () => {
     try {
       const result = await generateLessonPackWithMeta(parsedRequest.data, (event) => send(event));
-      send({ type: "pack", pack: result.pack, providerId: result.providerId, cacheHit: result.cacheHit });
+      send({
+        type: "pack",
+        pack: result.pack,
+        providerId: result.providerId,
+        cacheHit: result.cacheHit,
+        meta: result.meta,
+      });
     } catch (err) {
       send({ type: "error", message: err instanceof Error ? err.message : "Unknown error" });
     } finally {

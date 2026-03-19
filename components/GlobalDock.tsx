@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { type FormEvent, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { type FormEvent, useEffect, useRef, useState } from "react";
 import { VscLibrary } from "react-icons/vsc";
 import { RiMoneyPoundCircleLine } from "react-icons/ri";
 import { FaPenClip } from "react-icons/fa6";
+
+// Routes that already render AppSidebar themselves — GlobalDock hides on these
+// so we never double-render the dock.
+const APP_PREFIXES = ["/dashboard", "/lesson-pack", "/library", "/notes", "/ai-planner", "/settings", "/account", "/billing"];
 
 const NAV = [
   {
@@ -82,29 +85,68 @@ const NAV = [
   },
 ];
 
-export default function AppSidebar() {
+export default function GlobalDock() {
   const path = usePathname() ?? "";
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [initials, setInitials] = useState<string>("");
   const [signingOut, setSigningOut] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    setCollapsed(localStorage.getItem("sidebar-collapsed") === "1");
-  }, []);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [ghostSize, setGhostSize] = useState<{ w: number; h: number } | null>(null);
 
-  function toggleCollapsed() {
-    setCollapsed((c) => {
-      const next = !c;
-      localStorage.setItem("sidebar-collapsed", next ? "1" : "0");
-      return next;
-    });
-  }
+  const dockRef = useRef<HTMLDivElement>(null);
 
   const accountItem = NAV.find((item) => item.href === "/account") ?? null;
   const primaryNavItems = NAV.filter((item) => item.href !== "/account");
+
+  // Hide on app routes — those pages render AppSidebar themselves
+  const hidden = APP_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+
+  function handleDockPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    const dockEl = dockRef.current;
+    if (!dockEl) return;
+
+    e.preventDefault();
+
+    const rect = dockEl.getBoundingClientRect();
+    setGhostSize((gs) => gs ?? { w: rect.width, h: rect.height });
+
+    let dx = e.clientX - rect.left;
+    let dy = e.clientY - rect.top;
+
+    dockEl.dataset.dragging = "1";
+    document.body.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
+    setPos({ x: rect.left, y: rect.top });
+
+    const onMove = (event: PointerEvent) => {
+      const dockW = dockEl.offsetWidth;
+      const dockH = dockEl.offsetHeight;
+      const x = Math.max(0, Math.min(window.innerWidth - dockW, event.clientX - dx));
+      const y = Math.max(0, Math.min(window.innerHeight - dockH, event.clientY - dy));
+      const snapX = 12;
+      const snapY = window.innerHeight / 2 - dockH / 2;
+
+      if (Math.hypot(x - snapX, y - snapY) < 60) {
+        dx = event.clientX - snapX;
+        dy = event.clientY - snapY;
+        setPos(null);
+      } else {
+        setPos({ x, y });
+      }
+    };
+
+    const onUp = () => {
+      delete dockEl.dataset.dragging;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp, { once: true });
+  }
 
   // ── Profile avatar ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -165,45 +207,39 @@ export default function AppSidebar() {
     }
   }
 
-  const dockStyle: React.CSSProperties = {
-    position: "fixed",
-    left: 12,
-    top: "50%",
-    transform: collapsed
-      ? "translateY(-50%) translateX(calc(-100% - 20px))"
-      : "translateY(-50%)",
-  };
+  if (hidden) return null;
+
+  const dockStyle: React.CSSProperties = pos
+    ? { position: "fixed", left: pos.x, top: pos.y, transform: "none" }
+    : { position: "fixed", left: 12, top: "50%", transform: "translateY(-50%)" };
 
   return (
-    <aside className={`app-sidebar${collapsed ? " app-sidebar--collapsed" : ""}`} aria-label="App navigation">
-
-      {/* Edge tab portalled to body so it's never clipped by the sidebar stacking context */}
-      {collapsed && mounted && createPortal(
-        <button
-          className="app-sidebar-expand-tab"
-          onClick={toggleCollapsed}
-          aria-label="Expand sidebar"
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>,
-        document.body
+    <>
+      {pos && ghostSize && (
+        <div
+          className="app-sidebar-ghost"
+          style={{ width: ghostSize.w, height: ghostSize.h }}
+          aria-hidden="true"
+        />
       )}
 
-      {/* The dock itself */}
-      <div className="app-sidebar-dock" style={dockStyle}>
+      <div ref={dockRef} className="app-sidebar-dock" style={dockStyle}>
 
-        {/* Collapse button */}
-        <button
+        {/* Grab handle */}
+        <div
           className="app-sidebar-dock-handle"
-          onClick={toggleCollapsed}
-          aria-label="Collapse sidebar"
+          aria-hidden="true"
+          onPointerDown={handleDockPointerDown}
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor">
+            <circle cx="3"  cy="3"  r="1.8" />
+            <circle cx="9"  cy="3"  r="1.8" />
+            <circle cx="3"  cy="10" r="1.8" />
+            <circle cx="9"  cy="10" r="1.8" />
+            <circle cx="3"  cy="17" r="1.8" />
+            <circle cx="9"  cy="17" r="1.8" />
           </svg>
-        </button>
+        </div>
 
         {primaryNavItems.map(({ href, label, icon, bg }) => {
           const active = path === href || (href !== "/dashboard" && path.startsWith(href));
@@ -266,6 +302,6 @@ export default function AppSidebar() {
         </form>
 
       </div>
-    </aside>
+    </>
   );
 }

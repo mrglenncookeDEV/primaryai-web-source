@@ -7,6 +7,9 @@ import PackList, { type PackItem } from "./PackList";
 import WeekCalendar, { type CalendarViewMode, type ScheduleEvent } from "./WeekCalendar";
 import ScheduleModal, { type ModalPayload } from "./ScheduleModal";
 import CustomEventModal from "./CustomEventModal";
+import NotesPanel from "@/components/NotesPanel";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
+import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 type Props = {
   open?: boolean;
@@ -1161,9 +1164,8 @@ export default function SchedulerDrawer({
         <div className={`scheduler-drawer-header${embedded ? " scheduler-drawer-header-embedded" : ""}`}>
           <div className="scheduler-drawer-header-main">
             <h2 className="scheduler-drawer-title">
-              <svg className="scheduler-drawer-title-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", marginRight: "0.45rem", verticalAlign: "-2px" }}>
-                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18"/>
-              </svg>
+              <DashboardCalendar />
+              <DashboardClock />
               {displayName ? `${displayName.split(" ")[0]}'s Timetable` : "My Timetable"}
             </h2>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -1218,6 +1220,7 @@ export default function SchedulerDrawer({
               </div>
               {viewMode === "week" || viewMode === "term" ? (
                 <label
+                  className="scheduler-weekends-toggle"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1546,6 +1549,7 @@ export default function SchedulerDrawer({
                   ) : null}
                 </div>
               </div>
+              <NotesPanel scheduleEventId={selectedEvent.id} />
             </div>
           </div>
         )}

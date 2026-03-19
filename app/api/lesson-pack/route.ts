@@ -126,7 +126,13 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ...pack, _meta: { autoSaved: shouldAutoSave } });
+    return NextResponse.json({
+      ...pack,
+      _meta: {
+        ...(generated.meta ?? {}),
+        autoSaved: shouldAutoSave,
+      },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
 

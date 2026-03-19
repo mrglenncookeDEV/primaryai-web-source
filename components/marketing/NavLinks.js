@@ -7,6 +7,7 @@ import ThemeToggle from "./ThemeToggle";
 
 const PERSISTENT_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/guide", label: "Guide" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/settings", label: "Settings" },
   { href: "/contact", label: "Contact Us" },
@@ -14,6 +15,7 @@ const PERSISTENT_LINKS = [
 const SESSION_USER_KEY = "pa_active_user_key";
 
 function getLinkHref(href, resolvedSession) {
+  if (href === "/" || href === "/guide" || href === "/contact") return href;
   if (resolvedSession) return href;
   return `/login?next=${encodeURIComponent(href)}`;
 }

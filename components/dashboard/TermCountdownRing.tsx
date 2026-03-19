@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
-import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 type Props = {
   termName: string;
@@ -11,11 +9,11 @@ type Props = {
 };
 
 const RINGS = [
-  { key: "S", label: "Seconds", r: 28, color: "#f59e0b", light: "#fbbf24", dark: "#78350f" },
+  { key: "S", label: "Seconds", r: 28, color: "#ef4444", light: "#f87171", dark: "#7f1d1d" },
   { key: "M", label: "Minutes", r: 43, color: "#10b981", light: "#34d399", dark: "#064e3b" },
   { key: "H", label: "Hours",   r: 58, color: "#06b6d4", light: "#22d3ee", dark: "#155e75" },
   { key: "D", label: "Days",    r: 73, color: "#3b82f6", light: "#60a5fa", dark: "#1e3a8a" },
-  { key: "W", label: "Weeks",   r: 88, color: "#8b5cf6", light: "#a78bfa", dark: "#3b0764" },
+  { key: "W", label: "Weeks",   r: 88, color: "#f97316", light: "#fb923c", dark: "#7c2d12" },
 ] as const;
 
 // Day window: 7am–4pm = 9 hours (rings start full at 7am, drain to zero at 4pm)
@@ -43,7 +41,7 @@ function countSchoolDays(from: Date, to: Date, bankHols: Set<string>): number {
   return count;
 }
 
-const RING_COLORS = ["#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6"];
+const RING_COLORS = ["#ef4444", "#10b981", "#06b6d4", "#3b82f6", "#f97316"];
 
 export function TermCountdownRing({ termName, termStartDate, termEndDate }: Props) {
   const [now, setNow]       = useState(() => new Date());
@@ -208,18 +206,53 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
 
   return (
     <>
-    <div className="term-countdown-banner">
-      <div>
-        <h2 className="term-countdown-banner-title">Countdown</h2>
-      </div>
-      <div className="term-countdown-banner-swatches">
-        {[...RING_COLORS].reverse().map((color, i) => (
-          <span key={i} className="term-countdown-banner-swatch" style={{ background: color }} />
-        ))}
-      </div>
-    </div>
+    <p style={{
+      margin: "0 0 0.6rem",
+      padding: "0 0 0 0.65rem",
+      fontSize: "0.85rem",
+      fontWeight: 600,
+      color: "var(--text)",
+      letterSpacing: "-0.01em",
+    }}>
+      {termName}
+      <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: "0.4rem", fontSize: "0.8rem" }}>
+        {termStart.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+        {" – "}
+        {termEnd.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+      </span>
+    </p>
     <div className="term-countdown-wrap">
-      {/* Left: rings */}
+      {/* Left: numeric readout */}
+      <div className="term-countdown-right">
+        <div className="term-countdown-legend">
+          {[
+            { groupLabel: "Term",      keys: ["W", "D"] },
+            { groupLabel: "Today 4pm", keys: ["H", "M", "S"] },
+          ].map(({ groupLabel, keys }) => {
+            const groupRings = [...RINGS].reverse().filter(({ key }) => keys.includes(key));
+            return (
+              <div key={groupLabel} className="term-countdown-group">
+                <span className="term-countdown-group-name">{groupLabel}</span>
+                <div className="term-countdown-group-items">
+                  {groupRings.map(({ key, label, color }) => {
+                    const vi = RINGS.findIndex(r => r.key === key);
+                    const rem = remaining[vi];
+                    const fmt = (v: number) => key === "W" ? v.toFixed(1) : v.toLocaleString();
+                    return (
+                      <React.Fragment key={key}>
+                        <span className="term-countdown-legend-unit">{label}</span>
+                        <span className="term-countdown-legend-val" style={{ color }}>{fmt(rem)}</span>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Right: rings */}
       <svg viewBox="0 0 200 200" className="term-countdown-svg" aria-label="Term countdown">
         <defs>
           {/* Dial face base — pearl in light mode, dark in dark mode */}
@@ -248,16 +281,19 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             brightest point, with shadow at the inner and outer edges,
             giving a consistent cylindrical "bulge" on every ring.
           */}
-          {RINGS.map(({ key, light, dark, r }) => {
+          {RINGS.map(({ key, light, dark, r }, i) => {
             const outerEdge = r + SW / 2;
             const pct = (v: number) => `${((v / outerEdge) * 100).toFixed(2)}%`;
+            // Light mode: use mid-tone edges so the full ring looks vivid, not pulled toward black
+            const lightModeEdges = ["#b91c1c", "#059669", "#0e7490", "#1d4ed8", "#c2410c"];
+            const edgeColor = isDark ? dark : lightModeEdges[i];
             return (
               <radialGradient key={key} id={`pipe-${key}`}
                 cx={CX} cy={100} r={outerEdge}
                 gradientUnits="userSpaceOnUse">
-                <stop offset={pct(r - SW / 2)} stopColor={dark}  />
+                <stop offset={pct(r - SW / 2)} stopColor={edgeColor} />
                 <stop offset={pct(r)}           stopColor={light} />
-                <stop offset="100%"             stopColor={dark}  />
+                <stop offset="100%"             stopColor={edgeColor} />
               </radialGradient>
             );
           })}
@@ -288,7 +324,7 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
 
           {/* Directional brushed-grain filter (high horizontal frequency = fine lateral streaks) */}
           <filter id="steel-grain" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.04 1.6" numOctaves="4" seed="11" result="noise" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.04 1.6" numOctaves="2" seed="11" result="noise" />
             <feColorMatrix in="noise" type="matrix"
               values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.2 0" result="grain" />
             <feBlend in="SourceGraphic" in2="grain" mode="soft-light" result="grained" />
@@ -331,21 +367,19 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             <g key={key}>
               {/* ── Recessed groove ── */}
               <circle cx={CX} cy={100} r={r} fill="none"
-                stroke={!isDark && i === 4 ? "#f0ede8" : `rgba(${isDark ? "0,0,0" : "25,18,10"},${fc.groove(i)})`}
+                stroke={isDark ? `rgba(0,0,0,${fc.groove(i)})` : "#f0ede8"}
                 strokeWidth={GSW} />
 
               {/* ── 3D pipe: vibrant gradient cylinder ── */}
               <circle
                 cx={CX} cy={100} r={r}
                 fill="none" stroke={`url(#pipe-${key})`} strokeWidth={SW}
-                strokeLinecap={isFast ? "butt" : "round"}
+                strokeLinecap="butt"
                 strokeDasharray={circ}
                 strokeDashoffset={offset}
                 transform={`rotate(-90 ${CX} 100)`}
                 style={transStyle}
               />
-              {/* Tip ball */}
-              {isFast && <circle cx={CX} cy={100 - r} r={SW / 2} fill={`url(#pipe-${key})`} />}
             </g>
           );
         })}
@@ -379,12 +413,12 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           style={{ transition: "transform 0.9s linear" }}
         >
           {/* Fading sector trail — wider & fainter further behind the hand */}
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#f59e0b" strokeWidth="30" strokeLinecap="butt" opacity="0.025" transform={`rotate(50 ${CX} 100)`} />
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#f59e0b" strokeWidth="20" strokeLinecap="butt" opacity="0.05"  transform={`rotate(28 ${CX} 100)`} />
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#f59e0b" strokeWidth="12" strokeLinecap="butt" opacity="0.08"  transform={`rotate(14 ${CX} 100)`} />
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#f59e0b" strokeWidth="6"  strokeLinecap="butt" opacity="0.14"  transform={`rotate(5 ${CX} 100)`} />
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="30" strokeLinecap="butt" opacity="0.025" transform={`rotate(50 ${CX} 100)`} />
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="20" strokeLinecap="butt" opacity="0.05"  transform={`rotate(28 ${CX} 100)`} />
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="12" strokeLinecap="butt" opacity="0.08"  transform={`rotate(14 ${CX} 100)`} />
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="6"  strokeLinecap="butt" opacity="0.14"  transform={`rotate(5 ${CX} 100)`} />
           {/* Main hand */}
-          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="butt" opacity="0.95" />
+          <line x1={CX} y1={68} x2={CX} y2={9} stroke="#ef4444" strokeWidth="2.5" strokeLinecap="butt" opacity="0.95" />
         </g>
 
         {/* Tick marks — 60 total, rendered on top of rings so they're visible */}
@@ -408,6 +442,30 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             />
           );
         })}
+
+        {/* ── Glass crystal dome ── */}
+        {/* Edge refraction ring — subtle colour fringe where glass meets bezel */}
+        <circle cx={CX} cy={100} r={91.8} fill="none"
+          stroke="rgba(160,200,255,0.13)" strokeWidth={2.2} />
+        {/* Main glass body — very subtle tinted fill */}
+        <circle cx={CX} cy={100} r={92}
+          fill="rgba(220,235,255,0.04)" />
+        {/* Primary specular highlight — large soft oval near top-left */}
+        <ellipse cx={CX - 18} cy={62} rx={28} ry={14}
+          fill="rgba(255,255,255,0.18)"
+          style={{ filter: "blur(4px)" }} />
+        {/* Secondary glare — smaller, brighter, sharper */}
+        <ellipse cx={CX - 10} cy={56} rx={12} ry={5}
+          fill="rgba(255,255,255,0.38)" />
+        {/* Thin crescent rim reflection along top arc */}
+        <path
+          d={`M ${CX - 58} 52 A 70 70 0 0 1 ${CX + 58} 52`}
+          fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth={1.2}
+          strokeLinecap="round" />
+        {/* Bottom shadow — glass presses light downward */}
+        <ellipse cx={CX} cy={156} rx={50} ry={10}
+          fill="rgba(0,0,0,0.07)"
+          style={{ filter: "blur(3px)" }} />
 
         {/* ── Brushed steel case ── */}
         {/* Bezel body — filled ring with 3D torus gradient */}
@@ -461,53 +519,7 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
           transform="translate(165 22) rotate(310)" />
       </svg>
 
-      {/* Right: numeric readout + calendar/clock */}
-      <div className="term-countdown-right">
-        <div className="term-countdown-legend">
-          {[
-            { groupLabel: "Term",      keys: ["W", "D"] },
-            { groupLabel: "Today 4pm", keys: ["H", "M", "S"] },
-          ].map(({ groupLabel, keys }) => {
-            const groupRings = [...RINGS].reverse().filter(({ key }) => keys.includes(key));
-            return (
-              <div key={groupLabel} className="term-countdown-group">
-                <span className="term-countdown-group-name">{groupLabel}</span>
-                <div className="term-countdown-group-items">
-                  {groupRings.map(({ key, label, color }) => {
-                    const vi = RINGS.findIndex(r => r.key === key);
-                    const rem = remaining[vi];
-                    const fmt = (v: number) => key === "W" ? v.toFixed(1) : v.toLocaleString();
-                    return (
-                      <React.Fragment key={key}>
-                        <span className="term-countdown-legend-unit">{label}</span>
-                        <span className="term-countdown-legend-val" style={{ color }}>{fmt(rem)}</span>
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="term-countdown-left">
-          <DashboardCalendar />
-          <DashboardClock />
-        </div>
-      </div>
     </div>
-    <p style={{
-      margin: "0.35rem 0 0",
-      padding: "0 0.75rem 0.6rem",
-      fontSize: "0.72rem",
-      color: "var(--muted)",
-      textAlign: "center",
-      letterSpacing: "0.01em",
-    }}>
-      {termName}{" · "}
-      {termStart.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-      {" – "}
-      {termEnd.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-    </p>
       {toast && (
         <div className="term-countdown-toast" role="status">
           🎉 {toast}

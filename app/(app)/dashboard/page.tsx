@@ -6,7 +6,7 @@ import Link from "next/link";
 import { subjectColor } from "@/lib/subjectColor";
 import { ScheduleEventIcon } from "@/lib/schedule-event-icon";
 import { TermCountdownRing } from "@/components/dashboard/TermCountdownRing";
-
+import NotesWidget from "@/components/dashboard/NotesWidget";
 
 const SchedulerDrawer = dynamic(() => import("@/components/dashboard/SchedulerDrawer"), {
   ssr: false,
@@ -1158,21 +1158,23 @@ export default function DashboardPage() {
   return (
     <main className="page-wrap">
 
-      {/* Full-width search bar above everything */}
-      <button type="button" className="dashboard-cmdpal-btn dashboard-search-bar" onClick={openCommandPalette}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", minWidth: 0, flex: 1 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Search pages, lesson packs…</span>
-        </span>
-        <kbd className="cmdpal-kbd">⌘K</kbd>
-      </button>
+      {/* Topbar: search bar */}
+      <div className="dashboard-topbar">
+        <button type="button" className="dashboard-cmdpal-btn dashboard-search-bar" onClick={openCommandPalette}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", minWidth: 0, flex: 1 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Search pages, lesson packs…</span>
+          </span>
+          <kbd className="cmdpal-kbd">⌘K</kbd>
+        </button>
+      </div>
 
       <div className={`dashboard-top-grid${schedulerViewMode === "term" ? " is-term-view" : ""}`} style={{ marginBottom: "1.25rem" }}>
         <div className="dashboard-countdown-wrapper">
-          <div className="dashboard-hero-stat term-countdown-stat">
+          <div className="term-countdown-stat">
             {!loading && activeTerm?.termStartDate && activeTerm?.termEndDate ? (
               <TermCountdownRing
                 termName={activeTerm.termName || "Term"}
@@ -1269,6 +1271,7 @@ export default function DashboardPage() {
             onTasksChange={setTasks}
             onScheduleRefresh={handleTaskCrudRefresh}
           />
+          <NotesWidget />
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
             <ActionCard
               href="/library"

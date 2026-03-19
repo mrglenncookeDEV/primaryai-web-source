@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { IoFolderOutline } from "react-icons/io5";
 import { FaRegFolderOpen } from "react-icons/fa";
+import { FaPenClip } from "react-icons/fa6";
 import { subjectColor } from "@/lib/subjectColor";
+import NotesPanel from "@/components/NotesPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,9 +32,20 @@ type DocumentItem = {
   created_at: string;
 };
 
+type NoteItem = {
+  id: string;
+  title: string;
+  content: string;
+  folder_id: string | null;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 type SelectedItem =
   | { kind: "pack"; item: LessonPackItem }
-  | { kind: "doc"; item: DocumentItem };
+  | { kind: "doc"; item: DocumentItem }
+  | { kind: "note"; item: NoteItem };
 
 type LessonPack = {
   year_group: string;
@@ -364,6 +377,7 @@ function PackPreview({ item }: { item: LessonPackItem }) {
           )}
         </div>
       )}
+      <NotesPanel lessonPackId={item.id} />
     </div>
   );
 }
@@ -405,6 +419,36 @@ function DocPreview({ item, onDownload }: { item: DocumentItem; onDownload: () =
           Download file
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Preview: Note ─────────────────────────────────────────────────────────────
+
+function NotePreview({ item }: { item: NoteItem }) {
+  const preview = item.content.slice(0, 500);
+  return (
+    <div className="lib-preview-body">
+      <div className="lib-preview-doc-head">
+        <span className="lib-preview-doc-badge" style={{ color: "#a37800", background: "rgb(212 160 23 / 0.12)", borderColor: "rgb(212 160 23 / 0.3)" }}>
+          Note{item.pinned ? " · Pinned" : ""}
+        </span>
+        <h2 className="lib-preview-doc-title">{item.title || "Untitled note"}</h2>
+        <p className="lib-preview-doc-meta">Last edited {formatDate(item.updated_at)}</p>
+      </div>
+      <div className="lib-preview-actions">
+        <Link href={`/notes?id=${item.id}`} className="lib-preview-action-btn is-primary">
+          <IconExternalLink size={12} />
+          Open note
+        </Link>
+      </div>
+      {preview && (
+        <div className="lib-preview-sections">
+          <PreviewSection label="Content">
+            <p className="lib-preview-prose" style={{ whiteSpace: "pre-wrap" }}>{preview}{item.content.length > 500 ? "…" : ""}</p>
+          </PreviewSection>
+        </div>
+      )}
     </div>
   );
 }
@@ -512,6 +556,7 @@ export default function LibraryPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [packs, setPacks] = useState<LessonPackItem[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string>(ALL_ID);
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [sortCol, setSortCol] = useState<"name" | "type" | "date">("date");
@@ -547,12 +592,19 @@ export default function LibraryPage() {
     if (res.ok) setDocuments(data.documents ?? []);
   }, []);
 
+  const loadNotes = useCallback(async () => {
+    const res = await fetch("/api/notes");
+    const data = await res.json();
+    if (data.ok) setNotes(data.notes ?? []);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const steps = [
       { label: "Loading folders…", run: loadFolders },
       { label: "Loading lesson packs…", run: loadPacks },
       { label: "Loading documents…", run: loadDocuments },
+      { label: "Loading notes…", run: loadNotes },
     ];
 
     async function loadInitialLibrary() {
@@ -575,7 +627,7 @@ export default function LibraryPage() {
     return () => {
       cancelled = true;
     };
-  }, [loadFolders, loadPacks, loadDocuments]);
+  }, [loadFolders, loadPacks, loadDocuments, loadNotes]);
 
   // Escape key closes the preview drawer
   useEffect(() => {
@@ -635,18 +687,41 @@ export default function LibraryPage() {
     });
   }, [documents, searchQuery, selectedFolderId, sortCol, sortDir]);
 
+  const visibleNotes = useMemo(() => {
+    const base = selectedFolderId === ALL_ID ? notes
+      : selectedFolderId === UNFILED_ID ? notes.filter((n) => !n.folder_id)
+      : notes.filter((n) => n.folder_id === selectedFolderId);
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = query
+      ? base.filter((n) =>
+          [n.title, n.content].some((v) => v.toLowerCase().includes(query))
+        )
+      : base;
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "name") cmp = (a.title || "").localeCompare(b.title || "");
+      else if (sortCol === "type") cmp = 0;
+      else cmp = a.updated_at.localeCompare(b.updated_at);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [notes, searchQuery, selectedFolderId, sortCol, sortDir]);
+
   // Counts per folder (for badges)
   const folderCounts = useMemo(() => {
     const m: Record<string, number> = {};
     for (const f of folders) {
-      m[f.id] = packs.filter((p) => p.folder_id === f.id).length + documents.filter((d) => d.folder_id === f.id).length;
+      m[f.id] = packs.filter((p) => p.folder_id === f.id).length
+        + documents.filter((d) => d.folder_id === f.id).length
+        + notes.filter((n) => n.folder_id === f.id).length;
     }
     return m;
-  }, [folders, packs, documents]);
+  }, [folders, packs, documents, notes]);
 
   const unfiledCount = useMemo(() =>
-    packs.filter((p) => !p.folder_id).length + documents.filter((d) => !d.folder_id).length,
-    [packs, documents]
+    packs.filter((p) => !p.folder_id).length
+    + documents.filter((d) => !d.folder_id).length
+    + notes.filter((n) => !n.folder_id).length,
+    [packs, documents, notes]
   );
 
   // Folder CRUD
@@ -681,6 +756,7 @@ export default function LibraryPage() {
     setFolders((prev) => prev.filter((f) => f.id !== id));
     setPacks((prev) => prev.map((p) => p.folder_id === id ? { ...p, folder_id: null } : p));
     setDocuments((prev) => prev.map((d) => d.folder_id === id ? { ...d, folder_id: null } : d));
+    setNotes((prev) => prev.map((n) => n.folder_id === id ? { ...n, folder_id: null } : n));
     if (selectedFolderId === id) setSelectedFolderId(ALL_ID);
   }
 
@@ -705,6 +781,16 @@ export default function LibraryPage() {
     setMovingId(null);
   }
 
+  async function moveNoteToFolder(noteId: string, folderId: string | null) {
+    setMovingId(noteId);
+    await fetch(`/api/notes/${noteId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder_id: folderId }),
+    });
+    setNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, folder_id: folderId } : n));
+    setMovingId(null);
+  }
+
   // Delete
   async function deletePack(id: string) {
     if (!confirm("Delete this lesson pack? This cannot be undone.")) return;
@@ -720,6 +806,26 @@ export default function LibraryPage() {
     if (!res.ok) { setStatus("Could not delete document"); return; }
     setDocuments((prev) => prev.filter((d) => d.id !== id));
     if (selectedItem?.kind === "doc" && selectedItem.item.id === id) setSelectedItem(null);
+  }
+
+  async function deleteNote(id: string) {
+    if (!confirm("Delete this note? This cannot be undone.")) return;
+    const res = await fetch(`/api/notes/${id}`, { method: "DELETE" });
+    if (!res.ok) { setStatus("Could not delete note"); return; }
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    if (selectedItem?.kind === "note" && selectedItem.item.id === id) setSelectedItem(null);
+  }
+
+  async function createNote() {
+    const folderId = selectedFolderId !== ALL_ID && selectedFolderId !== UNFILED_ID ? selectedFolderId : null;
+    const res = await fetch("/api/notes", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "", content: "", folder_id: folderId }),
+    });
+    const data = await res.json();
+    if (!data.ok) { setStatus("Could not create note"); return; }
+    setNotes((prev) => [data.note, ...prev]);
+    setSelectedItem({ kind: "note", item: data.note });
   }
 
   // Upload
@@ -753,7 +859,7 @@ export default function LibraryPage() {
     document.body.removeChild(a);
   }
 
-  const totalItems = visiblePacks.length + visibleDocs.length;
+  const totalItems = visiblePacks.length + visibleDocs.length + visibleNotes.length;
   const folderName = selectedFolderId === ALL_ID ? "All Items" : selectedFolderId === UNFILED_ID ? "Unfiled" : (folders.find((f) => f.id === selectedFolderId)?.name ?? "Folder");
 
   const drawerOpen = selectedItem !== null;
@@ -790,6 +896,8 @@ export default function LibraryPage() {
               <span className="lib-chrome-stat-divider">·</span>
               <span className="lib-chrome-stat">{documents.length} {documents.length === 1 ? "document" : "documents"}</span>
               <span className="lib-chrome-stat-divider">·</span>
+              <span className="lib-chrome-stat">{notes.length} {notes.length === 1 ? "note" : "notes"}</span>
+              <span className="lib-chrome-stat-divider">·</span>
               <span className="lib-chrome-stat">{folders.length} {folders.length === 1 ? "folder" : "folders"}</span>
             </div>
           </div>
@@ -805,6 +913,10 @@ export default function LibraryPage() {
             <button className="lib-chrome-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
               <IconUpload size={13} />
               {uploading ? "Uploading…" : "Upload"}
+            </button>
+            <button className="lib-chrome-btn lib-chrome-btn-notes" onClick={() => void createNote()}>
+              <FaPenClip size={13} />
+              New note
             </button>
             <Link href="/lesson-pack" className="lib-chrome-btn is-primary lib-chrome-btn-primary-top">
               <IconPlus size={13} />
@@ -828,7 +940,7 @@ export default function LibraryPage() {
           >
             <span className="lib-tree-icon"><IconAll size={14} /></span>
             <span className="lib-tree-label">All Items</span>
-            <span className="lib-tree-count">{packs.length + documents.length}</span>
+            <span className="lib-tree-count">{packs.length + documents.length + notes.length}</span>
           </button>
 
           <button
@@ -908,9 +1020,10 @@ export default function LibraryPage() {
             <div className="lib-empty">
               <div className="lib-empty-icon"><IconFolder size={32} /></div>
               <p className="lib-empty-title">{selectedFolderId === ALL_ID ? "Your library is empty" : "This folder is empty"}</p>
-              <p className="lib-empty-sub">Generate a lesson pack or upload a document to get started.</p>
+              <p className="lib-empty-sub">Generate a lesson pack, upload a document, or create a note to get started.</p>
               <div className="lib-empty-actions">
                 <Link href="/lesson-pack" className="lib-chrome-btn is-primary"><IconPlus size={13} /> New lesson pack</Link>
+                <button className="lib-chrome-btn lib-chrome-btn-notes" onClick={() => void createNote()}><FaPenClip size={13} /> New note</button>
                 <button className="lib-chrome-btn" onClick={() => fileInputRef.current?.click()}><IconUpload size={13} /> Upload file</button>
               </div>
             </div>
@@ -1013,6 +1126,42 @@ export default function LibraryPage() {
                     </tr>
                   );
                 })}
+
+                {visibleNotes.map((note) => {
+                  const isActive = selectedItem?.kind === "note" && selectedItem.item.id === note.id;
+                  return (
+                    <tr
+                      key={note.id}
+                      className={`lib-row${isActive ? " is-active" : ""}`}
+                      onClick={() => setSelectedItem({ kind: "note", item: note })}
+                    >
+                      <td className="lib-td lib-td-name">
+                        <span className="lib-row-file-icon" style={{ color: "#a37800" }}>
+                          <IconPencil size={15} />
+                        </span>
+                        <span className="lib-row-name">{note.title || "Untitled note"}</span>
+                        {note.pinned && <span className="lib-row-meta">Pinned</span>}
+                      </td>
+                      <td className="lib-td lib-td-type">
+                        <span className="lib-type-badge" style={{ color: "#a37800", background: "rgb(212 160 23 / 0.1)", borderColor: "rgb(212 160 23 / 0.25)" }}>Note</span>
+                      </td>
+                      <td className="lib-td lib-td-date">{formatDate(note.updated_at)}</td>
+                      <td className="lib-td lib-td-folder">
+                        <MoveSelect value={note.folder_id} folders={folders} disabled={movingId === note.id} onChange={(fid) => moveNoteToFolder(note.id, fid)} />
+                      </td>
+                      <td className="lib-td lib-td-actions">
+                        <div className="lib-row-actions">
+                          <Link href={`/notes?id=${note.id}`} className="lib-row-btn" title="Open" onClick={(e) => e.stopPropagation()}>
+                            <IconExternalLink size={13} />
+                          </Link>
+                          <button className="lib-row-btn is-danger" title="Delete" onClick={(e) => { e.stopPropagation(); void deleteNote(note.id); }}>
+                            <IconTrash size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -1080,7 +1229,9 @@ export default function LibraryPage() {
         </button>
         {selectedItem && (
           <span className="lib-drawer-title">
-            {selectedItem.kind === "pack" ? selectedItem.item.title : selectedItem.item.name}
+            {selectedItem.kind === "pack" ? selectedItem.item.title
+              : selectedItem.kind === "doc" ? selectedItem.item.name
+              : (selectedItem.item as NoteItem).title || "Untitled note"}
           </span>
         )}
       </div>
@@ -1088,7 +1239,9 @@ export default function LibraryPage() {
         {selectedItem && (
           selectedItem.kind === "pack"
             ? <PackPreview item={selectedItem.item} />
-            : <DocPreview item={selectedItem.item} onDownload={() => downloadDoc(selectedItem.item)} />
+            : selectedItem.kind === "doc"
+              ? <DocPreview item={selectedItem.item} onDownload={() => downloadDoc(selectedItem.item as DocumentItem)} />
+              : <NotePreview item={selectedItem.item as NoteItem} />
         )}
       </div>
     </div>
