@@ -40,6 +40,8 @@ export async function POST(req: Request) {
 
   const title = String(body.title ?? "").slice(0, 500);
   const content = String(body.content ?? "");
+  const noteType = body.note_type === "whiteboard" ? "whiteboard" : "text";
+  const contentJson = body.content_json ?? null;
   const lessonPackId = typeof body.lesson_pack_id === "string" ? body.lesson_pack_id : null;
   const scheduleEventId = typeof body.schedule_event_id === "string" ? body.schedule_event_id : null;
 
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabase
     .from("teacher_notes")
-    .insert({ user_id: session.userId, title, content, lesson_pack_id: lessonPackId, schedule_event_id: scheduleEventId })
+    .insert({ user_id: session.userId, title, content, note_type: noteType, content_json: contentJson, lesson_pack_id: lessonPackId, schedule_event_id: scheduleEventId })
     .select()
     .single();
 

@@ -2,6 +2,12 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const WhiteboardEditor = dynamic(
+  () => import("@/components/notes/WhiteboardEditor"),
+  { ssr: false }
+);
 
 type Attachment = {
   id: string;
@@ -15,6 +21,8 @@ type Note = {
   id: string;
   title: string;
   content: string;
+  content_json: Record<string, unknown> | null;
+  note_type: "text" | "whiteboard";
   pinned: boolean;
   lesson_pack_id: string | null;
   schedule_event_id: string | null;
@@ -47,6 +55,17 @@ export default function NotesPage() {
   const [creating, setCreating] = useState(false);
   const urlHandled = useRef(false);
 
+  // Dark mode
+  const [isDark, setIsDark] = useState(() =>
+    typeof window !== "undefined" && document.documentElement.dataset.theme === "dark"
+  );
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.dataset.theme === "dark");
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+
   // Editor state
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -66,6 +85,22 @@ export default function NotesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [deleting, setDeleting] = useState(false);
+
+  // New note type picker
+  const [showTypeMenu, setShowTypeMenu] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close type menu on outside click
+  useEffect(() => {
+    if (!showTypeMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (typeMenuRef.current && !typeMenuRef.current.contains(e.target as Node)) {
+        setShowTypeMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showTypeMenu]);
 
   // ── Load notes ──────────────────────────────────────────────────────────────
   const loadNotes = useCallback(async () => {
@@ -92,7 +127,7 @@ export default function NotesPage() {
       if (found) selectNote(found);
       router.replace("/notes", { scroll: false });
     } else if (newParam === "1") {
-      void createNote();
+      void createNote("text");
       router.replace("/notes", { scroll: false });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,10 +150,13 @@ export default function NotesPage() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setActiveId(note.id);
     setEditTitle(note.title);
-    setEditContent(note.content);
+    setEditContent(note.content ?? "");
     setEditPinned(note.pinned);
+    setPreviewMode(false);
     setAttachments([]);
-    void loadAttachments(note.id);
+    if (note.note_type === "text") {
+      void loadAttachments(note.id);
+    }
   }
 
   // ── Auto-save ───────────────────────────────────────────────────────────────
@@ -148,7 +186,28 @@ export default function NotesPage() {
 
   function handleTitleChange(v: string) {
     setEditTitle(v);
-    if (activeId) scheduleAutoSave(activeId, v, editContent, editPinned);
+    if (activeId) {
+      const note = notes.find((n) => n.id === activeId);
+      if (note?.note_type === "text") {
+        scheduleAutoSave(activeId, v, editContent, editPinned);
+      } else {
+        // For whiteboards, just save the title
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        setSaveQueued(true);
+        saveTimer.current = setTimeout(async () => {
+          setSaving(true);
+          try {
+            const res = await fetch(`/api/notes/${activeId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: v }),
+            });
+            const data = await res.json();
+            if (data.ok) setNotes((prev) => prev.map((n) => n.id === activeId ? { ...n, ...data.note } : n));
+          } finally { setSaving(false); setSaveQueued(false); }
+        }, 1200);
+      }
+    }
   }
 
   function handleContentChange(v: string) {
@@ -163,13 +222,14 @@ export default function NotesPage() {
   }
 
   // ── Create note ─────────────────────────────────────────────────────────────
-  async function createNote() {
+  async function createNote(type: "text" | "whiteboard") {
+    setShowTypeMenu(false);
     setCreating(true);
     try {
       const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "", content: "" }),
+        body: JSON.stringify({ title: "", content: "", note_type: type }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -207,7 +267,6 @@ export default function NotesPage() {
     const file = imageItem.getAsFile();
     if (!file) return;
 
-    // Capture cursor position and content BEFORE the async upload
     const ta = contentRef.current;
     const cursorStart = ta?.selectionStart ?? editContent.length;
     const cursorEnd = ta?.selectionEnd ?? editContent.length;
@@ -308,10 +367,11 @@ export default function NotesPage() {
   const filtered = notes.filter((n) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q);
+    return n.title.toLowerCase().includes(q) || (n.content ?? "").toLowerCase().includes(q);
   });
 
   const activeNote = notes.find((n) => n.id === activeId) ?? null;
+  const isWhiteboard = activeNote?.note_type === "whiteboard";
 
   return (
     <div className="notes-shell">
@@ -319,12 +379,42 @@ export default function NotesPage() {
       <aside className="notes-list-panel">
         <div className="notes-list-header">
           <h1 className="notes-list-title">Notes</h1>
-          <button className="notes-new-btn" onClick={() => void createNote()} disabled={creating}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            New note
-          </button>
+          <div className="notes-new-wrap" ref={typeMenuRef}>
+            <button
+              className="notes-new-btn"
+              onClick={() => setShowTypeMenu((s) => !s)}
+              disabled={creating}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: "0.15rem" }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {showTypeMenu && (
+              <div className="notes-type-menu">
+                <button className="notes-type-option" onClick={() => void createNote("text")}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                  Text note
+                </button>
+                <button className="notes-type-option" onClick={() => void createNote("whiteboard")}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M8 12 Q10 8 12 12 Q14 16 16 12"/>
+                    <circle cx="8" cy="8" r="1" fill="currentColor"/>
+                  </svg>
+                  Whiteboard
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="notes-search-wrap">
           <svg className="notes-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -355,9 +445,19 @@ export default function NotesPage() {
                     <path d="M16 1l-1 1-1.5 5.5L8 9 7 10l4 4-3 7 1 1 4-5.5 4.5 4.5 1-1L15 16l2-5.5L22 9l1-1-7-7z"/>
                   </svg>
                 )}
-                <span className="notes-list-item-title">{note.title || "Untitled note"}</span>
+                {note.note_type === "whiteboard" && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="notes-whiteboard-icon">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M8 12 Q10 8 12 12 Q14 16 16 12"/>
+                  </svg>
+                )}
+                <span className="notes-list-item-title">{note.title || (note.note_type === "whiteboard" ? "Untitled whiteboard" : "Untitled note")}</span>
               </div>
-              <p className="notes-list-item-preview">{note.content.slice(0, 80) || "No content"}</p>
+              {note.note_type === "text" ? (
+                <p className="notes-list-item-preview">{(note.content ?? "").slice(0, 80) || "No content"}</p>
+              ) : (
+                <p className="notes-list-item-preview notes-list-item-preview--wb">Whiteboard</p>
+              )}
               <span className="notes-list-item-date">{formatDate(note.updated_at)}</span>
             </button>
           ))}
@@ -365,7 +465,7 @@ export default function NotesPage() {
       </aside>
 
       {/* ── Editor panel ── */}
-      <main className="notes-editor-panel">
+      <main className={`notes-editor-panel${isWhiteboard ? " notes-editor-panel--whiteboard" : ""}`}>
         {!activeNote ? (
           <div className="notes-empty-state">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.25 }}>
@@ -404,23 +504,25 @@ export default function NotesPage() {
               </div>
               <div className="notes-editor-toolbar-right">
                 <span className="notes-meta-date">Last edited {formatDate(activeNote.updated_at)}</span>
-                <button
-                  className={`notes-pin-btn${previewMode ? " active" : ""}`}
-                  onClick={() => setPreviewMode((p) => !p)}
-                  title={previewMode ? "Switch to edit" : "Switch to preview"}
-                >
-                  {previewMode ? (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  ) : (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                  {previewMode ? "Edit" : "Preview"}
-                </button>
+                {!isWhiteboard && (
+                  <button
+                    className={`notes-pin-btn${previewMode ? " active" : ""}`}
+                    onClick={() => setPreviewMode((p) => !p)}
+                    title={previewMode ? "Switch to edit" : "Switch to preview"}
+                  >
+                    {previewMode ? (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                    {previewMode ? "Edit" : "Preview"}
+                  </button>
+                )}
                 <button className="notes-delete-btn" onClick={() => void deleteNote()} disabled={deleting}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -433,12 +535,19 @@ export default function NotesPage() {
 
             <input
               className="notes-title-input"
-              placeholder="Note title…"
+              placeholder={isWhiteboard ? "Whiteboard title…" : "Note title…"}
               value={editTitle}
               onChange={(e) => handleTitleChange(e.target.value)}
             />
 
-            {previewMode ? (
+            {isWhiteboard ? (
+              <WhiteboardEditor
+                key={activeNote.id}
+                noteId={activeNote.id}
+                initialData={activeNote.content_json as never}
+                isDark={isDark}
+              />
+            ) : previewMode ? (
               <div className="notes-content-preview">
                 {renderContentWithImages(editContent)}
               </div>
@@ -453,78 +562,80 @@ export default function NotesPage() {
               />
             )}
 
-            {/* ── Attachments ── */}
-            <div
-              className="notes-attachments"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-            >
-              <div className="notes-attachments-header">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                </svg>
-                <span>Attachments {attachments.length > 0 ? `(${attachments.length})` : ""}</span>
-                <button
-                  className="notes-attach-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  title="Add file"
-                >
-                  {uploading ? "Uploading…" : (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                      Add file
-                    </>
-                  )}
-                </button>
-                <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileInput} />
-              </div>
-
-              {attachLoading && <p className="notes-attach-empty">Loading…</p>}
-
-              {!attachLoading && attachments.length === 0 && (
-                <p className="notes-attach-empty">Drop files here or click "Add file" to attach images and documents.</p>
-              )}
-
-              <div className="notes-attach-grid">
-                {attachments.map((att) => (
-                  <div key={att.id} className="notes-attach-item">
-                    {isImage(att.mime_type) ? (
-                      <a href={`/api/notes/${activeId}/attachments/${att.id}`} target="_blank" rel="noopener noreferrer" className="notes-attach-thumb-link">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/api/notes/${activeId}/attachments/${att.id}`}
-                          alt={att.name}
-                          className="notes-attach-thumb"
-                        />
-                      </a>
-                    ) : (
-                      <a href={`/api/notes/${activeId}/attachments/${att.id}`} target="_blank" rel="noopener noreferrer" className="notes-attach-file-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                          <polyline points="14 2 14 8 20 8"/>
+            {/* ── Attachments (text notes only) ── */}
+            {!isWhiteboard && (
+              <div
+                className="notes-attachments"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <div className="notes-attachments-header">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                  </svg>
+                  <span>Attachments {attachments.length > 0 ? `(${attachments.length})` : ""}</span>
+                  <button
+                    className="notes-attach-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    title="Add file"
+                  >
+                    {uploading ? "Uploading…" : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 5v14M5 12h14" />
                         </svg>
-                      </a>
+                        Add file
+                      </>
                     )}
-                    <div className="notes-attach-info">
-                      <span className="notes-attach-name" title={att.name}>{att.name}</span>
-                      <span className="notes-attach-size">{formatBytes(att.size_bytes)}</span>
+                  </button>
+                  <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileInput} />
+                </div>
+
+                {attachLoading && <p className="notes-attach-empty">Loading…</p>}
+
+                {!attachLoading && attachments.length === 0 && (
+                  <p className="notes-attach-empty">Drop files here or click "Add file" to attach images and documents.</p>
+                )}
+
+                <div className="notes-attach-grid">
+                  {attachments.map((att) => (
+                    <div key={att.id} className="notes-attach-item">
+                      {isImage(att.mime_type) ? (
+                        <a href={`/api/notes/${activeId}/attachments/${att.id}`} target="_blank" rel="noopener noreferrer" className="notes-attach-thumb-link">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`/api/notes/${activeId}/attachments/${att.id}`}
+                            alt={att.name}
+                            className="notes-attach-thumb"
+                          />
+                        </a>
+                      ) : (
+                        <a href={`/api/notes/${activeId}/attachments/${att.id}`} target="_blank" rel="noopener noreferrer" className="notes-attach-file-link">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                          </svg>
+                        </a>
+                      )}
+                      <div className="notes-attach-info">
+                        <span className="notes-attach-name" title={att.name}>{att.name}</span>
+                        <span className="notes-attach-size">{formatBytes(att.size_bytes)}</span>
+                      </div>
+                      <button
+                        className="notes-attach-delete"
+                        onClick={() => void deleteAttachment(att.id)}
+                        title="Remove attachment"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                      </button>
                     </div>
-                    <button
-                      className="notes-attach-delete"
-                      onClick={() => void deleteAttachment(att.id)}
-                      title="Remove attachment"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6L6 18M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </main>

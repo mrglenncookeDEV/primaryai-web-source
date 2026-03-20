@@ -32,6 +32,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if ("title" in body) updates.title = String(body.title ?? "").slice(0, 500);
   if ("content" in body) updates.content = String(body.content ?? "");
+  if ("content_json" in body) updates.content_json = body.content_json ?? null;
   if ("pinned" in body) updates.pinned = Boolean(body.pinned);
   if ("lesson_pack_id" in body) updates.lesson_pack_id = body.lesson_pack_id ?? null;
   if ("schedule_event_id" in body) updates.schedule_event_id = body.schedule_event_id ?? null;
