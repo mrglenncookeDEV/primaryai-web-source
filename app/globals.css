@@ -10695,35 +10695,39 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
     margin-right: 0.25rem;
   }
 
-  /* Hide global back button when notes in-page back btn is visible */
-  body:has(.notes-back-btn) .mobile-back-btn {
-    display: none;
-  }
 }
 
-/* Mobile back button — fixed top-left in the nav bar */
-.mobile-back-btn {
+/* Hide global back button when notes in-page back btn is visible */
+body:has(.notes-back-btn) .mobile-back-btn {
   display: none;
 }
 
-@media (max-width: 900px) {
-  .mobile-back-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    top: 16px;
-    left: 14px;
-    z-index: 210;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
-    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
-  }
+/* Nav left column — back button + logo */
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-self: start;
+}
+
+/* Back button — inline in the nav bar */
+.mobile-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.mobile-back-btn:hover {
+  background: var(--field-bg);
 }
 
 /* ── Notes title input: tighten on mobile ── */

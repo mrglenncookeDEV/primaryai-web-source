@@ -1,12 +1,15 @@
 import Link from "next/link";
 import NavLinks from "./NavLinks";
+import BackButton from "@/components/MobileBackButton";
 import { getAuthSession } from "@/lib/auth";
 
-export default async function Nav({ session }) {
+export default async function Nav({ session, showBackButton = false }) {
   const resolvedSession = session === undefined ? await getAuthSession() : session;
   return (
     <nav className="top-nav" aria-label="Site navigation">
-      <Link href="/" className="nav-logo-link">
+      <div className="nav-left">
+        {showBackButton && <BackButton />}
+        <Link href="/" className="nav-logo-link">
         <svg
           className="nav-logo-icon"
           xmlns="http://www.w3.org/2000/svg"
@@ -28,6 +31,7 @@ export default async function Nav({ session }) {
           Pr<span className="nav-logo-orange">i</span>m<span className="nav-logo-orange">a</span>ry<span className="nav-logo-orange">A</span><span className="nav-logo-orange">I</span>
         </span>
       </Link>
+      </div>
       <NavLinks session={resolvedSession ?? null} />
     </nav>
   );
