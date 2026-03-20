@@ -59,10 +59,12 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
     return () => obs.disconnect();
   }, []);
   const [minuteFlash, setMinuteFlash] = useState(false);
+  const [hourFlash, setHourFlash]     = useState(false);
   const prevMinute          = useRef<number>(-1);
   const prevDaysRef         = useRef<number>(-1);
   const toastTimer          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashTimer          = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hourFlashTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fireConfetti = useCallback(() => {
     import("canvas-confetti").then(({ default: confetti }) => {
@@ -112,7 +114,7 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
     prevMinute.current = m;
   }, [now, fireConfetti, showToast]);
 
-  // Right-button red blink (×3) at the top of every minute
+  // Right-button red blink (×6) at the top of every minute
   useEffect(() => {
     if (now.getSeconds() !== 0) return;
     if (flashTimer.current) clearTimeout(flashTimer.current);
@@ -122,6 +124,21 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
       flashTimer.current = setTimeout(() => {
         setMinuteFlash(false);
         flashTimer.current = setTimeout(() => blink(remaining - 1), 160);
+      }, 220);
+    };
+    blink(6);
+  }, [now]);
+
+  // Left-button green blink (×6) at the top of every hour
+  useEffect(() => {
+    if (now.getSeconds() !== 0 || now.getMinutes() !== 0) return;
+    if (hourFlashTimer.current) clearTimeout(hourFlashTimer.current);
+    const blink = (remaining: number) => {
+      if (remaining <= 0) return;
+      setHourFlash(true);
+      hourFlashTimer.current = setTimeout(() => {
+        setHourFlash(false);
+        hourFlashTimer.current = setTimeout(() => blink(remaining - 1), 160);
       }, 220);
     };
     blink(6);
@@ -352,6 +369,21 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             <stop offset="100%" stopColor="rgba(255,255,255,0)" />
           </radialGradient>
 
+          {/* Glass dome — convex body gradient (Fresnel: edges more reflective) */}
+          <radialGradient id="glass-dome-grad" cx="40%" cy="28%" r="72%" gradientUnits="objectBoundingBox">
+            <stop offset="0%"   stopColor="rgba(240,248,255,0.00)" />
+            <stop offset="30%"  stopColor="rgba(210,228,255,0.03)" />
+            <stop offset="68%"  stopColor="rgba(180,210,255,0.08)" />
+            <stop offset="100%" stopColor="rgba(100,150,220,0.20)" />
+          </radialGradient>
+
+          {/* Primary specular blob gradient */}
+          <radialGradient id="glass-spec-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="rgba(255,255,255,0.62)" />
+            <stop offset="42%"  stopColor="rgba(255,255,255,0.26)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
+
           {/* Directional brushed-grain filter (high horizontal frequency = fine lateral streaks) */}
           <filter id="steel-grain" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
             <feTurbulence type="fractalNoise" baseFrequency="0.04 1.6" numOctaves="2" seed="11" result="noise" />
@@ -360,6 +392,15 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
             <feBlend in="SourceGraphic" in2="grain" mode="soft-light" result="grained" />
             <feComposite in="grained" in2="SourceGraphic" operator="in" />
           </filter>
+
+          {/* Green button gradient — for hour-flash on left side button */}
+          <linearGradient id="btn-green" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#14532d" />
+            <stop offset="20%"  stopColor="#16a34a" />
+            <stop offset="50%"  stopColor="#22c55e" />
+            <stop offset="80%"  stopColor="#16a34a" />
+            <stop offset="100%" stopColor="#14532d" />
+          </linearGradient>
 
           {/* Red button gradient — for minute-flash on right side button */}
           <linearGradient id="btn-red" x1="0" y1="0" x2="0" y2="1">
@@ -492,28 +533,49 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
         })}
 
         {/* ── Glass crystal dome ── */}
-        {/* Edge refraction ring — subtle colour fringe where glass meets bezel */}
+        {/* 1. Outer edge refraction fringe — bright blue-white halo at glass/bezel boundary */}
         <circle cx={CX} cy={100} r={91.8} fill="none"
-          stroke="rgba(160,200,255,0.13)" strokeWidth={2.2} />
-        {/* Main glass body — very subtle tinted fill */}
-        <circle cx={CX} cy={100} r={92}
-          fill="rgba(220,235,255,0.04)" />
-        {/* Primary specular highlight — large soft oval near top-left */}
-        <ellipse cx={CX - 18} cy={62} rx={28} ry={14}
-          fill="rgba(255,255,255,0.18)"
-          style={{ filter: "blur(4px)" }} />
-        {/* Secondary glare — smaller, brighter, sharper */}
-        <ellipse cx={CX - 10} cy={56} rx={12} ry={5}
-          fill="rgba(255,255,255,0.38)" />
-        {/* Thin crescent rim reflection along top arc */}
+          stroke="rgba(180,215,255,0.38)" strokeWidth={2.8} />
+        <circle cx={CX} cy={100} r={91.0} fill="none"
+          stroke="rgba(255,255,255,0.12)" strokeWidth={1.0} />
+
+        {/* 2. Convex dome body — Fresnel tint: clear centre, blue-reflective edges */}
+        <circle cx={CX} cy={100} r={91.5}
+          fill="url(#glass-dome-grad)" />
+
+        {/* 3. Primary specular highlight — wide, soft, angled oval, top-left */}
+        <ellipse cx={CX - 14} cy={60} rx={34} ry={17}
+          fill="url(#glass-spec-grad)"
+          style={{ filter: "blur(5px)" }} />
+
+        {/* 4. Secondary glare — sharper bright streak within the primary blob */}
+        <ellipse cx={CX - 6} cy={53} rx={18} ry={7}
+          fill="rgba(255,255,255,0.50)"
+          style={{ filter: "blur(1.8px)" }} />
+
+        {/* 5. Micro-glint — near-white pinpoint at hottest specular spot */}
+        <ellipse cx={CX - 1} cy={49} rx={7} ry={3}
+          fill="rgba(255,255,255,0.88)" />
+
+        {/* 6. Top caustic arc — bright crescent along inner top rim where dome refracts light */}
         <path
-          d={`M ${CX - 58} 52 A 70 70 0 0 1 ${CX + 58} 52`}
-          fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth={1.2}
-          strokeLinecap="round" />
-        {/* Bottom shadow — glass presses light downward */}
-        <ellipse cx={CX} cy={156} rx={50} ry={10}
-          fill="rgba(0,0,0,0.07)"
-          style={{ filter: "blur(3px)" }} />
+          d={`M ${CX - 70} 40 A 84 84 0 0 1 ${CX + 70} 40`}
+          fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth={1.6}
+          strokeLinecap="round" style={{ filter: "blur(0.6px)" }} />
+
+        {/* 7. Inner catch-light ring — thin bright ring at glass inner edge */}
+        <circle cx={CX} cy={100} r={91.5} fill="none"
+          stroke="rgba(255,255,255,0.15)" strokeWidth={0.7} />
+
+        {/* 8. Bottom-right ambient reflection — secondary bounce off the bezel */}
+        <ellipse cx={CX + 20} cy={150} rx={26} ry={10}
+          fill="rgba(180,210,255,0.07)"
+          style={{ filter: "blur(4px)" }} />
+
+        {/* 9. Bottom shadow — dome focuses light downward, slight darkening below centre */}
+        <ellipse cx={CX} cy={158} rx={54} ry={12}
+          fill="rgba(0,0,0,0.10)"
+          style={{ filter: "blur(5px)" }} />
 
         {/* ── Brushed steel case ── */}
         {/* Bezel body — filled ring with 3D torus gradient */}
@@ -550,13 +612,21 @@ export function TermCountdownRing({ termName, termStartDate, termEndDate }: Prop
         <rect x={93} y={-14} width={14} height={10} rx={3.5}
           fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={0.4} />
 
-        {/* Left side button (~10:30) */}
+        {/* Left side button (~10:30) — flashes green on the hour */}
         <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
-          fill="url(#btn-steel)" filter="url(#steel-grain)"
-          transform="translate(35 22) rotate(230)" />
+          fill={hourFlash ? "url(#btn-green)" : "url(#btn-steel)"}
+          filter="url(#steel-grain)"
+          transform="translate(35 22) rotate(230)"
+          style={{ transition: "fill 0.15s ease" }} />
         <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
-          fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={0.7}
+          fill="none" stroke={hourFlash ? "rgba(0,150,0,0.7)" : "rgba(0,0,0,0.55)"} strokeWidth={0.7}
           transform="translate(35 22) rotate(230)" />
+        {hourFlash && (
+          <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}
+            fill="rgba(34,197,94,0.35)"
+            transform="translate(35 22) rotate(230)"
+            style={{ filter: "blur(2px)" }} />
+        )}
 
         {/* Right side button (~1:30) — flashes red on the minute */}
         <rect x={-4.5} y={-5.5} width={9} height={11} rx={2.5}

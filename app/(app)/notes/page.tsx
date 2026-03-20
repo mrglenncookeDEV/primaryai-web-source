@@ -374,14 +374,20 @@ export default function NotesPage() {
               <line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
             </svg>
             <p>Select a note or create a new one</p>
-            <button className="notes-new-btn" onClick={() => void createNote()} disabled={creating}>
-              New note
-            </button>
           </div>
         ) : (
           <>
             <div className="notes-editor-toolbar">
               <div className="notes-editor-toolbar-left">
+                <button
+                  className="notes-back-btn"
+                  onClick={() => setActiveId(null)}
+                  aria-label="Back to notes list"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                  </svg>
+                </button>
                 <button
                   className={`notes-pin-btn${editPinned ? " active" : ""}`}
                   onClick={handlePinnedToggle}

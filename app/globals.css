@@ -4680,13 +4680,14 @@ body:has(.notes-shell) .app-body {
 
 .lib-td-type {
   white-space: nowrap;
+  overflow: visible;
 }
 
 .lib-type-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
   border: 1px solid var(--border);
   font-size: 0.7rem;
   font-weight: 700;
@@ -4958,8 +4959,8 @@ body:has(.notes-shell) .app-body {
 .lib-preview-doc-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  border-radius: 5px;
   border: 1px solid;
   font-size: 0.68rem;
   font-weight: 700;
@@ -7148,7 +7149,7 @@ a.scheduler-modal-confirm {
 
   .scheduler-drawer-inner {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(220px, auto) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .scheduler-drawer-inner-embedded {
@@ -7159,15 +7160,32 @@ a.scheduler-modal-confirm {
     border-right: none;
     border-bottom: 1px solid var(--border);
     min-height: 0;
+    height: auto !important;
+    max-height: none !important;
   }
 
   .scheduler-sidebar-pane {
     padding: 0.65rem;
     overflow: visible;
+    flex: 0 0 auto;
   }
 
+  /* 2-col grid so Personal + School Event sit side by side; lesson button is hidden */
   .scheduler-quick-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Smaller quick-add buttons on mobile */
+  .scheduler-quick-button {
+    min-height: 28px !important;
+    padding: 0.3rem 0.4rem !important;
+    font-size: 0.64rem !important;
+    gap: 0.3rem;
+  }
+
+  .scheduler-quick-button-icon svg {
+    width: 12px;
+    height: 12px;
   }
 
   .scheduler-sync-actions-row {
@@ -7187,25 +7205,39 @@ a.scheduler-modal-confirm {
     max-height: 280px;
   }
 
+  /* Single-row nav: Today | ← [date] → | All Events */
   .scheduler-week-nav {
-    align-items: flex-start;
-    gap: 0.55rem;
-    padding: 0.75rem 0.8rem;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.7rem;
   }
 
   .scheduler-week-label {
-    flex: 1 1 100%;
-    order: 2;
+    flex: 1;
+    order: 0;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
+
+  .scheduler-today-btn {
+    padding: 0.22rem 0.55rem;
+    font-size: 0.66rem;
+    flex-shrink: 0;
+  }
+
+  .scheduler-filter-dropdown {
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   .scheduler-print-btn {
     display: none !important;
   }
 
-  .scheduler-week-nav > div:last-child {
-    margin-left: 0 !important;
-    order: 3;
-  }
 
   .scheduler-cal-scroll {
     -webkit-overflow-scrolling: touch;
@@ -7216,22 +7248,20 @@ a.scheduler-modal-confirm {
     min-width: 420px;
   }
 
-  /* Dashboard two-column layout collapses on mobile */
-  .dashboard-top-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-countdown-wrapper { order: 1; }
-  .dashboard-scheduler-wrapper { order: 2; }
-  .dashboard-hero-side-wrap     { order: 3; }
-
   .dashboard-main-grid {
     grid-template-columns: 1fr !important;
   }
 
-  /* Hide drag-and-drop hint — no drag on touch */
-  .week-cal-drag-hint {
-    display: none;
+  /* Hide desktop-only elements on touch */
+  .week-cal-drag-hint,
+  .scheduler-pack-unschedule-zone,
+  .scheduler-sidebar-packs-card,
+  .scheduler-sync-grid,
+  .scheduler-sync-grid + *,
+  .scheduler-sidebar-section-header:has(+ .scheduler-sync-grid),
+  .scheduler-custom-add-btn-lesson,
+  .scheduler-quick-actions > .scheduler-custom-add-btn-lesson {
+    display: none !important;
   }
 
   /* Tighten time label column */
@@ -8668,6 +8698,12 @@ html[data-theme="light"] .cmdpal-box {
   from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+@media (max-width: 900px) {
+  .term-countdown-toast {
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+}
 /* ─────────────────────────────────────────────────────────── */
 
 .dashboard-hero-stat {
@@ -9346,13 +9382,14 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
   .dashboard-top-grid {
     display: flex;
     flex-direction: column;
+    gap: 0.85rem;
   }
 
-  .dashboard-top-grid > * {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
+  .dashboard-top-grid > * { width: 100%; min-width: 0; }
+
+  .dashboard-countdown-wrapper  { order: 1; }
+  .dashboard-scheduler-wrapper  { order: 2; }
+  .dashboard-hero-side-wrap     { order: 3; }
 
   .app-sidebar,
   .app-sidebar-dock,
@@ -10318,21 +10355,50 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
 @media (max-width: 640px) {
   .notes-shell {
     flex-direction: column;
-    height: calc(100dvh - 64px - 62px); /* nav + bottom nav */
+    height: calc(100dvh - 64px - 62px);
   }
+
+  /* List: full height when no note selected */
   .notes-list-panel {
     width: 100%;
     max-width: 100%;
     border-right: none;
-    border-bottom: 1px solid var(--border-card);
-    flex: 0 0 38%;
-    max-height: 38%;
+    border-bottom: none;
+    flex: 1;
     overflow-y: auto;
   }
+
+  /* Editor: hidden when no note selected */
   .notes-editor-panel {
+    display: none;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+  }
+
+  /* When a note is open: hide list, show editor full height */
+  .notes-shell:has(.notes-editor-toolbar) .notes-list-panel {
+    display: none;
+  }
+
+  .notes-shell:has(.notes-editor-toolbar) .notes-editor-panel {
+    display: flex;
+  }
+
+  /* Back button: only visible on mobile */
+  .notes-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-right: 0.25rem;
   }
 }
 
@@ -10486,38 +10552,6 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
   }
 }
 
-/* ── Term countdown: reflow to column on narrow screens ── */
-@media (max-width: 640px) {
-  .term-countdown-wrap {
-    flex-direction: column;
-    align-items: center;
-    padding: 1rem 1rem 0.85rem;
-    gap: 0.75rem;
-  }
-
-  .term-countdown-svg {
-    width: 140px;
-    height: 140px;
-  }
-
-  .term-countdown-right {
-    width: 100%;
-    flex-direction: row;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  .term-countdown-legend {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.25rem;
-  }
-
-  .term-countdown-group {
-    flex-direction: column;
-  }
-}
 
 /* ── Radial view: stack column on narrow screens ── */
 @media (max-width: 640px) {
@@ -10603,11 +10637,92 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
   }
 }
 
-/* ── Library chrome buttons: full-width at 480px and below ── */
-@media (max-width: 480px) {
-  .lib-chrome-btn-primary-top {
-    width: 100%;
+/* ── Library chrome: mobile layout ── */
+@media (max-width: 640px) {
+  .lib-chrome-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .lib-chrome-left {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  /* Hide verbose stats on mobile — keep just the title */
+  .lib-chrome-stats {
+    display: none;
+  }
+
+  .lib-chrome-right {
+    flex-wrap: nowrap;
+    justify-content: stretch;
+    gap: 0.4rem;
+  }
+
+  /* All chrome buttons equal-width and centred in a clean row */
+  .lib-chrome-right .lib-chrome-btn,
+  .lib-chrome-right .lib-chrome-btn-primary-top {
+    flex: 1;
     justify-content: center;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.74rem;
+  }
+}
+
+
+/* Notes in-page back button — desktop hidden, mobile shown when editing */
+.notes-back-btn {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .notes-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-right: 0.25rem;
+  }
+
+  /* Hide global back button when notes in-page back btn is visible */
+  body:has(.notes-back-btn) .mobile-back-btn {
+    display: none;
+  }
+}
+
+/* Mobile back button — fixed top-left in the nav bar */
+.mobile-back-btn {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .mobile-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 16px;
+    left: 14px;
+    z-index: 210;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
   }
 }
 
@@ -10615,10 +10730,6 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
 @media (max-width: 640px) {
   .notes-title-input {
     font-size: 1.1rem;
-  }
-
-  .notes-list-panel {
-    min-height: 0;
   }
 }
 
