@@ -23,7 +23,9 @@ type Result = {
 const PAGES: Result[] = [
   { href: "/dashboard", label: "Dashboard", sub: "Your overview", category: "Navigate", type: "page" },
   { href: "/lesson-pack", label: "Generate Lesson Pack", sub: "AI-powered lesson resources", category: "Navigate", type: "page" },
+  { href: "/critical-planner", label: "Critical Planner", sub: "School structure, AfL and next-step gated planning", category: "Navigate", type: "page" },
   { href: "/library", label: "Lesson Library", sub: "Browse your saved packs", category: "Navigate", type: "page" },
+  { href: "/wellbeing-report", label: "Wellbeing Report", sub: "Workload and check-in trends", category: "Navigate", type: "page" },
   { href: "/settings", label: "Teacher Settings", sub: "Preferences and defaults", category: "Navigate", type: "page" },
   { href: "/account", label: "Account", sub: "Profile and sign-in", category: "Navigate", type: "page" },
   { href: "/billing", label: "Billing", sub: "Manage your subscription", category: "Navigate", type: "page" },
@@ -41,9 +43,19 @@ const PAGE_ICONS: Record<string, ReactElement> = {
       <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
     </svg>
   ),
+  "/critical-planner": (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
   "/library": (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  ),
+  "/wellbeing-report": (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17s3-6 6-3 4 4 7-2 5-5 5-5" /><path d="M3 21h18" />
     </svg>
   ),
   "/settings": (

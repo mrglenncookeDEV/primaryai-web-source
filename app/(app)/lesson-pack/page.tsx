@@ -80,6 +80,134 @@ function DifferentiationPanel({ diff }: { diff: DiffPack }) {
   );
 }
 
+const BLOOM_META: Record<string, { color: string; bg: string; border: string }> = {
+  Remember:   { color: "#6b7280", bg: "rgba(107,114,128,0.06)", border: "rgba(107,114,128,0.18)" },
+  Understand: { color: "#3b82f6", bg: "rgba(59,130,246,0.06)",  border: "rgba(59,130,246,0.18)" },
+  Apply:      { color: "#10b981", bg: "rgba(16,185,129,0.06)",  border: "rgba(16,185,129,0.18)" },
+  Analyse:    { color: "#f59e0b", bg: "rgba(245,158,11,0.06)",  border: "rgba(245,158,11,0.18)" },
+  Evaluate:   { color: "#ef4444", bg: "rgba(239,68,68,0.06)",   border: "rgba(239,68,68,0.18)" },
+  Create:     { color: "#a855f7", bg: "rgba(168,85,247,0.06)",  border: "rgba(168,85,247,0.18)" },
+};
+
+const BLOOM_ICONS: Record<string, string> = {
+  Recall: "💡",
+  Explain: "💬",
+  "Apply it": "🔧",
+  "Odd one out": "🔍",
+  "Convince me": "⚖️",
+  "Always/Sometimes/Never": "♾️",
+};
+
+function ThinkingQuestionsPanel({ questions }: { questions: ThinkingQuestion[] }) {
+  const [active, setActive] = useState(0);
+  const q = questions[active];
+  if (!q) return null;
+  const meta = BLOOM_META[q.bloom_level] ?? BLOOM_META.Remember;
+  return (
+    <div className="card" style={{ padding: 0, overflow: "hidden", border: "1.5px solid #10b981" }}>
+      <div style={{ padding: "0.85rem 1.1rem 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.8rem" }}>
+          <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#10b981" }}>Critical Thinking Questions</span>
+          <span style={{ fontSize: "0.68rem", padding: "2px 7px", borderRadius: "999px", background: "rgba(16,185,129,0.12)", color: "#10b981", fontWeight: 700 }}>Bloom&apos;s Framework</span>
+        </div>
+        <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+          {questions.map((tq, i) => {
+            const m = BLOOM_META[tq.bloom_level] ?? BLOOM_META.Remember;
+            return (
+              <button key={i} type="button" onClick={() => setActive(i)} style={{ padding: "0.35rem 0.75rem", borderRadius: "8px 8px 0 0", border: `1px solid ${active === i ? m.color : "var(--border)"}`, borderBottom: active === i ? `2px solid ${m.color}` : "1px solid var(--border)", background: active === i ? `color-mix(in srgb, ${m.color} 12%, var(--surface))` : "transparent", color: active === i ? m.color : "var(--muted)", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all 120ms" }}>
+                {tq.bloom_level}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ padding: "1.1rem 1.1rem 1.2rem", background: meta.bg, borderTop: `2px solid ${meta.color}` }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.85rem" }}>
+          <span style={{ fontSize: "1.5rem", lineHeight: 1, flexShrink: 0 }}>{BLOOM_ICONS[q.type] ?? "💡"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.55rem" }}>
+              <span style={{ fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color }}>{q.type}</span>
+              <span style={{ fontSize: "0.63rem", color: "var(--muted)" }}>· {q.bloom_level}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: "1rem", fontWeight: 600, lineHeight: 1.6, color: "var(--text)" }}>{q.stem}</p>
+          </div>
+        </div>
+        {questions.length > 1 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
+            <button type="button" onClick={() => setActive((i) => Math.max(0, i - 1))} disabled={active === 0} style={{ border: "none", background: "transparent", color: active === 0 ? "var(--muted)" : meta.color, fontWeight: 700, cursor: active === 0 ? "default" : "pointer", fontSize: "0.82rem", fontFamily: "inherit" }}>← Prev</button>
+            <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>{active + 1} of {questions.length}</span>
+            <button type="button" onClick={() => setActive((i) => Math.min(questions.length - 1, i + 1))} disabled={active === questions.length - 1} style={{ border: "none", background: "transparent", color: active === questions.length - 1 ? "var(--muted)" : meta.color, fontWeight: 700, cursor: active === questions.length - 1 ? "default" : "pointer", fontSize: "0.82rem", fontFamily: "inherit" }}>Next →</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type LessonSection = { title: string; content: string; teacher_prompts?: string[]; checks_for_understanding?: string[]; rationale_badge?: string };
+
+function LessonWalkthroughPanel({ sections }: { sections: LessonSection[] }) {
+  const [active, setActive] = useState(0);
+  const section = sections[active];
+  if (!section) return null;
+  return (
+    <div className="card" style={{ padding: 0, overflow: "hidden", border: "1.5px solid rgba(99,102,241,0.35)" }}>
+      <div style={{ padding: "0.85rem 1.1rem 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.8rem" }}>
+          <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#818cf8" }}>Lesson Walkthrough</span>
+          <span style={{ fontSize: "0.68rem", padding: "2px 7px", borderRadius: "999px", background: "rgba(99,102,241,0.12)", color: "#818cf8", fontWeight: 700 }}>{sections.length} sections</span>
+        </div>
+        <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" as const }}>
+          {sections.map((s, i) => (
+            <button key={i} type="button" onClick={() => setActive(i)} style={{ padding: "0.3rem 0.65rem", borderRadius: "8px 8px 0 0", border: `1px solid ${active === i ? "#818cf8" : "var(--border)"}`, borderBottom: active === i ? "2px solid #818cf8" : "1px solid var(--border)", background: active === i ? "rgba(99,102,241,0.1)" : "transparent", color: active === i ? "#818cf8" : "var(--muted)", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all 120ms" }}>
+              {i + 1}. {s.title}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: "1rem 1.1rem 1.1rem", background: "rgba(99,102,241,0.05)", borderTop: "2px solid #818cf8" }}>
+        {section.rationale_badge && (
+          <span style={{ display: "inline-block", marginBottom: "0.65rem", fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", background: "rgba(99,102,241,0.12)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.22)" }}>{section.rationale_badge}</span>
+        )}
+        <p style={{ margin: "0 0 0.85rem", fontSize: "0.9rem", lineHeight: 1.7, color: "var(--text)" }}>{section.content}</p>
+        {section.teacher_prompts && section.teacher_prompts.length > 0 && (
+          <div style={{ marginBottom: "0.75rem" }}>
+            <p style={{ margin: "0 0 0.4rem", fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#818cf8" }}>Teacher Prompts</p>
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.3rem" }}>
+              {section.teacher_prompts.map((p, i) => (
+                <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0, color: "#818cf8", fontSize: "0.85rem", lineHeight: 1.5 }}>›</span>
+                  <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.55, color: "var(--text)" }}>{p}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {section.checks_for_understanding && section.checks_for_understanding.length > 0 && (
+          <div>
+            <p style={{ margin: "0 0 0.4rem", fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#818cf8" }}>Checks for Understanding</p>
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.3rem" }}>
+              {section.checks_for_understanding.map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", padding: "0.45rem 0.7rem", borderRadius: "8px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.15)" }}>
+                  <span style={{ flexShrink: 0, color: "#818cf8", fontWeight: 700, fontSize: "0.8rem", lineHeight: 1.5 }}>?</span>
+                  <p style={{ margin: 0, fontSize: "0.83rem", lineHeight: 1.5, color: "var(--text)" }}>{c}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {sections.length > 1 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
+            <button type="button" onClick={() => setActive(i => Math.max(0, i - 1))} disabled={active === 0} style={{ border: "none", background: "transparent", color: active === 0 ? "var(--muted)" : "#818cf8", fontWeight: 700, cursor: active === 0 ? "default" : "pointer", fontSize: "0.82rem", fontFamily: "inherit" }}>← Prev</button>
+            <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>{active + 1} of {sections.length}</span>
+            <button type="button" onClick={() => setActive(i => Math.min(sections.length - 1, i + 1))} disabled={active === sections.length - 1} style={{ border: "none", background: "transparent", color: active === sections.length - 1 ? "var(--muted)" : "#818cf8", fontWeight: 700, cursor: active === sections.length - 1 ? "default" : "pointer", fontSize: "0.82rem", fontFamily: "inherit" }}>Next →</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const PROVIDER_LABELS: Record<string, string> = {
   cerebras: "Cerebras",
   groq: "Groq",
@@ -107,6 +235,8 @@ type ProviderCatalogItem = {
   rateLimited?: boolean;
 };
 
+type ThinkingQuestion = { stem: string; type: string; bloom_level: string };
+
 type LessonPack = {
   year_group: string;
   subject: string;
@@ -122,6 +252,19 @@ type LessonPack = {
     core: { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string };
     higher: { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string; extension?: string };
   };
+  lesson_hook?: string;
+  safety_notes?: string[];
+  timing_guide?: string;
+  lesson_sections?: Array<{
+    title: string;
+    content: string;
+    teacher_prompts?: string[];
+    checks_for_understanding?: string[];
+    rationale_badge?: string;
+  }>;
+  thinking_questions?: ThinkingQuestion[];
+  next_steps?: Array<{ pupil: string; next_step: string; lesson_response?: string }>;
+  rationale_tags?: Array<{ decision: string; source: string; note: string }>;
   send_adaptations: string[];
   plenary: string;
   mini_assessment: { questions: string[]; answers: string[] };
@@ -172,6 +315,13 @@ const SECTION_REVIEW_OPTIONS = {
   activities: ["Well differentiated", "Too similar", "Needs scaffolds"],
   adaptations: ["Useful", "Too generic", "Needs specificity"],
 } as const;
+
+const UNIT_POSITION_LABELS: Record<string, string> = {
+  new: "Introducing a new concept — pupils haven't seen this before; build from scratch, use concrete examples",
+  practising: "Practising — pupils have seen this concept; focus on fluency, address emerging errors",
+  consolidating: "Consolidating — pupils are secure; deepen reasoning, make connections, challenge misconceptions",
+  reviewing: "Reviewing — pupils are revisiting or being assessed; surface gaps, correct misunderstandings",
+};
 
 const SUBJECT_GROUPS = [
   { label: "Core Subjects", subjects: ["Maths", "English", "Science"] },
@@ -418,6 +568,7 @@ export default function LessonPackPage() {
   const [reflectQuestions, setReflectQuestions] = useState<string[]>([]);
   const [reflectAcknowledged, setReflectAcknowledged] = useState<Record<number, boolean>>({});
   const [reflectLoading, setReflectLoading] = useState(false);
+  const [lessonContext, setLessonContext] = useState({ unitPosition: "", lastLesson: "", todayNote: "" });
 
   const [settingsChecklist, setSettingsChecklist] = useState({
     ealPercent: false,
@@ -675,6 +826,18 @@ export default function LessonPackPage() {
     }
   }
 
+  function buildCombinedContext() {
+    const parts: string[] = [];
+    if (lessonContext.unitPosition || lessonContext.lastLesson || lessonContext.todayNote) {
+      parts.push("LESSON CONTEXT (provided by teacher before generation)");
+      if (lessonContext.unitPosition) parts.push(`- Position in unit: ${UNIT_POSITION_LABELS[lessonContext.unitPosition] ?? lessonContext.unitPosition}`);
+      if (lessonContext.lastLesson.trim()) parts.push(`- Last lesson / AfL: ${lessonContext.lastLesson.trim()}`);
+      if (lessonContext.todayNote.trim()) parts.push(`- Adjustments / notes for today: ${lessonContext.todayNote.trim()}`);
+    }
+    if (contextNotes?.trim()) parts.push(contextNotes.trim());
+    return parts.length > 0 ? parts.join("\n") : undefined;
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!canGenerate) {
@@ -700,7 +863,7 @@ export default function LessonPackPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          context_notes: contextNotes || undefined,
+          context_notes: buildCombinedContext(),
           forceSave: forceSaveFromScheduler,
         }),
       });
@@ -1173,6 +1336,80 @@ export default function LessonPackPage() {
               ) : null}
             </div>
 
+          </div>
+
+          {/* ── Lesson Context ── */}
+          <div style={{ margin: "1rem 0", padding: "1rem 1.1rem", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--field-bg)" }}>
+            <p style={{ margin: "0 0 0.75rem", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Lesson Context <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none" }}>— optional, but improves output significantly</span>
+            </p>
+
+            <div style={{ marginBottom: "0.85rem" }}>
+              <p style={{ margin: "0 0 0.5rem", fontSize: "0.78rem", fontWeight: 600, color: "var(--text)" }}>Where is this lesson in the unit?</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                {([
+                  { id: "new",          label: "New concept",    desc: "First time pupils see this" },
+                  { id: "practising",   label: "Practising",     desc: "Building fluency" },
+                  { id: "consolidating",label: "Consolidating",  desc: "Deepening reasoning" },
+                  { id: "reviewing",    label: "Reviewing",      desc: "Revisiting / assessing" },
+                ] as const).map(({ id, label, desc }) => {
+                  const active = lessonContext.unitPosition === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setLessonContext((prev) => ({ ...prev, unitPosition: active ? "" : id }))}
+                      style={{
+                        padding: "0.42rem 0.85rem",
+                        borderRadius: "999px",
+                        border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                        background: active ? "color-mix(in srgb, var(--accent) 12%, var(--surface))" : "var(--surface)",
+                        color: active ? "var(--accent)" : "var(--text)",
+                        fontSize: "0.8rem",
+                        fontWeight: active ? 700 : 500,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        transition: "all 120ms",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: "1px",
+                      }}
+                    >
+                      <span>{label}</span>
+                      <span style={{ fontSize: "0.66rem", color: active ? "var(--accent)" : "var(--muted)", fontWeight: 400 }}>{desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.3rem", fontSize: "0.78rem", fontWeight: 600, color: "var(--text)" }}>
+                  What happened last lesson?
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Most pupils got the concept but struggled with carrying — a few finished early and need more challenge."
+                  value={lessonContext.lastLesson}
+                  onChange={(e) => setLessonContext((prev) => ({ ...prev, lastLesson: e.target.value }))}
+                  style={{ width: "100%", resize: "vertical", border: "1px solid var(--border)", borderRadius: "9px", background: "var(--surface)", color: "var(--text)", padding: "0.5rem 0.65rem", fontFamily: "inherit", fontSize: "0.83rem", boxSizing: "border-box" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.3rem", fontSize: "0.78rem", fontWeight: 600, color: "var(--text)" }}>
+                  Anything different today?
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. 45-min slot, outdoor practical, supply cover, Ofsted visit, new pupil joining."
+                  value={lessonContext.todayNote}
+                  onChange={(e) => setLessonContext((prev) => ({ ...prev, todayNote: e.target.value }))}
+                  style={{ width: "100%", resize: "vertical", border: "1px solid var(--border)", borderRadius: "9px", background: "var(--surface)", color: "var(--text)", padding: "0.5rem 0.65rem", fontFamily: "inherit", fontSize: "0.83rem", boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
           </div>
 
           <div style={{ display: "grid", gap: "0.8rem", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", alignItems: "stretch" }}>
@@ -1900,6 +2137,29 @@ export default function LessonPackPage() {
               </ol>
             </div>
 
+            {/* Lesson Hook + Timing */}
+            {(pack.lesson_hook || pack.timing_guide) && (
+              <div className="grid two" style={{ gap: "1rem" }}>
+                {pack.lesson_hook && (
+                  <div className="card" style={{ borderLeft: "3px solid #f59e0b" }}>
+                    <SectionLabel color="#f59e0b">Lesson Hook</SectionLabel>
+                    <p style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.7, color: "var(--text)" }}>{pack.lesson_hook}</p>
+                  </div>
+                )}
+                {pack.timing_guide && (
+                  <div className="card" style={{ borderLeft: "3px solid #6b7280" }}>
+                    <SectionLabel color="#6b7280">Timing Guide</SectionLabel>
+                    <p style={{ margin: 0, fontSize: "0.83rem", lineHeight: 1.7, color: "var(--text)", fontFamily: "monospace" }}>{pack.timing_guide}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Lesson Walkthrough (lesson_sections) */}
+            {pack.lesson_sections && pack.lesson_sections.length > 0 && (
+              <LessonWalkthroughPanel sections={pack.lesson_sections} />
+            )}
+
             {/* Teacher + Pupil explanations */}
             <div className="grid two" style={{ gap: "1rem" }}>
               <div className="card">
@@ -1996,6 +2256,11 @@ export default function LessonPackPage() {
             {/* Auto-Differentiation Panel */}
             {pack.differentiation && <DifferentiationPanel diff={pack.differentiation} />}
 
+            {/* Critical Thinking Questions */}
+            {pack.thinking_questions && pack.thinking_questions.length > 0 && (
+              <ThinkingQuestionsPanel questions={pack.thinking_questions} />
+            )}
+
             {/* SEND Adaptations */}
             {pack.send_adaptations.length > 0 && (
               <div className="card">
@@ -2010,6 +2275,41 @@ export default function LessonPackPage() {
                         <path d="M12 2L2 12l10 10 10-10L12 2z"/>
                       </svg>
                       <span style={{ fontSize: "0.87rem", lineHeight: 1.55, color: "var(--text)" }}>{a}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Safety Notes */}
+            {pack.safety_notes && pack.safety_notes.length > 0 && (
+              <div className="card" style={{ borderLeft: "3px solid #ef4444" }}>
+                <SectionLabel color="#ef4444">Safety Notes</SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {pack.safety_notes.map((note, i) => (
+                    <div key={i} style={{ display: "flex", gap: "0.65rem", alignItems: "flex-start", padding: "0.6rem 0.85rem", borderRadius: "10px", background: "rgba(239,68,68,0.055)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "1px" }}>
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                      <span style={{ fontSize: "0.87rem", lineHeight: 1.55, color: "var(--text)" }}>{note}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Next Steps */}
+            {pack.next_steps && pack.next_steps.length > 0 && (
+              <div className="card">
+                <SectionLabel color="#60a5fa">Next Steps</SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+                  {pack.next_steps.map((ns, i) => (
+                    <div key={i} style={{ padding: "0.75rem 0.9rem", borderRadius: "10px", background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.18)" }}>
+                      <p style={{ margin: "0 0 0.25rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "#60a5fa" }}>{ns.pupil}</p>
+                      <p style={{ margin: 0, fontSize: "0.87rem", lineHeight: 1.55, color: "var(--text)" }}>{ns.next_step}</p>
+                      {ns.lesson_response && (
+                        <p style={{ margin: "0.35rem 0 0", fontSize: "0.82rem", lineHeight: 1.5, color: "var(--muted)", fontStyle: "italic" }}>In-lesson: {ns.lesson_response}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2036,6 +2336,34 @@ export default function LessonPackPage() {
                 ))}
               </div>
             </div>
+
+            {/* Rationale Tags */}
+            {pack.rationale_tags && pack.rationale_tags.length > 0 && (
+              <div className="card">
+                <SectionLabel color="var(--muted)">Planning Rationale</SectionLabel>
+                <p style={{ margin: "0 0 0.75rem", fontSize: "0.8rem", color: "var(--muted)", lineHeight: 1.5 }}>Why the AI made specific choices in this lesson — review and adjust as needed.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+                  {pack.rationale_tags.map((tag, i) => {
+                    const sourceColor: Record<string, string> = {
+                      "School structure": "#10b981",
+                      "Unit knowledge": "#f59e0b",
+                      "Class profile": "#60a5fa",
+                      "AI suggestion pending evidence": "#a855f7",
+                    };
+                    const color = sourceColor[tag.source] ?? "#6b7280";
+                    return (
+                      <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", padding: "0.6rem 0.85rem", borderRadius: "10px", background: "var(--field-bg)", border: "1px solid var(--border)" }}>
+                        <span style={{ flexShrink: 0, fontSize: "0.62rem", fontWeight: 700, padding: "2px 7px", borderRadius: "999px", background: `color-mix(in srgb, ${color} 15%, transparent)`, color, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`, whiteSpace: "nowrap" as const, marginTop: "1px" }}>{tag.source}</span>
+                        <div>
+                          <p style={{ margin: "0 0 0.15rem", fontSize: "0.83rem", fontWeight: 600, color: "var(--text)" }}>{tag.decision}</p>
+                          {tag.note && <p style={{ margin: 0, fontSize: "0.79rem", color: "var(--muted)", lineHeight: 1.45 }}>{tag.note}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Mini Assessment */}
             <div className="card">

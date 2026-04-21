@@ -3,7 +3,12 @@ import { getCurrentUserSession } from "@/lib/user-session";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 export async function GET(req: NextRequest) {

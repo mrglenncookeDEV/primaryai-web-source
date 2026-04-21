@@ -494,21 +494,8 @@ export default function AiSchedulePanel({ onScheduleChange }: { onScheduleChange
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent 0%, rgb(var(--accent-rgb) / 0.7) 30%, rgb(var(--accent-rgb) / 0.9) 50%, rgb(var(--accent-rgb) / 0.7) 70%, transparent 100%)", borderRadius: "18px 18px 0 0" }} />
 
       {/* header */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "0.9rem", marginBottom: "1.25rem", position: "relative" }}>
-        {/* Icon tile */}
-        <div style={{
-          width: "46px", height: "46px", borderRadius: "13px", flexShrink: 0,
-          background: "linear-gradient(145deg, color-mix(in srgb, var(--accent) 55%, #9333ea) 0%, var(--accent) 100%)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 4px 16px rgb(var(--accent-rgb) / 0.45), 0 1px 3px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.28)",
-        }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3l1.5 4.1L18 9l-4.5 1.9L12 15l-1.5-4.1L6 9l4.5-1.9L12 3z" fill="white" fillOpacity="0.3"/>
-            <path d="M12 3l1.5 4.1L18 9l-4.5 1.9L12 15l-1.5-4.1L6 9l4.5-1.9L12 3z"/>
-            <path d="M19.5 15l.8 2L22 18l-1.7.8-.8 2-.8-2L17 18l1.7-.8.8-2z"/>
-          </svg>
-        </div>
-        <div style={{ minWidth: 0, paddingTop: "0.1rem" }}>
+      <div style={{ marginBottom: "1.25rem", position: "relative" }}>
+        <div style={{ minWidth: 0 }}>
           <p style={{ margin: "0 0 0.22rem", fontSize: "0.95rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text)", lineHeight: 1.2 }}>
             AI Schedule Assistant
           </p>

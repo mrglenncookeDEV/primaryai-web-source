@@ -1,7 +1,8 @@
 import { LessonPackSchema, type LessonPack } from "./schema";
-import { getProviderStatus, markProviderRateLimited, selectProviders } from "./router";
+import { getProviderStatus, markProviderRateLimited, selectProviders, selectTier, selectFastProvider } from "./router";
 import { retrieveObjectives } from "./retrieve";
 import { cache } from "./cache";
+import { getPersistentPack, setPersistentPack } from "./persistentCache";
 import { record } from "./telemetry";
 import { lessonPackToSlides } from "./exporters";
 import type { EngineEvent, LessonPackGenerationMeta, LessonPackRequest, LessonPackReview } from "./types";
@@ -65,6 +66,40 @@ const LESSON_PACK_OUTPUT_TEMPLATE = {
     higher: { ...DIFF_GROUP_TEMPLATE, extension: "string" },
   },
   send_adaptations: ["string", "string", "string"],
+  lesson_hook: "string",
+  safety_notes: [],
+  timing_guide: "string",
+  lesson_sections: [
+    {
+      title: "string",
+      content: "string",
+      teacher_prompts: ["string", "string"],
+      checks_for_understanding: ["string", "string"],
+      rationale_badge: "School structure | Unit knowledge | Class profile | AI suggestion pending evidence",
+    },
+  ],
+  next_steps: [
+    {
+      pupil: "string",
+      next_step: "string",
+      lesson_response: "string",
+    },
+  ],
+  thinking_questions: [
+    { stem: "string", type: "Recall", bloom_level: "Remember" },
+    { stem: "string", type: "Explain", bloom_level: "Understand" },
+    { stem: "string", type: "Apply it", bloom_level: "Apply" },
+    { stem: "string", type: "Odd one out", bloom_level: "Analyse" },
+    { stem: "string", type: "Convince me", bloom_level: "Evaluate" },
+    { stem: "string", type: "Always/Sometimes/Never", bloom_level: "Create" },
+  ],
+  rationale_tags: [
+    {
+      decision: "string",
+      source: "School structure | Unit knowledge | Class profile | AI suggestion pending evidence",
+      note: "string",
+    },
+  ],
   plenary: "string",
   mini_assessment: {
     questions: ["string", "string", "string", "string"],
@@ -102,6 +137,56 @@ function valueToStringArray(value: unknown) {
 
   const scalar = valueToString(value);
   return scalar ? [scalar] : [];
+}
+
+function normalizeLessonSections(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const obj = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      title: valueToString(obj.title),
+      content: valueToString(obj.content),
+      teacher_prompts: valueToStringArray(obj.teacher_prompts),
+      checks_for_understanding: valueToStringArray(obj.checks_for_understanding),
+      rationale_badge: valueToString(obj.rationale_badge),
+    };
+  }).filter((item) => item.title && item.content);
+}
+
+function normalizeNextSteps(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const obj = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      pupil: valueToString(obj.pupil),
+      next_step: valueToString(obj.next_step),
+      lesson_response: valueToString(obj.lesson_response),
+    };
+  }).filter((item) => item.pupil && item.next_step);
+}
+
+function normalizeThinkingQuestions(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const obj = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      stem: valueToString(obj.stem),
+      type: valueToString(obj.type),
+      bloom_level: valueToString(obj.bloom_level),
+    };
+  }).filter((item) => item.stem && item.bloom_level);
+}
+
+function normalizeRationaleTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const obj = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      decision: valueToString(obj.decision),
+      source: valueToString(obj.source),
+      note: valueToString(obj.note),
+    };
+  }).filter((item) => item.decision && item.source);
 }
 
 function coerceDiffGroup(raw: unknown): { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string; extension?: string } | undefined {
@@ -147,6 +232,13 @@ function coerceLessonPackCandidate(candidate: unknown) {
     },
     ...(differentiation ? { differentiation } : {}),
     send_adaptations: valueToStringArray(obj.send_adaptations),
+    ...(obj.lesson_hook ? { lesson_hook: valueToString(obj.lesson_hook) } : {}),
+    ...(obj.safety_notes ? { safety_notes: valueToStringArray(obj.safety_notes) } : {}),
+    ...(obj.timing_guide ? { timing_guide: valueToString(obj.timing_guide) } : {}),
+    thinking_questions: normalizeThinkingQuestions(obj.thinking_questions),
+    lesson_sections: normalizeLessonSections(obj.lesson_sections),
+    next_steps: normalizeNextSteps(obj.next_steps),
+    rationale_tags: normalizeRationaleTags(obj.rationale_tags),
     plenary: valueToString(obj.plenary),
     mini_assessment: {
       questions: valueToStringArray(miniAssessment.questions),
@@ -225,6 +317,7 @@ async function runProviderAttempt(
   } as ProviderAttempt;
 }
 
+/** Legacy: run all available providers simultaneously. Used by schedule-ai only. */
 async function runProviders(prompt: string, onEvent?: OnEvent): Promise<ProviderAttempt[]> {
   const providers = selectProviders();
   if (providers.length === 0) {
@@ -233,8 +326,86 @@ async function runProviders(prompt: string, onEvent?: OnEvent): Promise<Provider
       `No providers are configured. Provider status: ${JSON.stringify(statuses)}. Set one of: CF_API_TOKEN+CF_ACCOUNT_ID, GROQ_API_KEY, GEMINI_API_KEY, HUGGINGFACE_API_KEY+HUGGINGFACE_MODEL.`
     );
   }
-
   return Promise.all(providers.map((provider) => runProviderAttempt(provider, prompt, onEvent)));
+}
+
+/**
+ * Tiered generation: tries Tier 1 (Gemini, Cerebras, Groq) in parallel first.
+ * Falls through to Tier 2 if < 2 Tier 1 successes, then Tier 3 as last resort.
+ * This preserves rate limit budget while still producing a multi-provider ensemble.
+ */
+async function runTieredGeneration(prompt: string, onEvent?: OnEvent): Promise<ProviderAttempt[]> {
+  const tier1 = selectTier(1);
+  if (tier1.length > 0) {
+    const t1results = await Promise.all(tier1.map((p) => runProviderAttempt(p, prompt, onEvent)));
+    const t1ok = t1results.filter((r) => r.ok);
+
+    // 2+ Tier 1 successes → great ensemble, stop here
+    if (t1ok.length >= 2) return t1results;
+
+    // 1 success → pull in up to 2 Tier 2 providers for ensemble enrichment
+    if (t1ok.length === 1) {
+      const tier2 = selectTier(2).slice(0, 2);
+      if (tier2.length > 0) {
+        const t2results = await Promise.all(tier2.map((p) => runProviderAttempt(p, prompt, onEvent)));
+        return [...t1results, ...t2results];
+      }
+      return t1results;
+    }
+  }
+
+  // Tier 1 completely failed → try all of Tier 2
+  const tier2 = selectTier(2);
+  if (tier2.length > 0) {
+    const t2results = await Promise.all(tier2.map((p) => runProviderAttempt(p, prompt, onEvent)));
+    if (t2results.some((r) => r.ok)) return t2results;
+  }
+
+  // Last resort: Tier 3
+  const tier3 = selectTier(3);
+  if (tier3.length > 0) {
+    return Promise.all(tier3.map((p) => runProviderAttempt(p, prompt, onEvent)));
+  }
+
+  const statuses = getProviderStatus();
+  throw new Error(`No providers available. Status: ${JSON.stringify(statuses)}`);
+}
+
+/**
+ * Runs a single prompt against the fastest available provider.
+ * Used for quality-review and alignment passes — they don't need an ensemble.
+ */
+async function runSingleFastProvider(prompt: string, onEvent?: OnEvent): Promise<ProviderAttempt | null> {
+  // Try providers in tier order until one succeeds
+  for (const tier of [1, 2, 3] as const) {
+    for (const provider of selectTier(tier)) {
+      const result = await runProviderAttempt(provider, prompt, onEvent);
+      if (result.ok) return result;
+    }
+  }
+  return null;
+}
+
+const VAGUE_TERMS = /\b(various|something|things like|etc\b|appropriate task|and so on|relevant activities|suitable activities|some activities)\b/gi;
+
+function specificityPenalty(text: string): number {
+  return (text.match(VAGUE_TERMS) ?? []).length * 2;
+}
+
+function workedExampleStepCount(text: string): number {
+  return (text.match(/(?:^|\n)\s*(?:step\s+\d+|\d+[\.\)])/gi) ?? []).length;
+}
+
+function differentiationGapPenalty(pack: LessonPack): number {
+  const words = (text: string) =>
+    new Set(text.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
+  const supportWords = words(pack.activities.support);
+  const gdWords = words(pack.activities.greater_depth);
+  if (supportWords.size === 0 || gdWords.size === 0) return 0;
+  const overlap = [...supportWords].filter((w) => gdWords.has(w)).length;
+  const union = supportWords.size + gdWords.size - overlap;
+  const similarity = union > 0 ? overlap / union : 0;
+  return similarity > 0.65 ? -10 : 0; // penalise if support ≈ greater depth
 }
 
 function scoreLessonPack(pack: LessonPack, objectives: string[]) {
@@ -255,22 +426,41 @@ function scoreLessonPack(pack: LessonPack, objectives: string[]) {
       .toLowerCase()
       .split(/\W+/)
       .filter((token) => token.length > 4);
-
     if (objectiveTokens.some((token) => corpus.includes(token))) {
       objectiveCoverage += 1;
     }
   }
 
+  // Reward rich, specific content
   const differentiationDepth =
-    Number(pack.activities.support.length > 20) +
-    Number(pack.activities.expected.length > 20) +
-    Number(pack.activities.greater_depth.length > 20);
+    Number(pack.activities.support.length > 80) +
+    Number(pack.activities.expected.length > 80) +
+    Number(pack.activities.greater_depth.length > 80);
 
   const misconceptionsDepth = Math.min(pack.common_misconceptions.length, 3);
   const assessmentDepth =
     Math.min(pack.mini_assessment.questions.length, 4) + Math.min(pack.mini_assessment.answers.length, 4);
 
-  return objectiveCoverage * 5 + differentiationDepth * 3 + misconceptionsDepth * 2 + assessmentDepth;
+  // Reward stepped worked examples (numbered steps)
+  const stepBonus = Math.min(workedExampleStepCount(pack.worked_example), 5) * 2;
+
+  // Penalise vagueness in core activity text
+  const vaguenessPenalty = specificityPenalty(
+    [pack.activities.support, pack.activities.expected, pack.activities.greater_depth].join(" ")
+  );
+
+  // Penalise if support and greater_depth are too similar
+  const diffGapPenalty = differentiationGapPenalty(pack);
+
+  return (
+    objectiveCoverage * 5 +
+    differentiationDepth * 3 +
+    misconceptionsDepth * 2 +
+    assessmentDepth +
+    stepBonus -
+    vaguenessPenalty +
+    diffGapPenalty
+  );
 }
 
 function extractYearNumber(yearGroup: string) {
@@ -488,7 +678,7 @@ function ensembleCandidates(
 }
 
 async function generateBestLessonPack(prompt: string, objectives: string[], onEvent?: OnEvent) {
-  const attempts = await runProviders(prompt, onEvent);
+  const attempts = await runTieredGeneration(prompt, onEvent);
 
   const validCandidates: Array<{ providerId: string; pack: LessonPack; score: number }> = [];
   const errors: string[] = [];
@@ -605,16 +795,14 @@ ${JSON.stringify(draft, null, 2)}
   `;
 
   try {
-    const reviewAttempts = await runProviders(reviewPrompt, onEvent);
+    const reviewAttempt = await runSingleFastProvider(reviewPrompt, onEvent);
     let review: LessonPackReview | null = null;
 
-    for (const attempt of reviewAttempts) {
-      if (!attempt.ok || !attempt.raw) continue;
+    if (reviewAttempt?.ok && reviewAttempt.raw) {
       try {
-        review = parseJsonObject(attempt.raw) as LessonPackReview;
-        break;
+        review = parseJsonObject(reviewAttempt.raw) as LessonPackReview;
       } catch {
-        // Try next successful provider output.
+        // Review parse failed — skip improvement pass
       }
     }
 
@@ -636,14 +824,13 @@ Lesson Pack:
 ${JSON.stringify(draft, null, 2)}
   `;
 
-    const regenAttempts = await runProviders(regeneratePrompt, onEvent);
-    for (const attempt of regenAttempts) {
-      if (!attempt.ok || !attempt.raw) continue;
+    const regenAttempt = await runSingleFastProvider(regeneratePrompt, onEvent);
+    if (regenAttempt?.ok && regenAttempt.raw) {
       try {
-        const patch = parseJsonObject(attempt.raw) as Record<string, unknown>;
+        const patch = parseJsonObject(regenAttempt.raw) as Record<string, unknown>;
         return mergeRegeneratedSections(draft, patch);
       } catch {
-        // Try next successful provider output.
+        // Regen parse failed — return draft unchanged
       }
     }
   } catch {
@@ -687,10 +874,8 @@ Lesson Pack:
 ${JSON.stringify(draft, null, 2)}
   `;
 
-  const attempts = await runProviders(alignmentPrompt, onEvent);
-  for (const attempt of attempts) {
-    if (!attempt.ok || !attempt.raw) continue;
-
+  const attempt = await runSingleFastProvider(alignmentPrompt, onEvent);
+  if (attempt?.ok && attempt.raw) {
     try {
       const patch = parseJsonObject(attempt.raw) as Record<string, unknown>;
       const merged = mergeRegeneratedSections(draft, patch);
@@ -698,7 +883,7 @@ ${JSON.stringify(draft, null, 2)}
         return merged;
       }
     } catch {
-      // Try next provider response.
+      // Alignment parse failed — return draft unchanged
     }
   }
 
@@ -726,22 +911,36 @@ export async function generateLessonPackWithMeta(
   meta: LessonPackGenerationMeta;
 }> {
   const cacheKey = getLessonPackCacheKey(req);
-  const cached = !req.feedback && cache.get<LessonPack>(cacheKey);
-  if (cached) {
-    const cachedMeta = cached._meta ?? {
-      usedCurriculumObjectives: [],
-      usedContextNotes: Boolean(req.context_notes?.trim()),
-      usedTeacherProfile: Boolean(req.profile),
-      passesRun: ["quality", "alignment", "finalize"] as Array<"quality" | "alignment" | "finalize">,
-      confidence: "medium" as const,
-      confidenceReason: "Cached draft reused from a previous generation.",
-    };
-    return {
-      pack: cached,
-      providerId: "cache",
-      cacheHit: true,
-      meta: cachedMeta,
-    };
+
+  if (!req.feedback) {
+    // 1. Check fast in-memory cache first
+    const memCached = cache.get<LessonPack>(cacheKey);
+    if (memCached) {
+      const cachedMeta = memCached._meta ?? {
+        usedCurriculumObjectives: [],
+        usedContextNotes: Boolean(req.context_notes?.trim()),
+        usedTeacherProfile: Boolean(req.profile),
+        passesRun: ["quality", "alignment", "finalize"] as Array<"quality" | "alignment" | "finalize">,
+        confidence: "medium" as const,
+        confidenceReason: "Cached draft reused from a previous generation.",
+      };
+      return { pack: memCached, providerId: "cache:memory", cacheHit: true, meta: cachedMeta };
+    }
+
+    // 2. Check persistent Supabase cache (survives cold starts and multiple instances)
+    const dbCached = await getPersistentPack(cacheKey);
+    if (dbCached) {
+      cache.set(cacheKey, dbCached); // warm the in-memory cache
+      const cachedMeta = dbCached._meta ?? {
+        usedCurriculumObjectives: [],
+        usedContextNotes: Boolean(req.context_notes?.trim()),
+        usedTeacherProfile: Boolean(req.profile),
+        passesRun: ["quality", "alignment", "finalize"] as Array<"quality" | "alignment" | "finalize">,
+        confidence: "medium" as const,
+        confidenceReason: "Cached draft reused from a previous generation.",
+      };
+      return { pack: dbCached, providerId: "cache:db", cacheHit: true, meta: cachedMeta };
+    }
   }
 
   const objectives = await retrieveObjectives(req.year_group, req.subject, req.topic);
@@ -777,7 +976,14 @@ About this class: ${teacherProfile.classNotes}` : ""}${req.context_notes ? `
 
 ━━━ UPLOADED CLASS CONTEXT ━━━
 Use this uploaded context carefully (targets, SEN notes, attainment data, pupil needs, etc.) when tailoring the lesson:
-${req.context_notes}` : ""}
+${req.context_notes}
+
+If the uploaded context contains "CRITICAL PLANNING CONTEXT":
+- Treat it as mandatory planning evidence, not optional background.
+- Populate lesson_sections using the school lesson structure titles in order.
+- Populate next_steps from the focus pupil pseudonyms and required next steps.
+- Add rationale_tags for important choices using "School structure", "Unit knowledge", "Class profile", or "AI suggestion pending evidence".
+- Keep pseudonyms exactly as supplied and do not invent real pupil names.` : ""}
 EAL in class: ${teacherProfile?.ealPercent ?? 0}%
 Pupil Premium in class: ${teacherProfile?.pupilPremiumPercent ?? 0}%
 Generally above expected standard: ${teacherProfile?.aboveStandardPercent ?? 0}%
@@ -827,25 +1033,41 @@ common_misconceptions — exactly 3 items:
   • Include a brief suggestion for how to correct each misconception
 
 activities.support — 3 to 4 sentences:
-  • A concrete, scaffolded task with specific named resources (word bank, sentence frames, number line, hundred square, writing frame, visual prompt cards, base-ten blocks, etc.)
-  • Describe exactly what the pupil does, what scaffold is provided, and what a successful response looks like
+  • Name the specific activity type (e.g. sorting task, card matching, diagram labelling, investigation, sequencing, fill-in-the-blank worksheet)
+  • List the exact physical resources by name (e.g. "picture-word sorting cards", "base-ten blocks", "100-square grid", "sentence starter strips", "pre-labelled diagram of the water cycle")
+  • Describe exactly what the pupil physically does: what they handle, arrange, write, or produce, and what a successful response looks like
   • Appropriate for pupils working below age-related expectations
 
 activities.expected — 3 to 4 sentences:
-  • A clear independent task with explicit success criteria
-  • Describe what pupils produce or demonstrate and how they record their learning
+  • Name the specific activity type (e.g. investigation with recording sheet, extended writing task, structured problem-solving with jottings, annotated diagram, data collection table)
+  • List the key resources or materials used by name
+  • Describe what pupils produce or demonstrate, what they record, and what success looks like — include explicit success criteria
   • Appropriate for pupils working at age-related expectations
 
 activities.greater_depth — 3 to 4 sentences:
-  • A reasoning or open-ended challenge that demands higher-order thinking — NOT simply more of the same work
-  • Require pupils to justify, prove, spot patterns, find exceptions, explain why, or apply to an unfamiliar context
-  • Include a specific question, scenario, or prompt they respond to
+  • Name the specific activity type — must be a reasoning or open-ended challenge (e.g. always/sometimes/never statement, rich investigation, design a rule, write your own problem, spot the error challenge, prove it task)
+  • Give a specific question, statement, or scenario the pupil responds to — quote the exact prompt they receive
+  • Require pupils to justify, prove, spot patterns, find exceptions, explain why, or apply to an unfamiliar context — NOT simply more of the same work
   • Appropriate for pupils working above age-related expectations
 
 send_adaptations — 3 to 4 items:
   • Each adaptation should name the type of need it addresses (e.g. "For pupils with working memory difficulties:", "For pupils with dyslexia:", "For EAL learners:", "For pupils with processing speed difficulties:")
   • Be concrete and actionable — name specific resources, strategies, or adjustments
   • ${teacherProfile?.sendFocus ? "SEND focus is ON — make these particularly detailed and practical." : "Include a range of needs across the adaptations."}
+
+lesson_hook — 2 to 3 sentences:
+  • A short, engaging opening activity (2–5 minutes) that creates curiosity or activates prior knowledge before the main lesson begins
+  • Use one of these hook types: surprising fact or question, hands-on mystery object, quick true/false challenge, short video/image prompt, real-world connection, or a question that reveals misconceptions
+  • Be specific: describe exactly what the teacher shows, says, or does — not "show a video" but "show a 30-second clip of..." or "hold up a sealed bag containing..."
+
+safety_notes — include ONLY if this topic involves physical activity, materials, or equipment that could pose a hazard (e.g. science experiments, DT, PE, food technology, outdoor learning):
+  • Each item names the specific hazard and the precaution
+  • If no safety considerations apply to this topic, output safety_notes as an empty array []
+
+timing_guide — a single string describing suggested time allocations for the lesson:
+  • Format: "Hook: Xmin | Teach/model: Xmin | Activities: Xmin | Plenary: Xmin | Total: ~Xmin"
+  • Base timings on a standard primary lesson (45–60 minutes) — adjust slightly for the complexity of the topic
+  • Example: "Hook: 5min | Teach/model: 12min | Activities: 25min | Plenary: 8min | Total: ~50min"
 
 plenary — 2 to 4 sentences:
   • Specify a concrete consolidation activity — not just "ask the class what they learned"
@@ -888,6 +1110,23 @@ Each group object must contain:
   • extension — (higher group only) a further challenge if pupils finish early; must demand a new application or generalisation
 
 Critical thinking requirement: every question, talk prompt, and exit ticket must demand a reason, justification, or explanation — never a single-word or recall-only answer except for the lower group's first question.
+
+━━━ CRITICAL THINKING QUESTIONS ━━━
+Generate a "thinking_questions" array of exactly 6 items — one at each Bloom's level.
+Each item must contain:
+  • stem — a complete, classroom-ready question or prompt, specific to this topic and year group
+  • type — the strategy name (use these exactly): "Recall", "Explain", "Apply it", "Odd one out", "Convince me", "Always/Sometimes/Never"
+  • bloom_level — one of: "Remember", "Understand", "Apply", "Analyse", "Evaluate", "Create"
+
+Order them from lowest to highest Bloom's level:
+  1. Remember → type "Recall" — a direct retrieval question: "What is…?", "Name…", "When did…?"
+  2. Understand → type "Explain" — pupils explain in their own words: "Why does…?", "Describe what happens when…"
+  3. Apply → type "Apply it" — pupils use the concept in a new situation: "How would you use…?", "Solve…using what you know"
+  4. Analyse → type "Odd one out" — pupils identify and justify the exception: "Which of these doesn't belong? Explain why."
+  5. Evaluate → type "Convince me" — pupils argue a position: "Convince me that… is always true/false."
+  6. Create → type "Always/Sometimes/Never" — pupils generalise: "Is it always, sometimes or never true that…? Prove it."
+
+These should be genuinely high-quality, topic-specific questions — not generic templates. Use the topic and year group to make them precise.
 
 ━━━ OUTPUT SCHEMA ━━━
 ${JSON.stringify(LESSON_PACK_OUTPUT_TEMPLATE, null, 2)}
@@ -935,6 +1174,7 @@ ${JSON.stringify(LESSON_PACK_OUTPUT_TEMPLATE, null, 2)}
 
   if (!req.feedback) {
     cache.set(cacheKey, finalized);
+    setPersistentPack(cacheKey, finalized).catch(() => {}); // non-blocking
   }
   record(generated.providerId, req);
   return {

@@ -50,6 +50,163 @@ function fmtMins(m: number) {
   return min > 0 ? `${h}h ${min}m` : `${h}h`;
 }
 
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+type CapsulePoint = {
+  value: number;
+  index: number;
+  x: number;
+  y: number;
+  y1: number;
+  y2: number;
+  h: number;
+  isMax: boolean;
+  isMin: boolean;
+};
+
+function capsuleChart(values: Array<number | null>, min: number, max: number, width = 430, height = 190) {
+  const plotTop = 42;
+  const plotBottom = height - 34;
+  const barWidth = values.length > 8 ? 14 : 18;
+  const usable = values
+    .map((value, index) => ({ value, index }))
+    .filter((item): item is { value: number; index: number } => item.value !== null && Number.isFinite(item.value));
+  if (usable.length === 0) return { width, height, barWidth, points: [] as CapsulePoint[] };
+
+  const maxValue = Math.max(...usable.map((item) => item.value));
+  const minValue = Math.min(...usable.map((item) => item.value));
+  const firstMax = usable.find((item) => item.value === maxValue)?.index;
+  const firstMin = usable.find((item) => item.value === minValue)?.index;
+  const xStep = values.length > 1 ? (width - 52) / (values.length - 1) : 0;
+  const range = Math.max(1, max - min);
+
+  const points = usable.map((item) => {
+    const normal = (clamp(item.value, min, max) - min) / range;
+    const x = values.length > 1 ? 26 + item.index * xStep : width / 2;
+    const y = plotBottom - normal * (plotBottom - plotTop);
+    const h = 34 + normal * 54;
+    return {
+      value: item.value,
+      index: item.index,
+      x,
+      y,
+      y1: clamp(y - h / 2, plotTop, plotBottom - 22),
+      y2: clamp(y + h / 2, plotTop + 22, plotBottom),
+      h,
+      isMax: item.index === firstMax,
+      isMin: item.index === firstMin,
+    };
+  });
+
+  return { width, height, barWidth, points };
+}
+
+function calloutX(x: number, width: number) {
+  return clamp(x - 20, 10, width - 84);
+}
+
+function AppleLineChart({
+  title,
+  value,
+  subtitle,
+  values,
+  min,
+  max,
+  color,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  values: Array<number | null>;
+  min: number;
+  max: number;
+  color: string;
+}) {
+  const chart = capsuleChart(values, min, max);
+  const maxPoint = chart.points.find((point) => point.isMax);
+  const minPoint = chart.points.find((point) => point.isMin);
+
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "14px", padding: "0.9rem 1rem", overflow: "hidden" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "flex-start", marginBottom: "0.15rem" }}>
+        <div>
+          <p style={{ margin: "0 0 0.2rem", fontSize: "0.76rem", color: "var(--muted)", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>{title}</p>
+          <p style={{ margin: 0, fontSize: "1.35rem", lineHeight: 1, fontWeight: 800, color }}>{value}</p>
+        </div>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.74rem", textAlign: "right", lineHeight: 1.4, maxWidth: 150 }}>{subtitle}</p>
+      </div>
+      <svg viewBox={`0 0 ${chart.width} ${chart.height}`} width="100%" height="178" role="img" aria-label={`${title} trend`}>
+        {chart.points.map((point) => (
+          <rect
+            key={`ghost-${point.index}`}
+            x={point.x - chart.barWidth / 2}
+            y={Math.max(28, point.y1 - 18)}
+            width={chart.barWidth}
+            height={Math.min(86, point.y2 - point.y1 + 32)}
+            rx={chart.barWidth / 2}
+            fill="currentColor"
+            opacity="0.1"
+          />
+        ))}
+        {chart.points.map((point) => (
+          <rect
+            key={point.index}
+            x={point.x - chart.barWidth / 2}
+            y={point.y1}
+            width={chart.barWidth}
+            height={Math.max(20, point.y2 - point.y1)}
+            rx={chart.barWidth / 2}
+            fill={color}
+            opacity={point.isMax || point.isMin ? 1 : 0.92}
+          />
+        ))}
+        {maxPoint && (
+          <>
+            <circle cx={maxPoint.x} cy={maxPoint.y1 + 10} r="5.2" fill="var(--surface)" stroke={color} strokeWidth="3" />
+            <text x={calloutX(maxPoint.x, chart.width)} y="24" fill={color} fontSize="18" fontWeight="800" letterSpacing="4">MAX</text>
+            <text x={calloutX(maxPoint.x, chart.width)} y="58" fill={color} fontSize="34" fontWeight="500">{Math.round(maxPoint.value)}</text>
+          </>
+        )}
+        {minPoint && minPoint.index !== maxPoint?.index && (
+          <>
+            <circle cx={minPoint.x} cy={minPoint.y2 - 10} r="5.2" fill="var(--surface)" stroke={color} strokeWidth="3" />
+            <text x={calloutX(minPoint.x, chart.width)} y={chart.height - 32} fill={color} fontSize="18" fontWeight="800" letterSpacing="4">MIN</text>
+            <text x={calloutX(minPoint.x, chart.width)} y={chart.height - 2} fill={color} fontSize="34" fontWeight="500">{Math.round(minPoint.value)}</text>
+          </>
+        )}
+        {values.map((item, index) => item === null && (
+          <rect
+            key={`empty-${index}`}
+            x={(values.length > 1 ? 26 + index * ((chart.width - 52) / (values.length - 1)) : chart.width / 2) - chart.barWidth / 2}
+            y="54"
+            width={chart.barWidth}
+            height="66"
+            rx={chart.barWidth / 2}
+            fill="currentColor"
+            opacity="0.16"
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function printChartSvg(values: Array<number | null>, min: number, max: number, color: string) {
+  const chart = capsuleChart(values, min, max);
+  const bars = chart.points.map((point) => `
+    <rect x="${point.x - chart.barWidth / 2}" y="${Math.max(28, point.y1 - 18)}" width="${chart.barWidth}" height="${Math.min(86, point.y2 - point.y1 + 32)}" rx="${chart.barWidth / 2}" fill="#94a3b8" opacity="0.16"/>
+    <rect x="${point.x - chart.barWidth / 2}" y="${point.y1}" width="${chart.barWidth}" height="${Math.max(20, point.y2 - point.y1)}" rx="${chart.barWidth / 2}" fill="${color}" opacity="${point.isMax || point.isMin ? "1" : "0.9"}"/>
+    ${point.isMax ? `<circle cx="${point.x}" cy="${point.y1 + 10}" r="5" fill="#fff" stroke="${color}" stroke-width="3"/>` : ""}
+    ${point.isMin ? `<circle cx="${point.x}" cy="${point.y2 - 10}" r="5" fill="#fff" stroke="${color}" stroke-width="3"/>` : ""}
+  `).join("");
+  return `<svg viewBox="0 0 ${chart.width} ${chart.height}" width="100%" height="120" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${chart.width}" height="${chart.height}" rx="12" fill="#f8fafc"/>
+    ${bars}
+  </svg>`;
+}
+
 export default function WellbeingReportPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -84,6 +241,11 @@ export default function WellbeingReportPage() {
     const workloadPct = summary.thisWeek.workCapacityMins > 0
       ? Math.round((summary.thisWeek.scheduledMins / summary.thisWeek.workCapacityMins) * 100) : 0;
     const workloadColor = workloadPct > 110 ? "#ef4444" : workloadPct > 90 ? "#f59e0b" : "#22c55e";
+    const workloadSeries = summary.weeks.map((w) =>
+      summary.settings.effectiveDayMins > 0 ? Math.round((w.scheduledMins / (summary.settings.effectiveDayMins * 5)) * 100) : 0
+    );
+    const moodSeries = summary.weeks.map((w) => w.avgMood);
+    const eveningsSeries = summary.weeks.map((w) => w.eveningsProtected);
 
     const weekRows = summary.weeks.map((w) => {
       const pct = summary.settings.effectiveDayMins > 0
@@ -115,6 +277,10 @@ export default function WellbeingReportPage() {
   .stat { border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.8rem; text-align: center; }
   .stat-value { font-size: 20pt; font-weight: 800; margin: 0 0 0.1rem; }
   .stat-label { font-size: 8.5pt; color: #64748b; margin: 0; }
+  .charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1.5rem; }
+  .chart { border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.55rem; }
+  .chart-title { margin: 0 0 0.1rem; font-size: 8pt; color: #64748b; text-transform: uppercase; font-weight: 700; }
+  .chart-value { margin: 0 0 0.45rem; font-size: 14pt; font-weight: 800; }
   table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
   th { background: #1e293b; color: #fff; padding: 0.4rem 0.5rem; text-align: left; font-size: 8.5pt; }
   td { padding: 0.35rem 0.5rem; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
@@ -143,6 +309,24 @@ export default function WellbeingReportPage() {
     <div class="stat">
       <p class="stat-value" style="color:#2563eb;">${eveningPct}%</p>
       <p class="stat-label">Evenings free (${summary.allTime.weeksAnalysed}-week average)</p>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <p class="chart-title">Workload</p>
+      <p class="chart-value" style="color:${workloadColor};">${workloadPct}%</p>
+      ${printChartSvg(workloadSeries, 0, Math.max(120, ...workloadSeries), workloadColor)}
+    </div>
+    <div class="chart">
+      <p class="chart-title">Mood</p>
+      <p class="chart-value" style="color:#a855f7;">${moodSeries.filter((v) => v != null).length ? `${(moodSeries.filter((v): v is number => v != null).reduce((s, v) => s + v, 0) / moodSeries.filter((v) => v != null).length).toFixed(1)}/5` : "No data"}</p>
+      ${printChartSvg(moodSeries, 1, 5, "#a855f7")}
+    </div>
+    <div class="chart">
+      <p class="chart-title">Evenings protected</p>
+      <p class="chart-value" style="color:#16a34a;">${summary.thisWeek.eveningsProtected}/5</p>
+      ${printChartSvg(eveningsSeries, 0, 5, "#16a34a")}
     </div>
   </div>
 
@@ -177,6 +361,16 @@ export default function WellbeingReportPage() {
   const eveningPct = allTime.eveningsTotal > 0
     ? Math.round((allTime.eveningsProtected / allTime.eveningsTotal) * 100) : 100;
   const workloadColor = workloadPct > 110 ? "#ef4444" : workloadPct > 90 ? "#f59e0b" : "#22c55e";
+  const workloadSeries = summary.weeks.map((w) =>
+    settings.effectiveDayMins > 0 ? Math.round((w.scheduledMins / (settings.effectiveDayMins * 5)) * 100) : 0
+  );
+  const moodSeries = summary.weeks.map((w) => w.avgMood);
+  const moodValues = moodSeries.filter((value): value is number => value !== null);
+  const avgMood = moodValues.length > 0
+    ? Math.round((moodValues.reduce((sum, value) => sum + value, 0) / moodValues.length) * 10) / 10
+    : null;
+  const eveningsSeries = summary.weeks.map((w) => w.eveningsProtected);
+  const workloadMax = Math.max(120, ...workloadSeries);
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1rem" }}>
@@ -226,6 +420,37 @@ export default function WellbeingReportPage() {
           <p style={{ margin: "0 0 0.15rem", fontSize: "2rem", fontWeight: 800, color: "#2563eb", lineHeight: 1 }}>{eveningPct}%</p>
           <p style={{ margin: 0, fontSize: "0.72rem", color: "var(--muted)" }}>evenings free ({allTime.weeksAnalysed}-week avg)</p>
         </div>
+      </div>
+
+      {/* Trend charts */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        <AppleLineChart
+          title="Workload"
+          value={`${workloadPct}%`}
+          subtitle="Scheduled time against weekly working capacity"
+          values={workloadSeries}
+          min={0}
+          max={workloadMax}
+          color={workloadColor}
+        />
+        <AppleLineChart
+          title="Mood"
+          value={avgMood != null ? `${avgMood}/5` : "No data"}
+          subtitle="Average of daily check-ins logged this period"
+          values={moodSeries}
+          min={1}
+          max={5}
+          color="#a855f7"
+        />
+        <AppleLineChart
+          title="Evenings"
+          value={`${thisWeek.eveningsProtected}/5`}
+          subtitle="Protected evenings across each school week"
+          values={eveningsSeries}
+          min={0}
+          max={5}
+          color="#16a34a"
+        />
       </div>
 
       {/* Week-by-week table */}

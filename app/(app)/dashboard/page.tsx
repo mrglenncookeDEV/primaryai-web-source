@@ -16,6 +16,10 @@ const AiSchedulePanel = dynamic(() => import("@/components/dashboard/AiScheduleP
   ssr: false,
 });
 
+const WellbeingReportPanel = dynamic(() => import("@/app/(app)/wellbeing-report/page"), {
+  ssr: false,
+});
+
 type LibraryItem = {
   id: string;
   title: string;
@@ -643,12 +647,17 @@ type WellbeingSummary = {
 
 const MOOD_EMOJIS = ["😫", "😟", "😐", "🙂", "😊"] as const;
 const MOOD_LABELS = ["Exhausted", "Struggling", "Okay", "Good", "Great"] as const;
+const CHECKIN_LABELS = ["Low", "Strained", "Steady", "Positive", "Strong"] as const;
 const MOOD_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#22c55e", "#10b981"] as const;
 
 function WellbeingSummaryCard() {
   const [summary, setSummary] = useState<WellbeingSummary | null>(null);
   const [todayMood, setTodayMood] = useState<number | null>(null);
+  const [todayCheckinDate, setTodayCheckinDate] = useState<string | null>(null);
   const [savingMood, setSavingMood] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoPinned, setInfoPinned] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const loadSummary = useCallback(() => {
     fetch("/api/wellbeing/summary?weeks=6", { cache: "no-store" })
@@ -662,7 +671,15 @@ function WellbeingSummaryCard() {
     fetch("/api/wellbeing/checkin?days=1", { cache: "no-store" })
       .then((r) => r.json())
       .catch(() => ({}))
-      .then((d) => { if (d?.today?.mood) setTodayMood(d.today.mood); });
+      .then((d) => {
+        if (d?.today?.mood) {
+          setTodayMood(d.today.mood);
+          setTodayCheckinDate(String(d.today.check_date || ""));
+        } else {
+          setTodayMood(null);
+          setTodayCheckinDate(null);
+        }
+      });
     window.addEventListener("pa:schedule-refresh", loadSummary);
     return () => window.removeEventListener("pa:schedule-refresh", loadSummary);
   }, [loadSummary]);
@@ -670,12 +687,17 @@ function WellbeingSummaryCard() {
   async function saveMood(mood: number) {
     if (savingMood) return;
     setSavingMood(true);
-    setTodayMood(mood);
-    await fetch("/api/wellbeing/checkin", {
+    const res = await fetch("/api/wellbeing/checkin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mood }),
     }).catch(() => null);
+    if (res?.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTodayMood(Number(data?.checkin?.mood || mood));
+      setTodayCheckinDate(String(data?.checkin?.check_date || ""));
+      loadSummary();
+    }
     setSavingMood(false);
   }
 
@@ -700,31 +722,145 @@ function WellbeingSummaryCard() {
   ];
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", overflow: "hidden", marginBottom: "0.75rem" }}>
+    <div style={{
+      position: "relative",
+      background: "linear-gradient(145deg, color-mix(in srgb, var(--surface) 92%, #0ea5e9 8%) 0%, var(--surface) 58%, color-mix(in srgb, var(--surface) 90%, #22c55e 10%) 100%)",
+      border: "1px solid color-mix(in srgb, var(--border) 78%, #0ea5e9 22%)",
+      borderRadius: "18px",
+      overflow: "hidden",
+      marginBottom: "0.75rem",
+      boxShadow: "0 16px 42px rgb(15 23 42 / 0.16), 0 2px 8px rgb(15 23 42 / 0.08)",
+    }}>
+      <div style={{ position: "absolute", inset: "0 0 auto", height: "3px", background: `linear-gradient(90deg, ${workloadColor}, #2563eb, #16a34a)` }} />
+      <div style={{ position: "absolute", right: -46, top: -54, width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, rgb(14 165 233 / 0.16) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", left: -50, bottom: -72, width: 170, height: 170, borderRadius: "50%", background: "radial-gradient(circle, rgb(34 197 94 / 0.12) 0%, transparent 68%)", pointerEvents: "none" }} />
+
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.8rem 1rem", borderBottom: "1px solid var(--border)" }}>
-        <p style={{ margin: 0, fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>
-          Wellbeing
-        </p>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.72rem", color: trendColor, fontWeight: 600 }}>
-          <span>{trendArrow}</span>
-          <span>{trendLabel}</span>
-        </span>
+      <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", padding: "1rem 1rem 0.85rem", borderBottom: "1px solid color-mix(in srgb, var(--border) 72%, transparent)" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+            <p style={{ margin: 0, fontSize: "0.7rem", fontWeight: 800, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Workload health
+            </p>
+            <div
+              style={{ position: "relative" }}
+              onMouseEnter={() => { if (!infoPinned) setInfoOpen(true); }}
+              onMouseLeave={() => { if (!infoPinned) setInfoOpen(false); }}
+            >
+              <button
+                type="button"
+                aria-label="Explain wellbeing numbers"
+                aria-expanded={infoOpen}
+                onClick={() => {
+                  setInfoPinned((pinned) => {
+                    const next = !pinned;
+                    setInfoOpen(next);
+                    return next;
+                  });
+                }}
+                onFocus={() => setInfoOpen(true)}
+                onBlur={() => {
+                  if (!infoPinned) setInfoOpen(false);
+                }}
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  border: "1px solid color-mix(in srgb, var(--border) 80%, #2563eb 20%)",
+                  background: "color-mix(in srgb, var(--surface) 70%, #2563eb 10%)",
+                  color: "#2563eb",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                i
+              </button>
+              {infoOpen && (
+                <div
+                  role="tooltip"
+                  style={{
+                    position: "absolute",
+                    zIndex: 20,
+                    top: 26,
+                    left: -16,
+                    width: 280,
+                    padding: "0.75rem 0.8rem",
+                    borderRadius: "12px",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    boxShadow: "0 18px 45px rgb(15 23 42 / 0.22), 0 3px 10px rgb(15 23 42 / 0.12)",
+                    color: "var(--text)",
+                    fontSize: "0.76rem",
+                    lineHeight: 1.48,
+                  }}
+                >
+                  <p style={{ margin: "0 0 0.45rem", fontWeight: 800 }}>What this measures</p>
+                  <p style={{ margin: "0 0 0.35rem" }}><strong>Capacity:</strong> scheduled time divided by your working capacity from boundary settings.</p>
+                  <p style={{ margin: "0 0 0.35rem" }}><strong>Evenings:</strong> weekdays with no events after your work-day end.</p>
+                  <p style={{ margin: "0 0 0.35rem" }}><strong>Average:</strong> protected evenings across the report window.</p>
+                  <p style={{ margin: 0 }}><strong>Check-in:</strong> one logged daily mood score used in the wellbeing report.</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--muted)", lineHeight: 1.35 }}>
+            Schedule pressure, protected time and your daily check-in.
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.35rem 0.55rem", borderRadius: "999px", background: `color-mix(in srgb, ${trendColor} 12%, var(--surface))`, border: `1px solid color-mix(in srgb, ${trendColor} 28%, var(--border))`, fontSize: "0.72rem", color: trendColor, fontWeight: 700, whiteSpace: "nowrap" }}>
+            <span>{trendArrow}</span>
+            <span>{trendLabel}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              padding: "0.35rem 0.58rem",
+              borderRadius: "999px",
+              border: "1px solid color-mix(in srgb, var(--border) 80%, #2563eb 20%)",
+              background: "color-mix(in srgb, var(--surface) 80%, #2563eb 8%)",
+              color: "#2563eb",
+              fontSize: "0.72rem",
+              fontWeight: 800,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            View trends
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12h14" />
+              <path d="m13 6 6 6-6 6" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderBottom: "1px solid var(--border)" }}>
-        {stats.map(({ value, label, color }, i) => (
+      <div style={{ position: "relative", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.55rem", padding: "0.8rem 0.85rem", borderBottom: "1px solid color-mix(in srgb, var(--border) 72%, transparent)" }}>
+        {stats.map(({ value, label, color }) => (
           <div
             key={label}
             style={{
-              padding: "0.85rem 0.75rem",
+              padding: "0.78rem 0.65rem",
               textAlign: "center",
-              borderRight: i < 2 ? "1px solid var(--border)" : "none",
+              borderRadius: "13px",
+              border: `1px solid color-mix(in srgb, ${color} 22%, var(--border))`,
+              background: `linear-gradient(180deg, color-mix(in srgb, ${color} 10%, var(--surface)) 0%, color-mix(in srgb, var(--surface) 94%, ${color} 6%) 100%)`,
+              boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.08)",
             }}
           >
-            <p style={{ margin: "0 0 0.2rem", fontSize: "1.5rem", fontWeight: 800, color, lineHeight: 1, letterSpacing: "-0.02em" }}>{value}</p>
-            <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--muted)", fontWeight: 500 }}>{label}</p>
+            <p style={{ margin: "0 0 0.22rem", fontSize: "1.55rem", fontWeight: 900, color, lineHeight: 1, letterSpacing: "-0.02em" }}>{value}</p>
+            <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--muted)", fontWeight: 700 }}>{label}</p>
           </div>
         ))}
       </div>
@@ -733,47 +869,202 @@ function WellbeingSummaryCard() {
       {thisWeek.overloadDays > 0 && (
         <div style={{ padding: "0.5rem 1rem", borderBottom: "1px solid var(--border)", background: "color-mix(in srgb, #f97316 6%, var(--surface))" }}>
           <p style={{ margin: 0, fontSize: "0.75rem", color: "#f97316", fontWeight: 600 }}>
-            ⚠ {thisWeek.overloadDays} day{thisWeek.overloadDays > 1 ? "s" : ""} over capacity — consider rescheduling.
+            {thisWeek.overloadDays} day{thisWeek.overloadDays > 1 ? "s" : ""} over capacity. Consider rescheduling.
           </p>
         </div>
       )}
 
       {/* Mood check-in */}
-      <div style={{ padding: "0.75rem 1rem" }}>
-        <p style={{ margin: "0 0 0.55rem", fontSize: "0.7rem", fontWeight: 600, color: todayMood ? MOOD_COLORS[todayMood - 1] : "var(--muted)" }}>
-          {todayMood ? `${MOOD_EMOJIS[todayMood - 1]}  ${MOOD_LABELS[todayMood - 1]} today` : "How are you feeling today?"}
-        </p>
-        <div style={{ display: "flex", gap: "0.4rem" }}>
-          {MOOD_EMOJIS.map((emoji, i) => {
-            const mood = i + 1;
-            const selected = todayMood === mood;
-            const color = MOOD_COLORS[i];
-            return (
-              <button
-                key={mood}
-                type="button"
-                onClick={() => void saveMood(mood)}
-                title={MOOD_LABELS[i]}
-                style={{
-                  flex: 1,
-                  fontSize: "1.25rem",
-                  lineHeight: 1,
-                  padding: "0.45rem 0",
-                  borderRadius: "10px",
-                  border: `1.5px solid ${selected ? color : "var(--border)"}`,
-                  background: selected ? `color-mix(in srgb, ${color} 14%, var(--bg))` : "transparent",
-                  cursor: "pointer",
-                  transition: "border-color 120ms, background 120ms, transform 100ms",
-                  transform: selected ? "scale(1.1)" : "scale(1)",
-                  fontFamily: "inherit",
-                }}
-              >
-                {emoji}
-              </button>
-            );
-          })}
+      <div style={{ position: "relative", padding: "0.9rem 1rem 1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.65rem" }}>
+          <div>
+            <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 800, color: "var(--fg)" }}>
+              Today's check-in
+            </p>
+            <p style={{ margin: "0.15rem 0 0", fontSize: "0.72rem", color: "var(--muted)", lineHeight: 1.35 }}>
+              One daily signal for your wellbeing report.
+            </p>
+          </div>
+          <span style={{ padding: "0.25rem 0.45rem", borderRadius: "999px", border: "1px solid var(--border)", background: "color-mix(in srgb, var(--surface) 86%, var(--bg))", color: "var(--muted)", fontSize: "0.68rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+            1 per day
+          </span>
         </div>
+        {todayMood ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", padding: "0.62rem 0.72rem", borderRadius: "12px", border: "1px solid color-mix(in srgb, var(--border) 80%, var(--fg) 6%)", background: "color-mix(in srgb, var(--surface) 92%, var(--bg))" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", minWidth: 0, fontSize: "0.82rem", fontWeight: 800, color: "var(--fg)" }}>
+              <span style={{ width: 9, height: 9, borderRadius: "50%", background: MOOD_COLORS[todayMood - 1], boxShadow: `0 0 0 4px color-mix(in srgb, ${MOOD_COLORS[todayMood - 1]} 16%, transparent)`, flexShrink: 0 }} />
+              {CHECKIN_LABELS[todayMood - 1]}
+            </span>
+            <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 600 }}>
+              Logged today{todayCheckinDate ? ` (${formatShortUkDate(todayCheckinDate)})` : ""}
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "0.35rem", padding: "0.28rem", borderRadius: "14px", border: "1px solid var(--border)", background: "color-mix(in srgb, var(--bg) 74%, var(--surface))" }}>
+              {CHECKIN_LABELS.map((label, i) => {
+                const mood = i + 1;
+                const color = MOOD_COLORS[i];
+                return (
+                  <button
+                    key={mood}
+                    type="button"
+                    onClick={() => void saveMood(mood)}
+                    disabled={savingMood}
+                    title={MOOD_LABELS[i]}
+                    style={{
+                      minWidth: 0,
+                      display: "inline-flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.28rem",
+                      fontSize: "0.68rem",
+                      fontWeight: 800,
+                      lineHeight: 1,
+                      padding: "0.48rem 0.25rem",
+                      borderRadius: "10px",
+                      border: "1px solid transparent",
+                      background: "var(--surface)",
+                      color: "var(--fg)",
+                      cursor: savingMood ? "not-allowed" : "pointer",
+                      opacity: savingMood ? 0.65 : 1,
+                      transition: "border-color 120ms, background 120ms, transform 120ms",
+                      fontFamily: "inherit",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = color;
+                      e.currentTarget.style.background = `color-mix(in srgb, ${color} 9%, var(--surface))`;
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "transparent";
+                      e.currentTarget.style.background = "var(--surface)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{label}</span>
+                  </button>
+                );
+              })}
+          </div>
+        )}
       </div>
+
+      <WellbeingReportDrawer open={reportOpen} onClose={() => setReportOpen(false)} />
+    </div>
+  );
+}
+
+function WellbeingReportDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Wellbeing report"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        display: "flex",
+        justifyContent: "flex-end",
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Close wellbeing report"
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          inset: 0,
+          border: 0,
+          background: "rgb(15 23 42 / 0.38)",
+          backdropFilter: "blur(5px)",
+          cursor: "default",
+        }}
+      />
+      <aside
+        style={{
+          position: "relative",
+          width: "min(940px, 94vw)",
+          height: "100%",
+          background: "var(--bg)",
+          borderLeft: "1px solid var(--border)",
+          boxShadow: "-28px 0 70px rgb(15 23 42 / 0.28)",
+          overflowY: "auto",
+          animation: "pa-wellbeing-drawer-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+        }}
+      >
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "1rem",
+            padding: "0.8rem 1rem",
+            borderBottom: "1px solid var(--border)",
+            background: "color-mix(in srgb, var(--bg) 88%, transparent)",
+            backdropFilter: "blur(14px)",
+          }}
+        >
+          <div>
+            <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--muted)", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              Wellbeing trends
+            </p>
+            <p style={{ margin: "0.12rem 0 0", fontSize: "0.86rem", color: "var(--muted)" }}>
+              Workload, mood and protected time over time
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--fg)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+        <WellbeingReportPanel />
+        <style jsx>{`
+          @keyframes pa-wellbeing-drawer-in {
+            from { transform: translateX(32px); opacity: 0.92; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+        `}</style>
+      </aside>
     </div>
   );
 }
@@ -1030,9 +1321,10 @@ function PersonalTasksCard({
       onScheduleRefresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete task");
-    } finally {
       setSaving(false);
+      throw err;
     }
+    setSaving(false);
   }
 
   const PRIORITY_COLORS: Record<string, string> = { p1: "#ef4444", p2: "#f97316", p3: "#3b82f6", p4: "#6b7280" };
@@ -1325,7 +1617,7 @@ function PersonalTasksCard({
               {editingTask ? (
                 <button
                   className="scheduler-modal-cancel"
-                  onClick={() => { void deleteTask(editingTask); closeTaskModal(); }}
+                  onClick={() => { void deleteTask(editingTask).then(() => closeTaskModal()).catch(() => {}); }}
                   disabled={saving}
                 >
                   Delete
@@ -1611,9 +1903,6 @@ export default function DashboardPage() {
       </div>
 
       <div className={`dashboard-top-grid${schedulerViewMode === "term" ? " is-term-view" : ""}`} style={{ marginBottom: "1.25rem" }}>
-        <div className="dashboard-wellbeing-row">
-          <WellbeingSummaryCard />
-        </div>
         <div className="dashboard-countdown-wrapper">
           <div className="term-countdown-stat">
             {!loading && activeTerm?.termStartDate && activeTerm?.termEndDate ? (
@@ -1637,8 +1926,11 @@ export default function DashboardPage() {
               <span className="dashboard-hero-value">–</span>
             )}
           </div>
-
-          {/* This week at a glance */}
+        </div>
+        <div className="dashboard-wellbeing-row">
+          <WellbeingSummaryCard />
+        </div>
+        <div className="dashboard-week-glance-card">
           {!loading && (() => {
             const weekNow = new Date();
             const weekMon = getMondayDate(weekNow);
@@ -1660,7 +1952,7 @@ export default function DashboardPage() {
             ].filter(Boolean) as Array<{ label: string; color: string }>;
             if (badges.length === 0) return null;
             return (
-              <div style={{ padding: "0.75rem 1rem 0.5rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+              <div style={{ padding: "0.75rem 1rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                 {badges.map((b) => (
                   <span key={b.label} style={{
                     display: "inline-flex", alignItems: "center", gap: "0.3rem",
@@ -1747,9 +2039,9 @@ export default function DashboardPage() {
         <div className={`dashboard-hero-side-wrap${schedulerViewMode === "term" ? " is-below-term" : ""}`}>
           <div className="dashboard-hero dashboard-hero-side">
           </div>
+          <WorkloadSuggestionsStrip />
           <AiSchedulePanel onScheduleChange={handleScheduleMutation} />
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
-          <WorkloadSuggestionsStrip />
           <PersonalTasksCard
             tasks={tasks}
             onTasksChange={setTasks}

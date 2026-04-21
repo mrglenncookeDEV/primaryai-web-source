@@ -9006,28 +9006,37 @@ html[data-theme="light"] .cmdpal-box {
   align-items: start;
 }
 
-.dashboard-wellbeing-row {
-  grid-column: 2;
-  grid-row: 1;
-}
-
 .dashboard-countdown-wrapper {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.5rem;
 }
 
+.dashboard-wellbeing-row {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.dashboard-week-glance-card {
+  grid-column: 2;
+  grid-row: 3;
+  border-radius: 14px;
+  border: 1px solid var(--border-card);
+  background: var(--surface);
+  overflow: hidden;
+}
+
 .dashboard-scheduler-wrapper {
   grid-column: 1;
-  grid-row: 1 / span 3;
+  grid-row: 1 / span 4;
   align-self: flex-start;
 }
 
 .dashboard-hero-side-wrap {
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 4;
 }
 
 .dashboard-top-grid.is-term-view {
@@ -9036,6 +9045,7 @@ html[data-theme="light"] .cmdpal-box {
 
 .dashboard-top-grid.is-term-view .dashboard-wellbeing-row,
 .dashboard-top-grid.is-term-view .dashboard-countdown-wrapper,
+.dashboard-top-grid.is-term-view .dashboard-week-glance-card,
 .dashboard-top-grid.is-term-view .dashboard-scheduler-wrapper,
 .dashboard-top-grid.is-term-view .dashboard-hero-side-wrap {
   grid-column: auto;
@@ -9050,8 +9060,12 @@ html[data-theme="light"] .cmdpal-box {
   order: 2;
 }
 
-.dashboard-top-grid.is-term-view .dashboard-hero-side-wrap {
+.dashboard-top-grid.is-term-view .dashboard-week-glance-card {
   order: 3;
+}
+
+.dashboard-top-grid.is-term-view .dashboard-hero-side-wrap {
+  order: 4;
 }
 
 .dashboard-hero-side-wrap {
@@ -10120,7 +10134,6 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
 
   .dashboard-top-grid > * { width: 100%; min-width: 0; }
 
-  .dashboard-countdown-wrapper  { order: 1; }
   .dashboard-scheduler-wrapper  { order: 2; }
   .dashboard-hero-side-wrap     { order: 3; }
 

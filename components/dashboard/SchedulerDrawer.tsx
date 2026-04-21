@@ -10,7 +10,6 @@ import CustomEventModal from "./CustomEventModal";
 import PersonalEventModal from "./PersonalEventModal";
 import NotesPanel from "@/components/NotesPanel";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
-import { DashboardClock } from "@/components/dashboard/DashboardClock";
 
 type Props = {
   open?: boolean;
@@ -1560,7 +1559,6 @@ export default function SchedulerDrawer({
           <div className="scheduler-drawer-header-main">
             <h2 className="scheduler-drawer-title">
               <DashboardCalendar />
-              <DashboardClock />
               {displayName ? `${displayName.split(" ")[0]}'s Timetable` : "My Timetable"}
             </h2>
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap", justifyContent: "flex-end" }}>

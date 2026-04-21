@@ -30,6 +30,39 @@ export const LessonPackSchema = z.object({
     higher: DiffGroupSchema,
   }).optional(),
   send_adaptations: z.array(z.string()),
+  lesson_sections: z.array(
+    z.object({
+      title: z.string(),
+      content: z.string(),
+      teacher_prompts: z.array(z.string()).optional(),
+      checks_for_understanding: z.array(z.string()).optional(),
+      rationale_badge: z.string().optional(),
+    })
+  ).optional(),
+  lesson_hook: z.string().optional(),
+  safety_notes: z.array(z.string()).optional(),
+  timing_guide: z.string().optional(),
+  thinking_questions: z.array(
+    z.object({
+      stem: z.string(),
+      type: z.string(),
+      bloom_level: z.string(),
+    })
+  ).optional(),
+  next_steps: z.array(
+    z.object({
+      pupil: z.string(),
+      next_step: z.string(),
+      lesson_response: z.string().optional(),
+    })
+  ).optional(),
+  rationale_tags: z.array(
+    z.object({
+      decision: z.string(),
+      source: z.string(),
+      note: z.string(),
+    })
+  ).optional(),
   plenary: z.string(),
   mini_assessment: z.object({
     questions: z.array(z.string()),

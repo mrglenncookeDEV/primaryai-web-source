@@ -29,6 +29,10 @@ export interface LessonPackRequest {
   teacher_id?: string;
   feedback?: string;
   context_notes?: string;
+  planning_context?: {
+    criticalDraftId?: string | null;
+    quickPlan?: boolean | null;
+  };
   profile?: {
     defaultYearGroup?: string | null;
     defaultSubject?: string | null;
