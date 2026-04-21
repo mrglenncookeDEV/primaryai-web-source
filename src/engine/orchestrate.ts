@@ -37,6 +37,14 @@ type ProviderAttempt = {
   error?: string;
 };
 
+const DIFF_GROUP_TEMPLATE = {
+  group_size_hint: "string",
+  activity: "string",
+  questions: ["string", "string", "string"],
+  talk_prompt: "string",
+  exit_ticket: "string",
+};
+
 const LESSON_PACK_OUTPUT_TEMPLATE = {
   year_group: "string",
   subject: "string",
@@ -50,6 +58,11 @@ const LESSON_PACK_OUTPUT_TEMPLATE = {
     support: "string",
     expected: "string",
     greater_depth: "string",
+  },
+  differentiation: {
+    lower: { ...DIFF_GROUP_TEMPLATE },
+    core: { ...DIFF_GROUP_TEMPLATE },
+    higher: { ...DIFF_GROUP_TEMPLATE, extension: "string" },
   },
   send_adaptations: ["string", "string", "string"],
   plenary: "string",
@@ -91,11 +104,32 @@ function valueToStringArray(value: unknown) {
   return scalar ? [scalar] : [];
 }
 
+function coerceDiffGroup(raw: unknown): { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string; extension?: string } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const g = raw as Record<string, unknown>;
+  const activity = valueToString(g.activity);
+  if (!activity) return undefined;
+  return {
+    group_size_hint: valueToString(g.group_size_hint),
+    activity,
+    questions: valueToStringArray(g.questions),
+    talk_prompt: valueToString(g.talk_prompt),
+    exit_ticket: valueToString(g.exit_ticket),
+    ...(g.extension ? { extension: valueToString(g.extension) } : {}),
+  };
+}
+
 function coerceLessonPackCandidate(candidate: unknown) {
   if (!candidate || typeof candidate !== "object") return candidate;
   const obj = candidate as Record<string, unknown>;
   const activities = (obj.activities as Record<string, unknown> | undefined) ?? {};
   const miniAssessment = (obj.mini_assessment as Record<string, unknown> | undefined) ?? {};
+  const diff = (obj.differentiation as Record<string, unknown> | undefined) ?? {};
+
+  const lower = coerceDiffGroup(diff.lower);
+  const core = coerceDiffGroup(diff.core);
+  const higher = coerceDiffGroup(diff.higher);
+  const differentiation = lower && core && higher ? { lower, core, higher } : undefined;
 
   return {
     year_group: valueToString(obj.year_group),
@@ -111,6 +145,7 @@ function coerceLessonPackCandidate(candidate: unknown) {
       expected: valueToString(activities.expected),
       greater_depth: valueToString(activities.greater_depth),
     },
+    ...(differentiation ? { differentiation } : {}),
     send_adaptations: valueToStringArray(obj.send_adaptations),
     plenary: valueToString(obj.plenary),
     mini_assessment: {
@@ -340,6 +375,15 @@ function ensureUsefulContent(pack: LessonPack, req: LessonPackRequest, objective
     answers.push(`Mark scheme: acceptable equivalent answer for question ${answers.length + 1}.`);
   }
 
+  const normDiffGroup = (g: NonNullable<typeof pack.differentiation>[keyof NonNullable<typeof pack.differentiation>]) => ({
+    group_size_hint: g.group_size_hint || "",
+    activity: normalizeUkSpelling(g.activity),
+    questions: g.questions.map((q) => normalizeUkSpelling(q)),
+    talk_prompt: normalizeUkSpelling(g.talk_prompt),
+    exit_ticket: normalizeUkSpelling(g.exit_ticket),
+    ...(g.extension ? { extension: normalizeUkSpelling(g.extension) } : {}),
+  });
+
   return LessonPackSchema.parse({
     ...pack,
     learning_objectives: completedObjectives,
@@ -367,6 +411,13 @@ function ensureUsefulContent(pack: LessonPack, req: LessonPackRequest, objective
             )
           : greaterDepthDefault,
     },
+    ...(pack.differentiation ? {
+      differentiation: {
+        lower: normDiffGroup(pack.differentiation.lower),
+        core: normDiffGroup(pack.differentiation.core),
+        higher: normDiffGroup(pack.differentiation.higher),
+      },
+    } : {}),
     mini_assessment: {
       questions,
       answers: answers.slice(0, questions.length).map((item) => normalizeUkSpelling(item)),
@@ -376,11 +427,19 @@ function ensureUsefulContent(pack: LessonPack, req: LessonPackRequest, objective
 }
 
 function differentiationDepthScore(pack: LessonPack) {
-  return (
+  const activitiesScore =
     Number(pack.activities.support.length > 40) +
     Number(pack.activities.expected.length > 40) +
-    Number(pack.activities.greater_depth.length > 40)
-  );
+    Number(pack.activities.greater_depth.length > 40);
+  const diffScore = pack.differentiation
+    ? Number(pack.differentiation.lower.activity.length > 40) +
+      Number(pack.differentiation.core.activity.length > 40) +
+      Number(pack.differentiation.higher.activity.length > 40) +
+      Number((pack.differentiation.lower.questions?.length ?? 0) >= 3) +
+      Number((pack.differentiation.core.questions?.length ?? 0) >= 3) +
+      Number((pack.differentiation.higher.questions?.length ?? 0) >= 3)
+    : 0;
+  return activitiesScore + diffScore;
 }
 
 function assessmentCompletenessScore(pack: LessonPack) {
@@ -803,6 +862,32 @@ mini_assessment.answers — exactly 4 mark-scheme answers, one per question:
   • Written in the style of a teacher mark scheme
   • State the expected answer plus acceptable alternatives where appropriate
   • For Q4, describe the key features of a full-mark response (e.g. "Award 2 marks for...")
+
+━━━ DIFFERENTIATION BY ABILITY GROUP ━━━
+${(() => {
+  const p = teacherProfile;
+  const haRaw = (p?.aboveStandardPercent ?? 0) + (p?.hugelyAboveStandardPercent ?? 0);
+  const laRaw = (p?.belowStandardPercent ?? 0) + (p?.hugelyBelowStandardPercent ?? 0);
+  const ha = Math.min(haRaw, 100);
+  const la = Math.min(laRaw, 100);
+  const ma = Math.max(0, 100 - ha - la);
+  return `Class split (approximate): Lower ${la}% · Core ${ma}% · Higher ${ha}%
+These percentages come from the teacher's saved class profile — use them to calibrate group sizes and difficulty.`;
+})()}
+
+Generate a "differentiation" object with three keys: lower, core, higher.
+Each group object must contain:
+  • group_size_hint — e.g. "~8 pupils (approx. 27% of class)" — calculated from the percentages above
+  • activity — 3 to 4 sentences. A specific task for this group. Refer to concrete resources (manipulatives, sentence frames, word banks, reasoning frames). Activities must be genuinely different in cognitive demand — not the same task with more/fewer questions.
+  • questions — exactly 3 questions at the Bloom's level for this group:
+      - lower: Recall and Understanding ("What is…?", "Can you name…?", "Describe…", "Show me…")
+      - core: Application and Analysis ("How would you…?", "What would happen if…?", "Compare…", "Explain why…")
+      - higher: Evaluation and Creation ("Always, sometimes or never?", "Convince me that…", "Is it possible that…?", "Prove it.", "What's the most efficient method and why?")
+  • talk_prompt — one discussion prompt or think-pair-share question that forces verbal reasoning at this group's level
+  • exit_ticket — one specific question or task the teacher can use in the last 5 minutes to check this group's understanding
+  • extension — (higher group only) a further challenge if pupils finish early; must demand a new application or generalisation
+
+Critical thinking requirement: every question, talk prompt, and exit ticket must demand a reason, justification, or explanation — never a single-word or recall-only answer except for the lower group's first question.
 
 ━━━ OUTPUT SCHEMA ━━━
 ${JSON.stringify(LESSON_PACK_OUTPUT_TEMPLATE, null, 2)}

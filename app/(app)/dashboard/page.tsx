@@ -623,6 +623,161 @@ type WorkloadSuggestion = {
   actionHref?: string;
 };
 
+type WellbeingSummary = {
+  thisWeek: {
+    scheduledMins: number;
+    workCapacityMins: number;
+    eveningsProtected: number;
+    lunchesProtected: number;
+    overloadDays: number;
+    trend: "improving" | "stable" | "worsening";
+  };
+  allTime: {
+    eveningsProtected: number;
+    eveningsTotal: number;
+    lunchesProtected: number;
+    lunchesTotal: number;
+    weeksAnalysed: number;
+  };
+};
+
+const MOOD_EMOJIS = ["😫", "😟", "😐", "🙂", "😊"] as const;
+const MOOD_LABELS = ["Exhausted", "Struggling", "Okay", "Good", "Great"] as const;
+const MOOD_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#22c55e", "#10b981"] as const;
+
+function WellbeingSummaryCard() {
+  const [summary, setSummary] = useState<WellbeingSummary | null>(null);
+  const [todayMood, setTodayMood] = useState<number | null>(null);
+  const [savingMood, setSavingMood] = useState(false);
+
+  const loadSummary = useCallback(() => {
+    fetch("/api/wellbeing/summary?weeks=6", { cache: "no-store" })
+      .then((r) => r.json())
+      .catch(() => ({}))
+      .then((d) => { if (d?.summary) setSummary(d.summary); });
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+    fetch("/api/wellbeing/checkin?days=1", { cache: "no-store" })
+      .then((r) => r.json())
+      .catch(() => ({}))
+      .then((d) => { if (d?.today?.mood) setTodayMood(d.today.mood); });
+    window.addEventListener("pa:schedule-refresh", loadSummary);
+    return () => window.removeEventListener("pa:schedule-refresh", loadSummary);
+  }, [loadSummary]);
+
+  async function saveMood(mood: number) {
+    if (savingMood) return;
+    setSavingMood(true);
+    setTodayMood(mood);
+    await fetch("/api/wellbeing/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mood }),
+    }).catch(() => null);
+    setSavingMood(false);
+  }
+
+  if (!summary) return null;
+
+  const { thisWeek, allTime } = summary;
+  const workloadPct = thisWeek.workCapacityMins > 0
+    ? Math.round((thisWeek.scheduledMins / thisWeek.workCapacityMins) * 100)
+    : 0;
+
+  const trendArrow = thisWeek.trend === "improving" ? "↓" : thisWeek.trend === "worsening" ? "↑" : "→";
+  const trendColor = thisWeek.trend === "improving" ? "#22c55e" : thisWeek.trend === "worsening" ? "#ef4444" : "#94a3b8";
+  const trendLabel = thisWeek.trend === "improving" ? "Lighter than last week" : thisWeek.trend === "worsening" ? "Heavier than last week" : "Similar to last week";
+
+  const workloadColor = workloadPct > 110 ? "#ef4444" : workloadPct > 90 ? "#f59e0b" : "#22c55e";
+  const eveningPct = allTime.eveningsTotal > 0 ? Math.round((allTime.eveningsProtected / allTime.eveningsTotal) * 100) : 100;
+
+  const stats = [
+    { value: `${workloadPct}%`, label: "Weekly capacity", color: workloadColor },
+    { value: `${thisWeek.eveningsProtected}/5`, label: "Evenings free", color: "#16a34a" },
+    { value: `${eveningPct}%`, label: `${allTime.weeksAnalysed}-week average`, color: "#2563eb" },
+  ];
+
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", overflow: "hidden", marginBottom: "0.75rem" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.8rem 1rem", borderBottom: "1px solid var(--border)" }}>
+        <p style={{ margin: 0, fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>
+          Wellbeing
+        </p>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.72rem", color: trendColor, fontWeight: 600 }}>
+          <span>{trendArrow}</span>
+          <span>{trendLabel}</span>
+        </span>
+      </div>
+
+      {/* Stats row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderBottom: "1px solid var(--border)" }}>
+        {stats.map(({ value, label, color }, i) => (
+          <div
+            key={label}
+            style={{
+              padding: "0.85rem 0.75rem",
+              textAlign: "center",
+              borderRight: i < 2 ? "1px solid var(--border)" : "none",
+            }}
+          >
+            <p style={{ margin: "0 0 0.2rem", fontSize: "1.5rem", fontWeight: 800, color, lineHeight: 1, letterSpacing: "-0.02em" }}>{value}</p>
+            <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--muted)", fontWeight: 500 }}>{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Overload warning */}
+      {thisWeek.overloadDays > 0 && (
+        <div style={{ padding: "0.5rem 1rem", borderBottom: "1px solid var(--border)", background: "color-mix(in srgb, #f97316 6%, var(--surface))" }}>
+          <p style={{ margin: 0, fontSize: "0.75rem", color: "#f97316", fontWeight: 600 }}>
+            ⚠ {thisWeek.overloadDays} day{thisWeek.overloadDays > 1 ? "s" : ""} over capacity — consider rescheduling.
+          </p>
+        </div>
+      )}
+
+      {/* Mood check-in */}
+      <div style={{ padding: "0.75rem 1rem" }}>
+        <p style={{ margin: "0 0 0.55rem", fontSize: "0.7rem", fontWeight: 600, color: todayMood ? MOOD_COLORS[todayMood - 1] : "var(--muted)" }}>
+          {todayMood ? `${MOOD_EMOJIS[todayMood - 1]}  ${MOOD_LABELS[todayMood - 1]} today` : "How are you feeling today?"}
+        </p>
+        <div style={{ display: "flex", gap: "0.4rem" }}>
+          {MOOD_EMOJIS.map((emoji, i) => {
+            const mood = i + 1;
+            const selected = todayMood === mood;
+            const color = MOOD_COLORS[i];
+            return (
+              <button
+                key={mood}
+                type="button"
+                onClick={() => void saveMood(mood)}
+                title={MOOD_LABELS[i]}
+                style={{
+                  flex: 1,
+                  fontSize: "1.25rem",
+                  lineHeight: 1,
+                  padding: "0.45rem 0",
+                  borderRadius: "10px",
+                  border: `1.5px solid ${selected ? color : "var(--border)"}`,
+                  background: selected ? `color-mix(in srgb, ${color} 14%, var(--bg))` : "transparent",
+                  cursor: "pointer",
+                  transition: "border-color 120ms, background 120ms, transform 100ms",
+                  transform: selected ? "scale(1.1)" : "scale(1)",
+                  fontFamily: "inherit",
+                }}
+              >
+                {emoji}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WorkloadSuggestionsStrip() {
   const [suggestions, setSuggestions] = useState<WorkloadSuggestion[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
@@ -630,7 +785,7 @@ function WorkloadSuggestionsStrip() {
     try { return new Set(JSON.parse(sessionStorage.getItem("pa:dismissed-suggestions") || "[]")); } catch { return new Set(); }
   });
 
-  useEffect(() => {
+  const loadSuggestions = useCallback(() => {
     fetch("/api/workload/suggestions", { cache: "no-store" })
       .then((r) => r.json())
       .catch(() => ({}))
@@ -638,6 +793,12 @@ function WorkloadSuggestionsStrip() {
         if (Array.isArray(data?.suggestions)) setSuggestions(data.suggestions);
       });
   }, []);
+
+  useEffect(() => {
+    loadSuggestions();
+    window.addEventListener("pa:schedule-refresh", loadSuggestions);
+    return () => window.removeEventListener("pa:schedule-refresh", loadSuggestions);
+  }, [loadSuggestions]);
 
   function dismiss(id: string) {
     setDismissed((prev) => {
@@ -1450,6 +1611,9 @@ export default function DashboardPage() {
       </div>
 
       <div className={`dashboard-top-grid${schedulerViewMode === "term" ? " is-term-view" : ""}`} style={{ marginBottom: "1.25rem" }}>
+        <div className="dashboard-wellbeing-row">
+          <WellbeingSummaryCard />
+        </div>
         <div className="dashboard-countdown-wrapper">
           <div className="term-countdown-stat">
             {!loading && activeTerm?.termStartDate && activeTerm?.termEndDate ? (

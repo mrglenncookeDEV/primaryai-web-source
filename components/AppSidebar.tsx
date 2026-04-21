@@ -168,10 +168,10 @@ export default function AppSidebar() {
   const dockStyle: React.CSSProperties = {
     position: "fixed",
     left: 12,
-    top: "50%",
+    top: 80,
     transform: collapsed
-      ? "translateY(-50%) translateX(calc(-100% - 20px))"
-      : "translateY(-50%)",
+      ? "translateX(calc(-100% - 20px))"
+      : "none",
   };
 
   return (

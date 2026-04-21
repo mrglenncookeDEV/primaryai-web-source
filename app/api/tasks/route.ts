@@ -181,6 +181,7 @@ export async function GET(req: Request) {
     .eq("user_id", session.userId)
     .eq("event_type", "custom")
     .in("event_category", ["task", "task_done"])
+    .is("deleted_at", null)
     .order("scheduled_date", { ascending: true })
     .order("start_time", { ascending: true });
 
@@ -211,6 +212,7 @@ export async function GET(req: Request) {
       .from("personal_tasks")
       .select("*")
       .eq("user_id", session.userId)
+      .is("deleted_at", null)
       .order("completed", { ascending: true })
       .order("due_date", { ascending: true })
       .order("created_at", { ascending: false });

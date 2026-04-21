@@ -4,6 +4,82 @@ import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useRef, us
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+type DiffGroup = { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string; extension?: string };
+type DiffPack = { lower: DiffGroup; core: DiffGroup; higher: DiffGroup };
+
+const DIFF_GROUP_META = {
+  lower: { label: "Lower Group", color: "#f97316", bg: "rgba(249,115,22,0.06)", border: "rgba(249,115,22,0.18)", bloomsLevel: "Recall & Understand" },
+  core:  { label: "Core Group",  color: "#3b82f6", bg: "rgba(59,130,246,0.06)", border: "rgba(59,130,246,0.18)", bloomsLevel: "Apply & Analyse" },
+  higher:{ label: "Higher Group",color: "#a855f7", bg: "rgba(168,85,247,0.06)", border: "rgba(168,85,247,0.18)", bloomsLevel: "Evaluate & Create" },
+} as const;
+
+function DifferentiationPanel({ diff }: { diff: DiffPack }) {
+  const [active, setActive] = useState<"lower" | "core" | "higher">("core");
+  const group = diff[active];
+  const meta = DIFF_GROUP_META[active];
+  return (
+    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "0.85rem 1.1rem 0" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>Differentiation by Group</span>
+            <span style={{ fontSize: "0.68rem", padding: "2px 7px", borderRadius: "999px", background: "color-mix(in srgb, var(--accent) 10%, transparent)", color: "var(--accent)", fontWeight: 700 }}>AI Generated</span>
+          </div>
+          {group.group_size_hint && <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>{group.group_size_hint}</span>}
+        </div>
+        <div style={{ display: "flex", gap: "0.35rem" }}>
+          {(["lower", "core", "higher"] as const).map((key) => {
+            const m = DIFF_GROUP_META[key];
+            return (
+              <button key={key} type="button" onClick={() => setActive(key)} style={{ padding: "0.4rem 0.85rem", borderRadius: "8px 8px 0 0", border: `1px solid ${active === key ? m.color : "var(--border)"}`, borderBottom: active === key ? `2px solid ${m.color}` : "1px solid var(--border)", background: active === key ? `color-mix(in srgb, ${m.color} 10%, var(--surface))` : "transparent", color: active === key ? m.color : "var(--muted)", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all 120ms" }}>
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ padding: "1rem 1.1rem 1.1rem", background: meta.bg, borderTop: `2px solid ${meta.color}` }}>
+        <div style={{ marginBottom: "0.75rem" }}>
+          <span style={{ fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color }}>Bloom&apos;s focus: {meta.bloomsLevel}</span>
+        </div>
+        <div style={{ marginBottom: "1rem" }}>
+          <p style={{ margin: "0 0 0.4rem", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color }}>Activity</p>
+          <p style={{ margin: 0, fontSize: "0.87rem", lineHeight: 1.65, color: "var(--text)" }}>{group.activity}</p>
+        </div>
+        {group.questions?.length > 0 && (
+          <div style={{ marginBottom: "1rem" }}>
+            <p style={{ margin: "0 0 0.5rem", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color }}>Critical Thinking Questions</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              {group.questions.map((q, i) => (
+                <div key={i} style={{ display: "flex", gap: "0.6rem", alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0, width: "20px", height: "20px", borderRadius: "50%", background: meta.color, color: "#fff", fontSize: "0.65rem", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                  <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: 1.55, color: "var(--text)" }}>{q}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div style={{ padding: "0.7rem 0.85rem", borderRadius: "10px", background: "var(--surface)", border: `1px solid ${meta.border}` }}>
+            <p style={{ margin: "0 0 0.3rem", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color }}>💬 Talk Prompt</p>
+            <p style={{ margin: 0, fontSize: "0.83rem", lineHeight: 1.55, color: "var(--text)" }}>{group.talk_prompt}</p>
+          </div>
+          <div style={{ padding: "0.7rem 0.85rem", borderRadius: "10px", background: "var(--surface)", border: `1px solid ${meta.border}` }}>
+            <p style={{ margin: "0 0 0.3rem", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color }}>🎯 Exit Ticket</p>
+            <p style={{ margin: 0, fontSize: "0.83rem", lineHeight: 1.55, color: "var(--text)" }}>{group.exit_ticket}</p>
+          </div>
+        </div>
+        {"extension" in group && group.extension && (
+          <div style={{ marginTop: "0.75rem", padding: "0.7rem 0.85rem", borderRadius: "10px", background: "var(--surface)", border: `1px solid ${meta.border}` }}>
+            <p style={{ margin: "0 0 0.3rem", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color }}>⚡ Extension</p>
+            <p style={{ margin: 0, fontSize: "0.83rem", lineHeight: 1.55, color: "var(--text)" }}>{group.extension}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const PROVIDER_LABELS: Record<string, string> = {
   cerebras: "Cerebras",
   groq: "Groq",
@@ -41,6 +117,11 @@ type LessonPack = {
   worked_example: string;
   common_misconceptions: string[];
   activities: { support: string; expected: string; greater_depth: string };
+  differentiation?: {
+    lower: { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string };
+    core: { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string };
+    higher: { group_size_hint: string; activity: string; questions: string[]; talk_prompt: string; exit_ticket: string; extension?: string };
+  };
   send_adaptations: string[];
   plenary: string;
   mini_assessment: { questions: string[]; answers: string[] };
@@ -1911,6 +1992,9 @@ export default function LessonPackPage() {
                 })}
               </div>
             </div>
+
+            {/* Auto-Differentiation Panel */}
+            {pack.differentiation && <DifferentiationPanel diff={pack.differentiation} />}
 
             {/* SEND Adaptations */}
             {pack.send_adaptations.length > 0 && (

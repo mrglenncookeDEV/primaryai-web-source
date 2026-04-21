@@ -2533,7 +2533,7 @@ html[data-theme="dark"] .landing-phone-back-glow {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2.5rem 2rem 1.8rem;
+  padding: 4rem 2rem 1.8rem;
   border-left: 1px solid var(--border-card);
   border-radius: 0;
   opacity: 0.88;
@@ -8385,8 +8385,7 @@ a.scheduler-modal-confirm {
 .app-sidebar-ghost {
   position: fixed;
   left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 80px;
   border: 1.5px dashed rgba(255, 255, 255, 0.2);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.015);
@@ -8438,8 +8437,7 @@ html[data-theme="solid"] .app-sidebar-dock {
 .app-sidebar-expand-tab {
   position: fixed;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 80px;
   width: 20px;
   height: 56px;
   border: 1px solid var(--border);
@@ -9008,9 +9006,14 @@ html[data-theme="light"] .cmdpal-box {
   align-items: start;
 }
 
-.dashboard-countdown-wrapper {
+.dashboard-wellbeing-row {
   grid-column: 2;
   grid-row: 1;
+}
+
+.dashboard-countdown-wrapper {
+  grid-column: 2;
+  grid-row: 2;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.5rem;
@@ -9018,19 +9021,20 @@ html[data-theme="light"] .cmdpal-box {
 
 .dashboard-scheduler-wrapper {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1 / span 3;
   align-self: flex-start;
 }
 
 .dashboard-hero-side-wrap {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
 }
 
 .dashboard-top-grid.is-term-view {
   grid-template-columns: 1fr;
 }
 
+.dashboard-top-grid.is-term-view .dashboard-wellbeing-row,
 .dashboard-top-grid.is-term-view .dashboard-countdown-wrapper,
 .dashboard-top-grid.is-term-view .dashboard-scheduler-wrapper,
 .dashboard-top-grid.is-term-view .dashboard-hero-side-wrap {
@@ -9273,8 +9277,9 @@ html[data-theme="light"] .cmdpal-box {
   width: 100%;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
-  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
   padding: 1.4rem 1.25rem 1.1rem;
 }
 
@@ -9319,11 +9324,10 @@ html[data-theme="light"] .cmdpal-box {
 }
 
 .term-countdown-right {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: row;
   gap: 1rem;
-  min-width: 0;
   align-items: flex-start;
   justify-content: space-between;
 }
@@ -10120,11 +10124,6 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
   .dashboard-scheduler-wrapper  { order: 2; }
   .dashboard-hero-side-wrap     { order: 3; }
 
-  .app-sidebar,
-  .app-sidebar-dock,
-  .app-sidebar-ghost {
-    display: none !important;
-  }
   .dashboard-hero {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
@@ -10185,6 +10184,15 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
 
   .personal-task-open-indicator {
     align-self: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-sidebar,
+  .app-sidebar-dock,
+  .app-sidebar-ghost,
+  .app-sidebar-expand-tab {
+    display: none !important;
   }
 }
 

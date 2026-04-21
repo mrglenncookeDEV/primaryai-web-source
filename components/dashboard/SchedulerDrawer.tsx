@@ -378,6 +378,10 @@ export default function SchedulerDrawer({
   const [applyTemplateId, setApplyTemplateId] = useState<string | null>(null);
   const [applyTemplateDate, setApplyTemplateDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [eventObjectives, setEventObjectives] = useState<{ id: string; code: string; description: string; strand: string }[]>([]);
+  const [objectivesPickerOpen, setObjectivesPickerOpen] = useState(false);
+  const [availableObjectives, setAvailableObjectives] = useState<{ id: string; code: string; description: string; strand: string; subject: string }[]>([]);
+  const [objectivesFilter, setObjectivesFilter] = useState("");
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddInput, setQuickAddInput] = useState("");
   const [quickAddParsed, setQuickAddParsed] = useState<{ title: string; subject: string; year_group: string; scheduled_date: string; start_time: string; end_time: string } | null>(null);
@@ -949,6 +953,35 @@ export default function SchedulerDrawer({
   async function deleteTemplate(templateId: string) {
     await fetch(`/api/day-templates/${templateId}`, { method: "DELETE" });
     void loadTemplates();
+  }
+
+  async function loadEventObjectives(eventId: string) {
+    const res = await fetch(`/api/schedule/${eventId}/objectives`, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data?.objectives)) {
+      setEventObjectives(data.objectives);
+    }
+  }
+
+  async function loadAvailableObjectives(subject: string, yearGroup: string) {
+    const ks = (yearGroup || "").toLowerCase().replace("year ", "year-");
+    const params = new URLSearchParams({ subject });
+    if (ks) params.set("yearGroup", ks);
+    const res = await fetch(`/api/nc-objectives?${params}`, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data?.objectives)) {
+      setAvailableObjectives(data.objectives);
+    }
+  }
+
+  async function toggleObjective(eventId: string, objectiveId: string, linked: boolean) {
+    const method = linked ? "DELETE" : "POST";
+    await fetch(`/api/schedule/${eventId}/objectives`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ objectiveId }),
+    });
+    void loadEventObjectives(eventId);
   }
 
   async function previewQuickAdd(input: string) {
@@ -1899,7 +1932,14 @@ export default function SchedulerDrawer({
             onEmptySlotClick={(date, slotTime) => setCustomModalDraft({ date, startTime: slotTime, endTime: addMinutes(slotTime, 60), category: "Meeting", lockCategory: false })}
             onEventReschedule={handleEventReschedule}
             onEventDelete={handleEventDelete}
-            onEventClick={setSelectedEvent}
+            onEventClick={(evt) => {
+              setSelectedEvent(evt);
+              setEventObjectives([]);
+              setObjectivesPickerOpen(false);
+              setObjectivesFilter("");
+              void loadEventObjectives(evt.id);
+              if (evt.subject && evt.yearGroup) void loadAvailableObjectives(evt.subject, evt.yearGroup);
+            }}
           />
         </div>
 
@@ -1968,6 +2008,76 @@ export default function SchedulerDrawer({
                   })}
                 </div>
               )}
+              {/* NC Objectives */}
+              {selectedEvent.eventType === "lesson_pack" && !isImportedCalendarEvent(selectedEvent) && (
+                <div style={{ marginTop: "0.85rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.45rem" }}>
+                    <span style={{ fontSize: "0.74rem", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      NC Objectives {eventObjectives.length > 0 ? `(${eventObjectives.length})` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setObjectivesPickerOpen((v) => !v)}
+                      style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                    >
+                      {objectivesPickerOpen ? "Close" : "+ Add objective"}
+                    </button>
+                  </div>
+                  {eventObjectives.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: objectivesPickerOpen ? "0.6rem" : 0 }}>
+                      {eventObjectives.map((obj) => (
+                        <div key={obj.id} style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", padding: "0.35rem 0.5rem", borderRadius: "7px", background: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap", marginTop: "1px" }}>{obj.code}</span>
+                          <span style={{ flex: 1, fontSize: "0.75rem", color: "var(--fg)", lineHeight: 1.4 }}>{obj.description}</span>
+                          <button
+                            type="button"
+                            onClick={() => void toggleObjective(selectedEvent.id, obj.id, true)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "0.85rem", padding: "0 2px", lineHeight: 1, flexShrink: 0 }}
+                            aria-label="Remove"
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {objectivesPickerOpen && (
+                    <div>
+                      <input
+                        className="scheduler-modal-input"
+                        placeholder="Search objectives…"
+                        value={objectivesFilter}
+                        onChange={(e) => setObjectivesFilter(e.target.value)}
+                        style={{ width: "100%", marginBottom: "0.45rem" }}
+                      />
+                      <div style={{ maxHeight: "180px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                        {availableObjectives
+                          .filter((o) => {
+                            const linked = eventObjectives.some((e) => e.id === o.id);
+                            if (linked) return false;
+                            if (!objectivesFilter) return true;
+                            const q = objectivesFilter.toLowerCase();
+                            return o.description.toLowerCase().includes(q) || o.code.toLowerCase().includes(q) || o.strand.toLowerCase().includes(q);
+                          })
+                          .slice(0, 20)
+                          .map((o) => (
+                            <button
+                              key={o.id}
+                              type="button"
+                              onClick={() => void toggleObjective(selectedEvent.id, o.id, false)}
+                              style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", padding: "0.35rem 0.5rem", borderRadius: "7px", background: "var(--surface)", border: "1px solid var(--border)", cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                            >
+                              <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap", marginTop: "1px" }}>{o.code}</span>
+                              <span style={{ flex: 1, fontSize: "0.73rem", color: "var(--fg)", lineHeight: 1.4 }}>{o.description}</span>
+                            </button>
+                          ))}
+                        {availableObjectives.filter((o) => !eventObjectives.some((e) => e.id === o.id)).length === 0 && (
+                          <p style={{ fontSize: "0.75rem", color: "var(--muted)", textAlign: "center", padding: "0.5rem 0" }}>No objectives found for {selectedEvent.subject}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {generatePackError ? (
                 <p style={{ margin: "0.5rem 0 0", fontSize: "0.8rem", color: "#ef4444" }}>{generatePackError}</p>
               ) : null}

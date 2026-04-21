@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { canonicalizeSubject, canonicalizeYearGroup, normalizeTopic } from "./curriculum";
 
+const DiffGroupSchema = z.object({
+  group_size_hint: z.string(),
+  activity: z.string(),
+  questions: z.array(z.string()),
+  talk_prompt: z.string(),
+  exit_ticket: z.string(),
+  extension: z.string().optional(),
+});
+
 export const LessonPackSchema = z.object({
   year_group: z.string(),
   subject: z.string(),
@@ -15,6 +24,11 @@ export const LessonPackSchema = z.object({
     expected: z.string(),
     greater_depth: z.string(),
   }),
+  differentiation: z.object({
+    lower: DiffGroupSchema,
+    core: DiffGroupSchema,
+    higher: DiffGroupSchema,
+  }).optional(),
   send_adaptations: z.array(z.string()),
   plenary: z.string(),
   mini_assessment: z.object({
