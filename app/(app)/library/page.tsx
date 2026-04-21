@@ -1223,6 +1223,7 @@ export default function LibraryPage() {
           className="lib-drawer-close"
           onClick={() => setSelectedItem(null)}
           title="Close preview"
+          aria-label="Close preview"
         >
           <IconChevronRight size={18} />
           <span>Close preview</span>
@@ -1234,6 +1235,16 @@ export default function LibraryPage() {
               : (selectedItem.item as NoteItem).title || "Untitled note"}
           </span>
         )}
+        {/* Mobile-only × close button — always visible on small screens */}
+        <button
+          className="lib-drawer-close-x"
+          onClick={() => setSelectedItem(null)}
+          aria-label="Close"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
       </div>
       <div className="lib-drawer-content">
         {selectedItem && (

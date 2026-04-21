@@ -32,6 +32,15 @@ export default function LandingDevices() {
 
   return (
     <div className="landing-showcase-inner">
+      <div className="landing-about-copy">
+        <span className="landing-about-kicker">Product preview</span>
+        <h2 className="landing-about-heading">One workspace for the week ahead</h2>
+        <p className="landing-about-text">
+          Lesson packs, library resources, notes and weekly scheduling stay in
+          one place, shaped around real primary school practice.
+        </p>
+      </div>
+
       <div className="landing-device-showcase" aria-label="PrimaryAI dashboard preview">
         <div className="landing-laptop-wrap">
           <div className="landing-laptop-screen-shell">
@@ -81,14 +90,6 @@ export default function LandingDevices() {
         </div>
       </div>
 
-      <div className="landing-about-copy">
-        <span className="landing-about-kicker">Product preview</span>
-        <h2 className="landing-about-heading">One workspace for the week ahead</h2>
-        <p className="landing-about-text">
-          Lesson packs, library resources, notes and weekly scheduling stay in
-          one place, shaped around real primary school practice.
-        </p>
-      </div>
     </div>
   );
 }

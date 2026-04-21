@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Priority, Effort, UserStory } from "@/types/user-stories";
 import styles from "./StoryBuilder.module.css";
+import GuideDrawer from "./GuideDrawer";
 
 // ── Static data ──────────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ const INITIAL: BuilderState = {
   saving: false, savedRef: null, error: null,
 };
 
-type DrawerMode = "view" | "edit";
+type DrawerMode = "view" | "edit" | "guide";
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,7 @@ export default function StoryBuilder({ initialStories }: Props) {
   const [stories, setStories] = useState<UserStory[]>(initialStories);
   const [drawerStory, setDrawerStory] = useState<UserStory | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>("view");
+  const [showGuide, setShowGuide] = useState(false);
   const [newStoryId, setNewStoryId] = useState<string | null>(null);
   const backlogRef = useRef<HTMLDivElement>(null);
 
@@ -156,6 +158,7 @@ export default function StoryBuilder({ initialStories }: Props) {
   }
 
   function openDrawer(story: UserStory, mode: DrawerMode = "view") {
+    setShowGuide(false);
     setDrawerStory(story);
     setDrawerMode(mode);
   }
@@ -163,6 +166,12 @@ export default function StoryBuilder({ initialStories }: Props) {
   function closeDrawer() {
     setDrawerStory(null);
     setDrawerMode("view");
+    setShowGuide(false);
+  }
+
+  function openGuide() {
+    setDrawerStory(null);
+    setShowGuide(true);
   }
 
   async function handleDelete(id: string) {
@@ -207,6 +216,7 @@ export default function StoryBuilder({ initialStories }: Props) {
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { step, who, what, why, priority, effort, ac, notes, saving, error } = state;
@@ -225,6 +235,12 @@ export default function StoryBuilder({ initialStories }: Props) {
       <div className={styles.header}>
         <h1>PrimaryAI Story Builder</h1>
         <p>Help shape PrimaryAI by describing how teachers would use it — in your own words.</p>
+        <button type="button" className={styles.guideBtn} onClick={openGuide}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
+          </svg>
+          User Guide
+        </button>
       </div>
 
       {/* ── Wizard card ── */}
@@ -542,19 +558,23 @@ export default function StoryBuilder({ initialStories }: Props) {
       )}
 
       {/* ── Drawer ── */}
-      {drawerStory && (
+      {(drawerStory || showGuide) && (
         <>
           <div className={styles.drawerBackdrop} onClick={closeDrawer} aria-hidden="true" />
-          <div className={styles.drawer} role="dialog" aria-modal="true" aria-label="Story detail">
-            <StoryDrawer
-              story={drawerStory}
-              mode={drawerMode}
-              onClose={closeDrawer}
-              onSwitchToEdit={() => setDrawerMode("edit")}
-              onCancelEdit={() => setDrawerMode("view")}
-              onSave={handleSaveEdit}
-              onDelete={handleDelete}
-            />
+          <div className={styles.drawer} role="dialog" aria-modal="true" aria-label={showGuide ? "User Guide" : "Story detail"}>
+            {showGuide ? (
+              <GuideDrawer onClose={closeDrawer} />
+            ) : drawerStory ? (
+              <StoryDrawer
+                story={drawerStory}
+                mode={drawerMode}
+                onClose={closeDrawer}
+                onSwitchToEdit={() => setDrawerMode("edit")}
+                onCancelEdit={() => setDrawerMode("view")}
+                onSave={handleSaveEdit}
+                onDelete={handleDelete}
+              />
+            ) : null}
           </div>
         </>
       )}
