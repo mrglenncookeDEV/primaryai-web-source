@@ -30,7 +30,11 @@ export class CloudflareWorkerProvider implements EngineProvider {
     );
 
     if (!res.ok) {
-      throw new Error(`Cloudflare Worker request failed: ${res.status}`);
+      const details = await res.text().catch(() => "");
+      const hint = res.status === 401
+        ? " — token needs 'Workers AI: Run' permission in Cloudflare dashboard"
+        : "";
+      throw new Error(`Cloudflare Worker request failed: ${res.status}${hint}${details ? ` - ${details.slice(0, 200)}` : ""}`);
     }
 
     const data = await res.json();

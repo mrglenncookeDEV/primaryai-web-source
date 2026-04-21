@@ -8,27 +8,36 @@ export class HuggingfaceProvider implements EngineProvider {
   }
 
   async generate(prompt: string, systemPrompt?: string) {
-    const model = process.env.HUGGINGFACE_MODEL;
-    // HuggingFace Inference API varies by model; prepend system prompt as a header block
-    const fullPrompt = systemPrompt ? `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\n${prompt}` : prompt;
-    const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inputs: fullPrompt }),
-    });
+    // HuggingFace router → featherless-ai provider (OpenAI-compatible)
+    const model = process.env.HUGGINGFACE_MODEL ?? "Qwen/Qwen2.5-7B-Instruct";
+    const res = await fetch(
+      "https://router.huggingface.co/featherless-ai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 4096,
+          temperature: 0.45,
+        }),
+      }
+    );
 
     if (!res.ok) {
-      throw new Error(`Hugging Face request failed: ${res.status}`);
+      const details = await res.text().catch(() => "");
+      throw new Error(`HuggingFace request failed: ${res.status}${details ? ` - ${details.slice(0, 200)}` : ""}`);
     }
 
     const data = await res.json();
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      return data[0].generated_text;
-    }
-
-    return data?.generated_text ?? data;
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("HuggingFace returned empty content");
+    return content;
   }
 }

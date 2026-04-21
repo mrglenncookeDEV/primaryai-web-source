@@ -8,7 +8,7 @@ export class CerebrasProvider implements EngineProvider {
   }
 
   async generate(prompt: string, systemPrompt?: string) {
-    const model = process.env.CEREBRAS_MODEL ?? "llama-3.3-70b";
+    const model = process.env.CEREBRAS_MODEL ?? "llama3.1-8b";
     const messages = [
       ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
       { role: "user", content: prompt },
