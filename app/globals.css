@@ -776,6 +776,8 @@ a {
   text-decoration: none;
   color: var(--accent);
   flex-shrink: 0;
+  white-space: nowrap;
+  flex-wrap: nowrap;
   transition: opacity 180ms ease;
   justify-self: start;
 }
@@ -3534,17 +3536,10 @@ html[data-theme="light"] .auth-input::placeholder {
   /* Tighter CTA padding on small screens */
   .landing-panel-cta {
     padding: 1.25rem 0.25rem 0.5rem;
-    /* Float CTA to top so buttons are immediately visible */
-    order: -1;
   }
 
   .landing-footer-note--plain {
     font-size: 0.68rem !important;
-  }
-
-  /* Devices go below the CTA on mobile */
-  .landing-split-right .landing-device-showcase {
-    order: 1;
   }
 
   /* Panel is stacked in normal flow on mobile — let the page scroll */
@@ -10247,7 +10242,7 @@ html[data-theme="solid"] .dashboard-cmdpal-btn:hover {
 .lib-drawer-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 /* On mobile, drawer goes full width and sits below the top nav */
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .lib-drawer {
     width: 100vw;
     top: 64px; /* clear the top nav */
