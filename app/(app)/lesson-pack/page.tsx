@@ -215,15 +215,19 @@ interface SectionCardProps {
   sectionOrder: number;
   section: LessonSection;
   planId?: string | null;
+  fullPack?: Record<string, unknown> | null;
   state: SectionStateValue;
   editedContent: string;
   onStateChange: (key: string, newState: SectionStateValue, content: string) => void;
 }
 
-function SectionCard({ sectionKey, sectionOrder, section, planId, state, editedContent, onStateChange }: SectionCardProps) {
+function SectionCard({ sectionKey, sectionOrder, section, planId, fullPack, state, editedContent, onStateChange }: SectionCardProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(editedContent || section.content);
   const [saving, setSaving] = useState(false);
+  const [regenInstruction, setRegenInstruction] = useState("");
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Colour scheme per state
@@ -285,6 +289,36 @@ function SectionCard({ sectionKey, sectionOrder, section, planId, state, editedC
     onStateChange(sectionKey, "revised", draft);
     persist("revised", draft);
     setEditing(false);
+  }
+
+  async function handleRegen() {
+    if (!fullPack) return;
+    setRegenerating(true);
+    setRegenOpen(false);
+    try {
+      const res = await fetch("/api/planner/sections/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionKey: section.title.toLowerCase().replace(/\s+/g, "_"),
+          currentPack: fullPack,
+          instruction: regenInstruction || undefined,
+          planId: planId ?? undefined,
+          sectionOrder,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.value) {
+        const newContent = typeof data.value === "string" ? data.value : JSON.stringify(data.value);
+        setDraft(newContent);
+        onStateChange(sectionKey, "revised", newContent);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setRegenerating(false);
+      setRegenInstruction("");
+    }
   }
 
   const displayContent = state === "revised" ? editedContent : section.content;
@@ -351,6 +385,7 @@ function SectionCard({ sectionKey, sectionOrder, section, planId, state, editedC
       </div>
 
       {/* Controls */}
+      {/* Controls */}
       <div style={{ padding: "0.6rem 1rem", borderTop: `1px solid ${stateStyle.border}`, display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" as const }}>
         {editing ? (
           <>
@@ -366,9 +401,33 @@ function SectionCard({ sectionKey, sectionOrder, section, planId, state, editedC
             {state !== "rejected" && (
               <button type="button" onClick={reject} style={{ padding: "0.32rem 0.8rem", borderRadius: "7px", border: "1.5px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.08)", color: "#ef4444", fontSize: "0.73rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✕ Reject</button>
             )}
+            {fullPack && (
+              <button type="button" onClick={() => setRegenOpen(o => !o)} disabled={regenerating} style={{ padding: "0.32rem 0.8rem", borderRadius: "7px", border: "1.5px solid rgba(99,102,241,0.4)", background: "rgba(99,102,241,0.08)", color: "#818cf8", fontSize: "0.73rem", fontWeight: 700, cursor: regenerating ? "default" : "pointer", fontFamily: "inherit", marginLeft: "auto", opacity: regenerating ? 0.6 : 1 }}>
+                {regenerating ? "↻ Regenerating…" : "↻ Regenerate"}
+              </button>
+            )}
           </>
         )}
       </div>
+
+      {/* Regenerate dialog */}
+      {regenOpen && (
+        <div style={{ padding: "0.75rem 1rem", borderTop: `1px solid ${stateStyle.border}`, background: "rgba(99,102,241,0.04)" }}>
+          <p style={{ margin: "0 0 0.5rem", fontSize: "0.72rem", color: "var(--muted)" }}>Optional: tell the AI what to change</p>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              type="text"
+              value={regenInstruction}
+              onChange={e => setRegenInstruction(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleRegen()}
+              placeholder="e.g. make it more visual, add retrieval practice…"
+              style={{ flex: 1, padding: "0.45rem 0.7rem", borderRadius: "7px", border: "1px solid rgba(99,102,241,0.35)", background: "var(--surface)", color: "var(--text)", fontSize: "0.83rem", fontFamily: "inherit" }}
+            />
+            <button type="button" onClick={handleRegen} style={{ padding: "0.45rem 1rem", borderRadius: "7px", border: "none", background: "#818cf8", color: "#fff", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Go</button>
+            <button type="button" onClick={() => setRegenOpen(false)} style={{ padding: "0.45rem 0.75rem", borderRadius: "7px", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: "0.78rem", cursor: "pointer", fontFamily: "inherit" }}>✕</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2376,6 +2435,7 @@ export default function LessonPackPage() {
                       sectionOrder={i}
                       section={section}
                       planId={pack._meta?.planId}
+                      fullPack={pack as unknown as Record<string, unknown>}
                       state={sectionState?.state ?? "accepted"}
                       editedContent={sectionState?.content ?? section.content}
                       onStateChange={handleSectionStateChange}

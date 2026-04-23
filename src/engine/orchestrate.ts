@@ -1189,3 +1189,44 @@ export async function generateLessonPack(req: LessonPackRequest): Promise<Lesson
   const generated = await generateLessonPackWithMeta(req);
   return generated.pack;
 }
+
+/**
+ * Regenerate a single named section of an existing lesson pack.
+ * The teacher can optionally provide a short instruction ("make this more visual").
+ * All other sections are returned unchanged.
+ *
+ * @param sectionKey  - The dot-path key to regenerate, e.g. "plenary", "worked_example"
+ * @param currentPack - The full existing lesson pack (used as context)
+ * @param instruction - Optional teacher instruction for this regeneration
+ */
+export async function regenerateSection(
+  sectionKey: string,
+  currentPack: Record<string, unknown>,
+  instruction?: string,
+): Promise<Record<string, unknown> | null> {
+  const prompt = `You are regenerating ONE section of a UK primary school lesson pack.
+
+Section to regenerate: ${sectionKey}
+${instruction ? `Teacher's instruction: "${instruction}"` : "Regenerate with improved quality."}
+
+Rules:
+- Return ONLY a JSON object with the single key "${sectionKey}" and its new value.
+- Maintain the same data type/structure as the original.
+- UK English and UK National Curriculum terminology throughout.
+- Do not change any other sections.
+
+Current lesson pack context (for continuity):
+${JSON.stringify(currentPack, null, 2)}
+`;
+
+  const attempt = await runSingleFastProvider(prompt);
+  if (!attempt?.ok || !attempt.raw) return null;
+
+  try {
+    const parsed = parseJsonObject(attempt.raw) as Record<string, unknown>;
+    if (!(sectionKey in parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
