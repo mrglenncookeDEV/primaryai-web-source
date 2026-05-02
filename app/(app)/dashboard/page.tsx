@@ -1,5 +1,4 @@
 "use client";
-export const runtime = 'edge';
 
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
