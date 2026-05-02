@@ -21,8 +21,32 @@ jobs:
           NEXT_PUBLIC_MICROSOFT_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_MICROSOFT_CLIENT_ID }}
       - name: Verify build output
         run: ls -la .vercel/output/static || echo "⚠️ .vercel/output/static not found"
+      - name: Write runtime env file
+        run: |
+          cat > .env.deploy << 'EOF'
+          NEXT_PUBLIC_APP_URL=https://primaryai.org.uk
+          EOF
+          echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" >> .env.deploy
+          echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}" >> .env.deploy
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env.deploy
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env.deploy
+          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env.deploy
+          echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" >> .env.deploy
+          echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env.deploy
+          echo "STRIPE_PRICE_STARTER=${{ secrets.STRIPE_PRICE_STARTER }}" >> .env.deploy
+          echo "TOKEN_ENCRYPTION_KEY=${{ secrets.TOKEN_ENCRYPTION_KEY }}" >> .env.deploy
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env.deploy
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env.deploy
+          echo "MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }}" >> .env.deploy
+          echo "COHERE_API_KEY=${{ secrets.COHERE_API_KEY }}" >> .env.deploy
+          echo "CEREBRAS_API_KEY=${{ secrets.CEREBRAS_API_KEY }}" >> .env.deploy
+          echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env.deploy
+          echo "CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}" >> .env.deploy
+          echo "CF_ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}" >> .env.deploy
+          echo "HUGGINGFACE_API_KEY=${{ secrets.HUGGINGFACE_API_KEY }}" >> .env.deploy
+          echo "HUGGINGFACE_MODEL=${{ secrets.HUGGINGFACE_MODEL }}" >> .env.deploy
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy .vercel/output/static --project-name=primaryai-web-source --branch=main
+        run: npx wrangler pages deploy .vercel/output/static --project-name=primaryai-web-source --branch=main --env-file=.env.deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

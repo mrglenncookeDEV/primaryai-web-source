@@ -1,5 +1,4 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
@@ -18,24 +17,11 @@ const isProtectedRoute = createRouteMatcher([
   "/survey-responses(.*)",
 ]);
 
-const clerkHandler = clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
 });
-
-export default async function middleware(req: Request) {
-  try {
-    return await clerkHandler(req as any, {} as any);
-  } catch (err: any) {
-    const msg = err?.message ?? String(err);
-    console.error("[middleware] error:", msg);
-    // Surface the error in the response header for debugging — remove after fix
-    return NextResponse.next({
-      headers: { "x-middleware-error": msg.slice(0, 200) },
-    });
-  }
-}
 
 export const config = {
   matcher: [
