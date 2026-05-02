@@ -6,6 +6,5 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ ok: false, error: "No active session" }, { status: 401 });
   }
-
   return NextResponse.json({ ok: true, session });
 }

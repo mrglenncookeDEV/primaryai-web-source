@@ -1,11 +1,12 @@
 import "./globals.css";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
+import { ClerkProvider } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import BackgroundScene from "@/components/BackgroundScene";
 import PageLoader from "@/components/PageLoader";
 import GlobalDock from "@/components/GlobalDock";
 import CookieBanner from "@/components/CookieBanner";
-import { getAuthSession } from "@/lib/auth";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,28 +36,30 @@ export const viewport = {
 };
 
 export default async function RootLayout({ children }) {
-  const session = await getAuthSession();
+  const { userId } = await auth();
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
-      <head>
-        {/* Set theme before first paint to prevent flash */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme')||'light';var p=localStorage.getItem('palette')||'slate';document.documentElement.dataset.theme=t;document.documentElement.dataset.palette=p;}catch(e){}})()`,
-          }}
-        />
-      </head>
-      <body>
-        <BackgroundScene />
-        <Suspense>
-          <PageLoader />
-        </Suspense>
-        {session && <GlobalDock />}
-        {children}
-        <Suspense>
-          <CookieBanner />
-        </Suspense>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
+        <head>
+          {/* Set theme before first paint to prevent flash */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var t=localStorage.getItem('theme')||'light';var p=localStorage.getItem('palette')||'slate';document.documentElement.dataset.theme=t;document.documentElement.dataset.palette=p;}catch(e){}})()`,
+            }}
+          />
+        </head>
+        <body>
+          <BackgroundScene />
+          <Suspense>
+            <PageLoader />
+          </Suspense>
+          {userId && <GlobalDock />}
+          {children}
+          <Suspense>
+            <CookieBanner />
+          </Suspense>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

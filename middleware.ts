@@ -1,53 +1,31 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { requiresAuth, requiresPaidEntitlement } from "./lib/guard";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-function hasSupabaseSessionCookie(request: NextRequest) {
-  return request.cookies
-    .getAll()
-    .some(
-      (cookie) =>
-        (cookie.name.includes("-auth-token") ||
-          cookie.name.includes("authjs.session-token") ||
-          cookie.name.includes("next-auth.session-token")) &&
-        cookie.value.length > 0,
-    );
-}
+const isProtectedRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/lesson-pack(.*)",
+  "/ai-planner(.*)",
+  "/critical-planner(.*)",
+  "/account(.*)",
+  "/billing(.*)",
+  "/settings(.*)",
+  "/library(.*)",
+  "/notes(.*)",
+  "/coverage(.*)",
+  "/school(.*)",
+  "/wellbeing-report(.*)",
+  "/profile-setup(.*)",
+  "/survey-responses(.*)",
+]);
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get("pa_session")?.value;
-  const entitlementCookie = request.cookies.get("pa_entitlements")?.value;
-  const hasSession = Boolean(sessionCookie) || hasSupabaseSessionCookie(request);
-
-  if (requiresAuth(pathname) && !hasSession) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    await auth.protect();
   }
-
-  if (requiresPaidEntitlement(pathname) && entitlementCookie !== "paid") {
-    return NextResponse.redirect(new URL("/billing", request.url));
-  }
-
-  return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/lesson-pack/:path*",
-    "/ai-planner/:path*",
-    "/critical-planner/:path*",
-    "/account/:path*",
-    "/billing/:path*",
-    "/settings/:path*",
-    "/library/:path*",
-    "/notes/:path*",
-    "/coverage/:path*",
-    "/school/:path*",
-    "/wellbeing-report/:path*",
-    "/profile-setup/:path*",
-    "/survey-responses/:path*",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api|trpc)(.*)",
   ],
 };
