@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import ThemeToggle from "./ThemeToggle";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 const PERSISTENT_LINKS = [
   { href: "/", label: "Home" },
@@ -29,19 +30,28 @@ function clearUserScopedBrowserState() {
   }
 }
 
-export default function NavLinks({ session }) {
-  const [resolvedSession, setResolvedSession] = useState(session ?? null);
+export default function NavLinks({ session = null }) {
+  const [resolvedSession, setResolvedSession] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const { isSignedIn, userId } = useAuth();
+  const { user } = useUser();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    setResolvedSession(session ?? null);
-  }, [session]);
+    // Server may pass null for static pages — sync with Clerk client auth after hydration
+    if (isSignedIn && userId) {
+      const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
+      setResolvedSession({ userId, email, role: "authenticated" });
+    } else if (isSignedIn === false) {
+      setResolvedSession(null);
+    }
+  }, [isSignedIn, userId, user]);
+
 
   useEffect(() => {
     const currentUserKey = resolvedSession?.userId || resolvedSession?.email || "";

@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import Nav from "@/components/marketing/Nav";
 
 export const metadata = {

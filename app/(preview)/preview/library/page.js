@@ -1,5 +1,4 @@
 "use client";
-export const runtime = 'edge';
 
 const SUBJECTS = {
   Maths:"var(--accent)", English:"#7ba7c9", Science:"#6aab85",

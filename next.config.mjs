@@ -25,6 +25,16 @@ const nextConfig = {
         "pdf-parse": false,
         mammoth: false,
         exceljs: false,
+        // Prisma uses Node.js binary engines — not edge compatible
+        "@prisma/client": false,
+        ".prisma/client": false,
+        prisma: false,
+        // next-auth replaced by Clerk — remove entirely from edge bundle
+        "next-auth": false,
+        "next-auth/providers/credentials": false,
+        "@auth/prisma-adapter": false,
+        // pdf-lib uses node:buffer internals that aren't available on edge
+        "pdf-lib": false,
       };
     }
     return config;

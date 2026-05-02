@@ -1,5 +1,4 @@
 "use client";
-export const runtime = 'edge';
 
 /* Lesson-pack result page — desktop 1440×900, auto-scrolls through sections */
 

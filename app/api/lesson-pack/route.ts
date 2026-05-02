@@ -4,7 +4,7 @@ import { generateLessonPackWithMeta } from "@/src/engine/orchestrate";
 import { LessonPackRequestSchema, LessonPackSchema } from "@/src/engine/schema";
 import { getCurrentUserSession } from "@/lib/user-session";
 import { getOrCreateUserProfile, toEngineProfile } from "@/lib/user-profile";
-import { prisma } from "@/src/db/prisma";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { scanInput, logIntercept } from "@/lib/safeguarding";
 import { trackEvent } from "@/lib/planner-telemetry";
 
@@ -127,14 +127,13 @@ export async function POST(req: Request) {
     const latencyMs = Date.now() - start;
 
     try {
-      await prisma.generationLog.create({
-        data: {
-          userId,
-          provider: generated.providerId,
-          latencyMs,
-          cacheHit: generated.cacheHit,
-          success: true,
-        },
+      const db = getSupabaseAdminClient();
+      await db?.from("generation_logs").insert({
+        user_id: userId,
+        provider: generated.providerId,
+        latency_ms: latencyMs,
+        cache_hit: generated.cacheHit,
+        success: true,
       });
     } catch {
       // Logging should not block generation.
@@ -149,17 +148,16 @@ export async function POST(req: Request) {
     let savedPlanId: string | undefined;
     if (shouldAutoSave) {
       try {
-        const saved = await prisma.lessonPack.create({
-          data: {
-            userId,
-            title: `${pack.subject} - ${pack.topic}`,
-            yearGroup: pack.year_group,
-            subject: pack.subject,
-            topic: pack.topic,
-            json: JSON.stringify(pack),
-          },
-        });
-        savedPlanId = saved.id;
+        const db = getSupabaseAdminClient();
+        const { data: saved } = await db!.from("lesson_packs").insert({
+          user_id: userId,
+          title: `${pack.subject} - ${pack.topic}`,
+          year_group: pack.year_group,
+          subject: pack.subject,
+          topic: pack.topic,
+          json: JSON.stringify(pack),
+        }).select("id").single();
+        savedPlanId = saved?.id;
       } catch {
         // Auto-save should not block generation response.
       }
@@ -177,15 +175,14 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Unknown error";
 
     try {
-      await prisma.generationLog.create({
-        data: {
-          userId,
-          provider: "none",
-          latencyMs: Date.now() - start,
-          cacheHit: false,
-          success: false,
-          reason: message,
-        },
+      const db = getSupabaseAdminClient();
+      await db?.from("generation_logs").insert({
+        user_id: userId,
+        provider: "none",
+        latency_ms: Date.now() - start,
+        cache_hit: false,
+        success: false,
+        reason: message,
       });
     } catch {
       // Best-effort only.
@@ -210,16 +207,16 @@ export async function PUT(req: Request) {
 
   const pack = parsed.data;
 
-  const saved = await prisma.lessonPack.create({
-    data: {
-      userId: session.userId,
-      title: `${pack.subject} - ${pack.topic}`,
-      yearGroup: pack.year_group,
-      subject: pack.subject,
-      topic: pack.topic,
-      json: JSON.stringify(pack),
-    },
-  });
+  const db = getSupabaseAdminClient();
+  const { data: saved, error } = await db!.from("lesson_packs").insert({
+    user_id: session.userId,
+    title: `${pack.subject} - ${pack.topic}`,
+    year_group: pack.year_group,
+    subject: pack.subject,
+    topic: pack.topic,
+    json: JSON.stringify(pack),
+  }).select("id").single();
 
+  if (error) return NextResponse.json({ error: "Failed to save lesson pack" }, { status: 500 });
   return NextResponse.json({ ok: true, id: saved.id });
 }

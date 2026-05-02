@@ -2,7 +2,6 @@ import "./globals.css";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
 import BackgroundScene from "@/components/BackgroundScene";
 import PageLoader from "@/components/PageLoader";
 import GlobalDock from "@/components/GlobalDock";
@@ -35,8 +34,7 @@ export const viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({ children }) {
-  const { userId } = await auth();
+export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
@@ -53,7 +51,7 @@ export default async function RootLayout({ children }) {
           <Suspense>
             <PageLoader />
           </Suspense>
-          {userId && <GlobalDock />}
+          <GlobalDock />
           {children}
           <Suspense>
             <CookieBanner />

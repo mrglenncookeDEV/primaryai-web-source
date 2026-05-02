@@ -4,14 +4,12 @@ import AppSidebar from "@/components/AppSidebar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import CommandPalette from "@/components/CommandPalette";
 import ScrollToTop from "@/components/ScrollToTop";
-import { getAuthSession } from "@/lib/auth";
 
-export default async function AppLayout({ children }) {
-  const session = await getAuthSession();
+export default function AppLayout({ children }) {
   return (
     <>
       <ScrollToTop />
-      <Nav session={session} showBackButton />
+      <Nav showBackButton />
       <CommandPalette />
       <div className="app-body">
         <AppSidebar />

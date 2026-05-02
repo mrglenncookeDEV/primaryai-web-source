@@ -27,7 +27,7 @@ export default async function StoriesPage() {
 
   return (
     <div className={`page-wrap ${chalkFont.variable}`}>
-      <Nav session={null} />
+      <Nav />
       <StoryBuilder initialStories={initialStories} />
     </div>
   );
