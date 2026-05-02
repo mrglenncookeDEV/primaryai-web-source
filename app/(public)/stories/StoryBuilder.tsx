@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { Priority, Effort, UserStory } from "@/types/user-stories";
 import styles from "./StoryBuilder.module.css";
-import VideoBackground from "@/components/marketing/VideoBackground";
 import GuideDrawer from "./GuideDrawer";
 
 // ── Static data ──────────────────────────────────────────────────────────────
@@ -224,8 +223,7 @@ export default function StoryBuilder({ initialStories }: Props) {
 
   return (
     <div className={styles.page}>
-      <VideoBackground className={styles.videoBg} src="/Classroom_transition_blackboard_202604211012.mp4" />
-      <div className={styles.header}>
+<div className={styles.header}>
         <h1>PrimaryAI Story Builder</h1>
         <p>Help shape PrimaryAI by describing how teachers would use it — in your own words.</p>
         <button type="button" className={styles.guideBtn} onClick={openGuide}>
