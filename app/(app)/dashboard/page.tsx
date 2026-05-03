@@ -1726,7 +1726,7 @@ export default function DashboardPage() {
         }
       } catch (error) {
         if (!isAbortError(error)) {
-          throw error;
+          console.error("[Dashboard] Summary load failed:", error);
         }
       } finally {
         if (!controller.signal.aborted) {
