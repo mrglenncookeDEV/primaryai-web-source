@@ -1,6 +1,8 @@
-export const runtime = 'edge';
+"use client";
+import { Suspense } from "react";
 import Link from "next/link";
 import { SignIn } from "@clerk/nextjs";
+import { useSearchParams } from "next/navigation";
 
 const CheckIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
@@ -8,10 +10,13 @@ const CheckIcon = () => (
   </svg>
 );
 
-export default async function LoginPage({ searchParams }) {
-  const resolvedSearchParams = await searchParams;
-  const next = resolvedSearchParams?.next ? String(resolvedSearchParams.next) : "/dashboard";
+function ClerkSignIn() {
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "/dashboard";
+  return <SignIn forceRedirectUrl={next} signUpUrl="/signup" />;
+}
 
+export default function LoginPage() {
   return (
     <main className="auth-layout">
       {/* ── Left: always-dark brand panel ── */}
@@ -89,7 +94,9 @@ export default async function LoginPage({ searchParams }) {
             </span>
           </Link>
 
-          <SignIn forceRedirectUrl={next} signUpUrl="/signup" />
+          <Suspense fallback={null}>
+            <ClerkSignIn />
+          </Suspense>
 
           <p className="auth-secondary-link">
             Need to share feedback forms?{" "}

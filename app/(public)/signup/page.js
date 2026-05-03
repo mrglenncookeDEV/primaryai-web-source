@@ -1,6 +1,8 @@
-export const runtime = 'edge';
+"use client";
+import { Suspense } from "react";
 import Link from "next/link";
 import { SignUp } from "@clerk/nextjs";
+import { useSearchParams } from "next/navigation";
 
 const CheckIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
@@ -8,10 +10,13 @@ const CheckIcon = () => (
   </svg>
 );
 
-export default async function SignupPage({ searchParams }) {
-  const resolvedSearchParams = await searchParams;
-  const next = resolvedSearchParams?.next ? String(resolvedSearchParams.next) : "/dashboard";
+function ClerkSignUp() {
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "/dashboard";
+  return <SignUp forceRedirectUrl={next} signInUrl="/login" />;
+}
 
+export default function SignupPage() {
   return (
     <main className="auth-layout">
       {/* ── Left: always-dark brand panel ── */}
@@ -89,7 +94,9 @@ export default async function SignupPage({ searchParams }) {
             </span>
           </Link>
 
-          <SignUp forceRedirectUrl={next} signInUrl="/login" />
+          <Suspense fallback={null}>
+            <ClerkSignUp />
+          </Suspense>
         </div>
       </section>
     </main>
