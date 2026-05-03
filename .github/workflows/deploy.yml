@@ -48,6 +48,9 @@ jobs:
           HUGGINGFACE_MODEL = "${{ secrets.HUGGINGFACE_MODEL }}"
           NEXT_PUBLIC_GOOGLE_CLIENT_ID = "${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}"
           NEXT_PUBLIC_MICROSOFT_CLIENT_ID = "${{ secrets.NEXT_PUBLIC_MICROSOFT_CLIENT_ID }}"
+          MICROSOFT_CLIENT_ID = "${{ secrets.MICROSOFT_CLIENT_ID }}"
+          MICROSOFT_CLIENT_SECRET = "${{ secrets.MICROSOFT_CLIENT_SECRET }}"
+          MICROSOFT_TENANT_ID = "${{ secrets.MICROSOFT_TENANT_ID }}"
           EOF
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy .vercel/output/static --project-name=primaryai-web-source --branch=main
