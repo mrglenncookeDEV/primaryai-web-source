@@ -90,7 +90,6 @@ const NAV = [
 export default function GlobalDock() {
   const { isSignedIn } = useAuth();
   const path = usePathname() ?? "";
-  if (!isSignedIn) return null;
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [initials, setInitials] = useState<string>("");
   const [signingOut, setSigningOut] = useState(false);
@@ -106,6 +105,49 @@ export default function GlobalDock() {
   const hidden =
     PUBLIC_EXACT.some((p) => path === p) ||
     APP_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+
+  // ── Profile avatar ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const loadProfileSetup = () => {
+      fetch("/api/profile/setup", { cache: "no-store" })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (!data?.profileSetup) return;
+          const url = String(data.profileSetup.avatarUrl || "");
+          const name = String(data.profileSetup.displayName || "");
+          setAvatarUrl(url);
+          if (!url && name) {
+            const parts = name.trim().split(/\s+/);
+            setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
+          } else if (!name) {
+            setInitials("");
+          }
+        })
+        .catch(() => {});
+    };
+
+    const handleProfileSetupUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ displayName?: string; avatarUrl?: string }>;
+      const url = String(customEvent.detail?.avatarUrl || "");
+      const name = String(customEvent.detail?.displayName || "");
+      setAvatarUrl(url);
+      if (!url && name) {
+        const parts = name.trim().split(/\s+/);
+        setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
+      } else if (!name) {
+        setInitials("");
+      }
+    };
+
+    loadProfileSetup();
+    window.addEventListener("pa:profile-setup-updated", handleProfileSetupUpdated as EventListener);
+    return () => {
+      window.removeEventListener("pa:profile-setup-updated", handleProfileSetupUpdated as EventListener);
+    };
+  }, [isSignedIn]);
+
+  if (!isSignedIn) return null;
 
   function handleDockPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     const dockEl = dockRef.current;
@@ -152,46 +194,6 @@ export default function GlobalDock() {
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp, { once: true });
   }
-
-  // ── Profile avatar ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const loadProfileSetup = () => {
-      fetch("/api/profile/setup", { cache: "no-store" })
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          if (!data?.profileSetup) return;
-          const url = String(data.profileSetup.avatarUrl || "");
-          const name = String(data.profileSetup.displayName || "");
-          setAvatarUrl(url);
-          if (!url && name) {
-            const parts = name.trim().split(/\s+/);
-            setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
-          } else if (!name) {
-            setInitials("");
-          }
-        })
-        .catch(() => {});
-    };
-
-    const handleProfileSetupUpdated = (event: Event) => {
-      const customEvent = event as CustomEvent<{ displayName?: string; avatarUrl?: string }>;
-      const url = String(customEvent.detail?.avatarUrl || "");
-      const name = String(customEvent.detail?.displayName || "");
-      setAvatarUrl(url);
-      if (!url && name) {
-        const parts = name.trim().split(/\s+/);
-        setInitials(parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase());
-      } else if (!name) {
-        setInitials("");
-      }
-    };
-
-    loadProfileSetup();
-    window.addEventListener("pa:profile-setup-updated", handleProfileSetupUpdated as EventListener);
-    return () => {
-      window.removeEventListener("pa:profile-setup-updated", handleProfileSetupUpdated as EventListener);
-    };
-  }, []);
 
   async function handleLogout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
