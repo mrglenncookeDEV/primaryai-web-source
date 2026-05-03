@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import ThemeToggle from "./ThemeToggle";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 
 const PERSISTENT_LINKS = [
   { href: "/", label: "Home" },
@@ -36,6 +36,7 @@ export default function NavLinks({ session = null }) {
   const [mounted, setMounted] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const { isSignedIn, userId } = useAuth();
+  const { signOut } = useClerk();
   const { user } = useUser();
 
   useEffect(() => {
@@ -79,24 +80,13 @@ export default function NavLinks({ session = null }) {
 
   const close = () => setIsOpen(false);
 
-  async function handleLogout(event) {
-    event.preventDefault();
+  async function handleLogout() {
     setSigningOut(true);
     clearUserScopedBrowserState();
-
     try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-        },
-      });
-      const payload = await response.json().catch(() => ({}));
-      window.location.assign(payload?.redirectTo || "/");
+      await signOut({ redirectUrl: "/" });
     } catch {
       setSigningOut(false);
-      window.location.assign("/");
     }
   }
 
@@ -144,11 +134,9 @@ export default function NavLinks({ session = null }) {
               </Link>
             </>
           ) : (
-            <form action="/api/auth/logout" method="post" onSubmit={handleLogout}>
-              <button type="submit" className="nav-btn-ghost" disabled={signingOut}>
-                {signingOut ? "Signing out..." : "Sign out"}
-              </button>
-            </form>
+            <button type="button" className="nav-btn-ghost" disabled={signingOut} onClick={handleLogout}>
+              {signingOut ? "Signing out..." : "Sign out"}
+            </button>
           )}
         </div>
 
@@ -226,11 +214,9 @@ export default function NavLinks({ session = null }) {
                 </Link>
               </>
             ) : (
-              <form action="/api/auth/logout" method="post" onSubmit={handleLogout}>
-                <button type="submit" className="mobile-nav-btn-ghost" disabled={signingOut}>
-                  {signingOut ? "Signing out..." : "Sign out"}
-                </button>
-              </form>
+              <button type="button" className="mobile-nav-btn-ghost" disabled={signingOut} onClick={handleLogout}>
+                {signingOut ? "Signing out..." : "Sign out"}
+              </button>
             )}
           </div>
         </div>,
