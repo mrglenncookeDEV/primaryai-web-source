@@ -36,7 +36,6 @@ export default function NavLinks({ session = null }) {
   const [mounted, setMounted] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const { isSignedIn, userId } = useAuth();
-  const { signOut } = useClerk();
   const { user } = useUser();
 
   useEffect(() => {
