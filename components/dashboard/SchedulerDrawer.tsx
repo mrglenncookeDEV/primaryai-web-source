@@ -43,16 +43,15 @@ type UserTerm = {
   termEndDate: string;
 };
 
-type SchedulerLoadKey = "terms" | "calendar" | "outlook" | "google";
+type SchedulerLoadKey = "terms" | "calendar" | "outlook";
 
-const SCHEDULER_LOAD_ORDER: SchedulerLoadKey[] = ["terms", "calendar", "outlook", "google"];
+const SCHEDULER_LOAD_ORDER: SchedulerLoadKey[] = ["terms", "calendar", "outlook"];
 
 function createSchedulerLoadState(calendarReady = false) {
   return {
     terms: false,
     calendar: calendarReady,
     outlook: false,
-    google: false,
   };
 }
 
@@ -353,19 +352,12 @@ export default function SchedulerDrawer({
   const [syncingOutlook, setSyncingOutlook] = useState(false);
   const [backfillingOutlook, setBackfillingOutlook] = useState(false);
   const [disconnectingOutlook, setDisconnectingOutlook] = useState(false);
-  const [syncingGoogle, setSyncingGoogle] = useState(false);
-  const [backfillingGoogle, setBackfillingGoogle] = useState(false);
-  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+
   const [outlookConfigured, setOutlookConfigured] = useState(true);
   const [outlookConnected, setOutlookConnected] = useState(false);
   const [outlookCanWrite, setOutlookCanWrite] = useState(false);
   const [outlookEmail, setOutlookEmail] = useState("");
   const [outlookLastSyncedAt, setOutlookLastSyncedAt] = useState<string | null>(null);
-  const [googleConfigured, setGoogleConfigured] = useState(true);
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [googleCanWrite, setGoogleCanWrite] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState("");
-  const [googleLastSyncedAt, setGoogleLastSyncedAt] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<SchedulerFilterKey>>(new Set());
   const [loadState, setLoadState] = useState(() => createSchedulerLoadState(initialWeekEvents.length > 0));
   const [unscheduleDragOver, setUnscheduleDragOver] = useState(false);
@@ -414,7 +406,6 @@ export default function SchedulerDrawer({
     if (loadState.terms === false) return "Loading term dates…";
     if (loadState.calendar === false) return "Loading timetable…";
     if (loadState.outlook === false) return "Checking Outlook…";
-    if (loadState.google === false) return "Checking Google Calendar…";
     return "Timetable ready";
   }, [loadState]);
   const dragRef = useRef<PackItem | null>(null);
@@ -449,7 +440,7 @@ export default function SchedulerDrawer({
     const observer = new ResizeObserver(syncHeight);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [embedded, eventsLoading, packsLoading, outlookConnected, googleConnected]);
+  }, [embedded, eventsLoading, packsLoading, outlookConnected]);
 
   // Mount guard for portal
   useEffect(() => { setMounted(true); }, []);
@@ -651,23 +642,6 @@ export default function SchedulerDrawer({
     return data;
   }, []);
 
-  const loadGoogleStatus = useCallback(async () => {
-    setLoadState((prev) => ({ ...prev, google: false }));
-    const response = await fetch("/api/schedule/google-status", { cache: "no-store" });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data?.ok) {
-      throw new Error(String(data?.error || "Could not load Google Calendar sync status"));
-    }
-
-    setGoogleConfigured(Boolean(data.configured));
-    setGoogleConnected(Boolean(data.connected));
-    setGoogleCanWrite(Boolean(data.canWrite));
-    setGoogleEmail(String(data.email || ""));
-    setGoogleLastSyncedAt(data.lastSyncedAt ? String(data.lastSyncedAt) : null);
-    setLoadState((prev) => ({ ...prev, google: true }));
-    return data;
-  }, []);
-
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -677,16 +651,10 @@ export default function SchedulerDrawer({
       setLoadState((prev) => ({ ...prev, outlook: true }));
       setError(message);
     });
-    loadGoogleStatus().catch((err) => {
-      if (cancelled) return;
-      const message = err instanceof Error ? err.message : "Could not load Google Calendar sync status";
-      setLoadState((prev) => ({ ...prev, google: true }));
-      setError(message);
-    });
     return () => {
       cancelled = true;
     };
-  }, [open, loadOutlookStatus, loadGoogleStatus]);
+  }, [open, loadOutlookStatus]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -727,43 +695,6 @@ export default function SchedulerDrawer({
     setError(messageMap[outlookResult] || outlookResult);
   }, [open, loadEvents, loadOutlookStatus, onScheduleChange, viewMode, cursorDate, showWeekends, currentTerm]);
 
-  useEffect(() => {
-    if (!open || typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    const googleResult = url.searchParams.get("google");
-    if (!googleResult) return;
-
-    const messageMap: Record<string, string> = {
-      cancelled: "Google Calendar sign-in was cancelled.",
-      expired: "Google Calendar sign-in expired. Please try again.",
-      failed: "Google Calendar sign-in failed. Please try again.",
-      "not-configured": "Google Calendar sync is not configured on this environment yet.",
-      connected: "",
-    };
-
-    const nextUrl = `${url.pathname}${url.search.replace(/([?&])google=[^&]*&?/, "$1").replace(/[?&]$/, "")}${url.hash}`;
-    window.history.replaceState({}, "", nextUrl);
-
-    if (googleResult === "connected") {
-      setError("");
-      loadGoogleStatus()
-        .then((data) => {
-          if (data?.connected) {
-            loadEvents(viewMode, cursorDate, showWeekends, currentTerm);
-            onScheduleChange?.();
-            return;
-          }
-          setError("Google Calendar connected, but the saved connection could not be loaded back.");
-        })
-        .catch((err) => {
-          const message = err instanceof Error ? err.message : "Could not load Google Calendar sync status";
-          setError(message);
-        });
-      return;
-    }
-
-    setError(messageMap[googleResult] || googleResult);
-  }, [open, loadEvents, loadGoogleStatus, onScheduleChange, viewMode, cursorDate, showWeekends, currentTerm]);
 
   function handleNavigate(delta: -1 | 1) {
     if (viewMode === "term") {
@@ -1385,87 +1316,6 @@ export default function SchedulerDrawer({
     }
   }
 
-  async function handleSyncGoogleCalendar() {
-    setSyncingGoogle(true);
-    setError("");
-    try {
-      if (!googleConfigured) {
-        throw new Error("Google Calendar sync is not configured on the server yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET first.");
-      }
-
-      if (googleConnected && !googleCanWrite) {
-        if (typeof window !== "undefined") {
-          window.location.assign("/api/schedule/google-connect?reauth=1");
-        }
-        return;
-      }
-
-      if (!googleConnected) {
-        if (typeof window !== "undefined") {
-          window.location.assign("/api/schedule/google-connect");
-        }
-        return;
-      }
-
-      const res = await fetch("/api/schedule/google-import", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Could not import Google Calendar events");
-      }
-      setGoogleLastSyncedAt(data?.syncedAt ? String(data.syncedAt) : new Date().toISOString());
-      setGoogleConnected(true);
-      loadEvents(viewMode, cursorDate, showWeekends, currentTerm);
-      onScheduleChange?.();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not sync Google Calendar. Please try again.";
-      setError(message);
-    } finally {
-      setSyncingGoogle(false);
-    }
-  }
-
-  async function handleBackfillGoogleCalendar() {
-    setBackfillingGoogle(true);
-    setError("");
-    try {
-      const res = await fetch("/api/schedule/google-backfill", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Could not sync existing Google Calendar events");
-      }
-      loadEvents(viewMode, cursorDate, showWeekends, currentTerm);
-      onScheduleChange?.();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not sync existing Google Calendar events.";
-      setError(message);
-    } finally {
-      setBackfillingGoogle(false);
-    }
-  }
-
-  async function handleDisconnectGoogleCalendar() {
-    setDisconnectingGoogle(true);
-    setError("");
-    try {
-      const res = await fetch("/api/schedule/google-disconnect", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Could not disconnect Google Calendar");
-      }
-      setGoogleConnected(false);
-      setGoogleCanWrite(false);
-      setGoogleEmail("");
-      setGoogleLastSyncedAt(null);
-      loadEvents(viewMode, cursorDate, showWeekends, currentTerm);
-      onScheduleChange?.();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not disconnect Google Calendar.";
-      setError(message);
-    } finally {
-      setDisconnectingGoogle(false);
-    }
-  }
-
   const selectedEventHref = useMemo(() => {
     if (!selectedEvent?.lessonPackId) return "/lesson-pack";
     return `/lesson-pack?id=${encodeURIComponent(selectedEvent.lessonPackId)}`;
@@ -1854,61 +1704,6 @@ export default function SchedulerDrawer({
                   ) : null}
                 </div>
 
-                <div className="scheduler-sync-tile scheduler-sync-tile-google">
-                  <div className="scheduler-sync-tile-head">
-                    <div className="scheduler-sync-tile-brand">
-                      <span className="scheduler-sync-tile-brand-icon scheduler-sync-tile-brand-icon-google" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                        </svg>
-                      </span>
-                      <span className="scheduler-sync-tile-title">Google</span>
-                    </div>
-                    <span className={`scheduler-sync-pill${googleConnected ? " is-live" : ""}`}>
-                      {googleConnected ? "Connected" : "Not connected"}
-                    </span>
-                  </div>
-                  <p className="scheduler-sync-tile-copy">
-                    {googleConnected
-                      ? `${googleEmail || "Google Calendar"}${googleLastSyncedAt ? ` · ${new Date(googleLastSyncedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}`
-                      : (googleConfigured
-                          ? "Import appointments and mirror scheduler events."
-                          : "Not configured on this environment yet.")}
-                  </p>
-                  <button
-                    className="scheduler-custom-sync-btn scheduler-custom-sync-btn-tile"
-                    onClick={() => { void handleSyncGoogleCalendar(); }}
-                    disabled={syncingGoogle}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>
-                    </svg>
-                    {syncingGoogle
-                      ? (googleConnected ? "Refreshing…" : "Connecting…")
-                      : (googleConnected ? (googleCanWrite ? "Refresh" : "Reconnect") : "Connect")}
-                  </button>
-                  {googleConnected ? (
-                    <div className="scheduler-sync-actions-row">
-                      <button
-                        className="scheduler-sync-secondary-btn scheduler-sync-secondary-btn-inline"
-                        onClick={() => { void handleBackfillGoogleCalendar(); }}
-                        disabled={backfillingGoogle}
-                      >
-                        {backfillingGoogle ? "Syncing…" : "Sync existing"}
-                      </button>
-                      <button
-                        className="scheduler-sync-secondary-btn scheduler-sync-secondary-btn-inline"
-                        onClick={() => { void handleDisconnectGoogleCalendar(); }}
-                        disabled={disconnectingGoogle}
-                      >
-                        {disconnectingGoogle ? "Disconnecting…" : "Disconnect"}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
               </div>
             </div>
           </aside>
