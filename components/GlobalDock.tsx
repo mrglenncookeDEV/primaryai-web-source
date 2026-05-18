@@ -9,7 +9,7 @@ import { RiMoneyPoundCircleLine } from "react-icons/ri";
 import { FaPenClip } from "react-icons/fa6";
 
 // Routes that already render AppSidebar — GlobalDock hides on these to avoid double-docks
-const APP_PREFIXES = ["/dashboard", "/lesson-pack", "/library", "/notes", "/ai-planner", "/marking", "/retrieval", "/compliance", "/settings", "/account", "/billing"];
+const APP_PREFIXES = ["/dashboard", "/lesson-pack", "/library", "/notes", "/ai-planner", "/marking", "/retrieval", "/compliance", "/settings", "/account", "/billing", "/critical-planner", "/coverage", "/school", "/wellbeing-report", "/profile-setup", "/survey-responses"];
 // Public/marketing pages where the dock should not appear at all
 const PUBLIC_EXACT = ["/", "/survey", "/stories"];
 
