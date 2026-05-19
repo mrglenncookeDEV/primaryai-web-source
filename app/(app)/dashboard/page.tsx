@@ -2024,7 +2024,7 @@ export default function DashboardPage() {
           {initialBootLoading ? (
             <div
               style={{
-                minHeight: "540px",
+                minHeight: "1020px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",

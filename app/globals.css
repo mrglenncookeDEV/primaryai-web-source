@@ -9020,7 +9020,7 @@ html[data-theme="light"] .cmdpal-box {
   grid-column: 2;
   grid-row: 1 / span 3;
   align-self: flex-start;
-  min-height: 680px;
+  min-height: 1020px;
 }
 
 .dashboard-hero-side-wrap {
