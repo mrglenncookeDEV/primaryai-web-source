@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { cookies } from "next/headers";
 import Nav from "@/components/marketing/Nav";
 import FooterLinks from "@/components/marketing/FooterLinks";

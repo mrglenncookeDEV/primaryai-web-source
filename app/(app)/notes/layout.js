@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // Load Excalidraw CSS only on the notes route
 import "@excalidraw/excalidraw/index.css";
 
