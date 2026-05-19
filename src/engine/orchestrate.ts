@@ -331,40 +331,48 @@ async function runProviders(prompt: string, onEvent?: OnEvent): Promise<Provider
 
 /**
  * Tiered generation: tries Tier 1 (Gemini, Cerebras, Groq) in parallel first.
- * Falls through to Tier 2 if < 2 Tier 1 successes, then Tier 3 as last resort.
- * This preserves rate limit budget while still producing a multi-provider ensemble.
+ * Always aims for at least TARGET_SUCCESSES total successes across tiers so the
+ * ensemble stays rich even when a Tier 1 provider is down (e.g. suspended key).
  */
+const TARGET_SUCCESSES = 3;
+
 async function runTieredGeneration(prompt: string, onEvent?: OnEvent): Promise<ProviderAttempt[]> {
+  const allResults: ProviderAttempt[] = [];
+
   const tier1 = selectTier(1);
   if (tier1.length > 0) {
     const t1results = await Promise.all(tier1.map((p) => runProviderAttempt(p, prompt, onEvent)));
-    const t1ok = t1results.filter((r) => r.ok);
+    allResults.push(...t1results);
+    const okSoFar = allResults.filter((r) => r.ok).length;
 
-    // 2+ Tier 1 successes → great ensemble, stop here
-    if (t1ok.length >= 2) return t1results;
+    // Already at target — stop here
+    if (okSoFar >= TARGET_SUCCESSES) return allResults;
 
-    // 1 success → pull in up to 2 Tier 2 providers for ensemble enrichment
-    if (t1ok.length === 1) {
-      const tier2 = selectTier(2).slice(0, 2);
-      if (tier2.length > 0) {
-        const t2results = await Promise.all(tier2.map((p) => runProviderAttempt(p, prompt, onEvent)));
-        return [...t1results, ...t2results];
-      }
-      return t1results;
+    // Fill remaining slots from Tier 2 in parallel
+    const needed = TARGET_SUCCESSES - okSoFar;
+    const tier2 = selectTier(2).slice(0, needed);
+    if (tier2.length > 0) {
+      const t2results = await Promise.all(tier2.map((p) => runProviderAttempt(p, prompt, onEvent)));
+      allResults.push(...t2results);
     }
+
+    if (allResults.some((r) => r.ok)) return allResults;
   }
 
   // Tier 1 completely failed → try all of Tier 2
   const tier2 = selectTier(2);
   if (tier2.length > 0) {
     const t2results = await Promise.all(tier2.map((p) => runProviderAttempt(p, prompt, onEvent)));
-    if (t2results.some((r) => r.ok)) return t2results;
+    allResults.push(...t2results);
+    if (allResults.some((r) => r.ok)) return allResults;
   }
 
   // Last resort: Tier 3
   const tier3 = selectTier(3);
   if (tier3.length > 0) {
-    return Promise.all(tier3.map((p) => runProviderAttempt(p, prompt, onEvent)));
+    const t3results = await Promise.all(tier3.map((p) => runProviderAttempt(p, prompt, onEvent)));
+    allResults.push(...t3results);
+    return allResults;
   }
 
   const statuses = getProviderStatus();
