@@ -23,11 +23,18 @@ const needsProfileRoute = createRouteMatcher([
   "/lesson-pack(.*)",
   "/ai-planner(.*)",
   "/critical-planner(.*)",
+  "/account(.*)",
+  "/billing(.*)",
+  "/settings(.*)",
   "/library(.*)",
   "/notes(.*)",
   "/coverage(.*)",
   "/school(.*)",
   "/wellbeing-report(.*)",
+  "/marking(.*)",
+  "/retrieval(.*)",
+  "/compliance(.*)",
+  "/survey-responses(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

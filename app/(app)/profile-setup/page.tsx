@@ -1203,15 +1203,6 @@ export default function ProfileSetupPage() {
           </div>
         </div>
 
-        {/* Skip to dashboard */}
-        <p style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.8rem", color: "var(--muted)" }}>
-          <a
-            href={nextPath}
-            style={{ color: "var(--muted)", textDecoration: "underline", textUnderlineOffset: "2px" }}
-          >
-            Skip setup and go to dashboard
-          </a>
-        </p>
       </div>
     </main>
   );
