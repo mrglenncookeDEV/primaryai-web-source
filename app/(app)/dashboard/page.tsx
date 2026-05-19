@@ -1925,53 +1925,6 @@ export default function DashboardPage() {
                 : { value: "–", label: "no term set", color: "var(--muted)" },
             ];
 
-            return (
-              <div style={{ padding: "1.2rem 1.35rem", borderRadius: "18px", border: "1px solid var(--border-card)", background: "var(--surface)", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, var(--accent) 0%, transparent 75%)" }} />
-                <p style={{ margin: "0 0 0.9rem", fontSize: "0.98rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
-                  {greeting}{firstName ? `, ${firstName}` : ""} 👋
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-                  {stats.map(({ value, label, color }) => (
-                    <div key={label} style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
-                      <span style={{ fontSize: "1.1rem", fontWeight: 800, color, lineHeight: 1, letterSpacing: "-0.02em", minWidth: "2rem" }}>{value}</span>
-                      <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 500 }}>{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-        <div className="dashboard-countdown-wrapper">
-          <div className="term-countdown-stat">
-            {!loading && activeTerm?.termStartDate && activeTerm?.termEndDate ? (
-              <TermCountdownRing
-                termName={activeTerm.termName || "Term"}
-                termStartDate={activeTerm.termStartDate}
-                termEndDate={activeTerm.termEndDate}
-              />
-            ) : !loading ? (
-              <div style={{ padding: "1.5rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem", justifyContent: "center", flex: 1 }}>
-                <span className="dashboard-hero-label">No active term set</span>
-                <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted)", lineHeight: 1.5 }}>
-                  Add your term dates in{" "}
-                  <Link href="/settings" style={{ color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
-                    Settings
-                  </Link>{" "}
-                  to see your countdown.
-                </p>
-              </div>
-            ) : (
-              <span className="dashboard-hero-value">–</span>
-            )}
-          </div>
-        </div>
-        <div className="dashboard-wellbeing-row">
-          <WellbeingSummaryCard />
-        </div>
-        <div className="dashboard-week-glance-card">
-          {!loading && (() => {
             const weekNow = new Date();
             const weekMon = getMondayDate(weekNow);
             const weekSun = new Date(weekMon);
@@ -1980,37 +1933,81 @@ export default function DashboardPage() {
             const wTo = toISODate(weekSun);
             const weekLessons = scheduleEvents.filter((e) => e.event_type === "lesson_pack" && e.scheduled_date >= wFrom && e.scheduled_date <= wTo);
             const weekTasks = tasks.filter((t) => !t.completed && t.due_date >= wFrom && t.due_date <= wTo);
-            const todayStr = toISODate(weekNow);
-            const overdueTasks = tasks.filter((t) => !t.completed && t.due_date < todayStr);
             const p1Tasks = tasks.filter((t) => !t.completed && t.priority === "p1");
-            if (weekLessons.length === 0 && weekTasks.length === 0 && overdueTasks.length === 0) return null;
-            const badges = [
+            const weekBadges = [
               weekLessons.length > 0 && { label: `${weekLessons.length} lesson${weekLessons.length !== 1 ? "s" : ""} this week`, color: "var(--accent)" },
               weekTasks.length > 0 && { label: `${weekTasks.length} task${weekTasks.length !== 1 ? "s" : ""} due`, color: "#f59e0b" },
-              overdueTasks.length > 0 && { label: `${overdueTasks.length} overdue`, color: "#ef4444" },
+              overdueTasks > 0 && { label: `${overdueTasks} overdue`, color: "#ef4444" },
               p1Tasks.length > 0 && { label: `${p1Tasks.length} P1 open`, color: "#ef4444" },
             ].filter(Boolean) as Array<{ label: string; color: string }>;
-            if (badges.length === 0) return null;
+
             return (
-              <div style={{ padding: "0.75rem 1rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                {badges.map((b) => (
-                  <span key={b.label} style={{
-                    display: "inline-flex", alignItems: "center", gap: "0.3rem",
-                    padding: "0.25rem 0.65rem",
-                    borderRadius: "999px",
-                    border: `1px solid color-mix(in srgb, ${b.color} 30%, var(--border))`,
-                    background: `color-mix(in srgb, ${b.color} 8%, var(--surface))`,
-                    color: b.color,
-                    fontSize: "0.74rem",
-                    fontWeight: 600,
-                  }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: b.color, display: "inline-block" }} />
-                    {b.label}
-                  </span>
-                ))}
+              <div style={{ borderRadius: "18px", border: "1px solid var(--border-card)", background: "var(--surface)", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, var(--accent) 0%, transparent 75%)" }} />
+
+                {/* Greeting + stats */}
+                <div style={{ padding: "1.2rem 1.35rem 1.1rem" }}>
+                  <p style={{ margin: "0 0 0.9rem", fontSize: "0.98rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
+                    {greeting}{firstName ? `, ${firstName}` : ""} 👋
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+                    {stats.map(({ value, label, color }) => (
+                      <div key={label} style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
+                        <span style={{ fontSize: "1.1rem", fontWeight: 800, color, lineHeight: 1, letterSpacing: "-0.02em", minWidth: "2rem" }}>{value}</span>
+                        <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 500 }}>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Countdown */}
+                <div style={{ borderTop: "1px solid var(--border-card)" }}>
+                  {activeTerm?.termStartDate && activeTerm?.termEndDate ? (
+                    <TermCountdownRing
+                      termName={activeTerm.termName || "Term"}
+                      termStartDate={activeTerm.termStartDate}
+                      termEndDate={activeTerm.termEndDate}
+                    />
+                  ) : (
+                    <div style={{ padding: "1.2rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      <span className="dashboard-hero-label">No active term set</span>
+                      <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted)", lineHeight: 1.5 }}>
+                        Add your term dates in{" "}
+                        <Link href="/settings" style={{ color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
+                          Settings
+                        </Link>{" "}
+                        to see your countdown.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Week-at-a-glance badges */}
+                {weekBadges.length > 0 && (
+                  <div style={{ borderTop: "1px solid var(--border-card)", padding: "0.75rem 1rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                    {weekBadges.map((b) => (
+                      <span key={b.label} style={{
+                        display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                        padding: "0.25rem 0.65rem",
+                        borderRadius: "999px",
+                        border: `1px solid color-mix(in srgb, ${b.color} 30%, var(--border))`,
+                        background: `color-mix(in srgb, ${b.color} 8%, var(--surface))`,
+                        color: b.color,
+                        fontSize: "0.74rem",
+                        fontWeight: 600,
+                      }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: b.color, display: "inline-block" }} />
+                        {b.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })()}
+        </div>
+        <div className="dashboard-wellbeing-row">
+          <WellbeingSummaryCard />
         </div>
 
         <div
